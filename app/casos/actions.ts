@@ -904,3 +904,74 @@ export async function crearCasoDesdeVerificacion(userId: string, calculoId: stri
   
   return { error: null, casoId: nuevoCaso.id, folio }
 }
+
+// Actualizar ubicacion del lugar de trabajo en un caso
+export async function actualizarUbicacionCaso(
+  casoId: string | null,
+  locationData: {
+    lat: number
+    lng: number
+    address?: string
+    streetViewUrl: string
+    mapsUrl: string
+    timestamp: string
+  }
+) {
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  
+  if (!user) {
+    return { error: 'No autenticado' }
+  }
+  
+  // Si no hay casoId, buscar el caso activo del usuario
+  let targetCasoId = casoId
+  
+  if (!targetCasoId) {
+    const { data: casoActivo } = await supabase
+      .from('casos')
+      .select('id')
+      .eq('worker_id', user.id)
+      .in('status', ['open', 'assigned', 'in_progress', 'pending_review'])
+      .order('created_at', { ascending: false })
+      .limit(1)
+      .maybeSingle()
+    
+    targetCasoId = casoActivo?.id || null
+  }
+  
+  if (!targetCasoId) {
+    // Si no hay caso, guardar en el perfil del usuario como ubicacion pendiente
+    await supabase
+      .from('profiles')
+      .update({
+        ubicacion_trabajo_pendiente: locationData,
+        updated_at: new Date().toISOString()
+      })
+      .eq('id', user.id)
+    
+    return { error: null, guardadoEnPerfil: true }
+  }
+  
+  // Actualizar el caso con la ubicacion
+  const { error } = await supabase
+    .from('casos')
+    .update({
+      ubicacion_patron: locationData,
+      direccion_patron_lat: locationData.lat,
+      direccion_patron_lng: locationData.lng,
+      direccion_patron_street_view: locationData.streetViewUrl,
+      updated_at: new Date().toISOString()
+    })
+    .eq('id', targetCasoId)
+    .eq('worker_id', user.id)
+  
+  if (error) {
+    return { error: error.message }
+  }
+  
+  revalidatePath('/casos')
+  revalidatePath('/boveda')
+  
+  return { error: null, casoId: targetCasoId }
+}

@@ -124,42 +124,11 @@ export function DocumentUploader({ onUploaded, onClose, defaultCategoria }: Docu
     }
   }
 
-  // Guardar ubicacion como documento
-  const handleSaveLocation = async (locationData: LocationData) => {
-    const docData = {
-      type: 'ubicacion_trabajo',
-      coordinates: { lat: locationData.lat, lng: locationData.lng },
-      ...locationData
-    }
-    
-    const blob = new Blob([JSON.stringify(docData, null, 2)], { type: 'application/json' })
-    const file = new File([blob], `ubicacion_trabajo_${Date.now()}.json`, { type: 'application/json' })
-    
-    const reader = new FileReader()
-    const base64Promise = new Promise<string>((resolve, reject) => {
-      reader.onloadend = () => {
-        const dataUrl = reader.result as string
-        resolve(dataUrl.split(',')[1])
-      }
-      reader.onerror = reject
-    })
-    reader.readAsDataURL(file)
-    const base64 = await base64Promise
-    
-    const result = await subirDocumento({
-      archivo: base64,
-      nombre: 'Ubicacion del lugar de trabajo',
-      nombreOriginal: file.name,
-      categoria: 'foto_lugar' as CategoriaDocumento,
-      mimeType: 'application/json',
-      tamanioBytes: file.size,
-      metadata: docData
-    })
-    
-    if (result.success) {
-      setShowLocationPicker(false)
-      onUploaded?.()
-    }
+  // Ubicacion guardada - se guarda directamente en el caso desde LocationPicker
+  const handleSaveLocation = async (_locationData: LocationData) => {
+    // La ubicacion ya se guardo en el caso, solo cerramos
+    setShowLocationPicker(false)
+    onUploaded?.()
   }
 
   const handleFileSelect = useCallback((selectedFiles: FileList | null) => {
