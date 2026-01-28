@@ -1,19 +1,23 @@
 "use client"
 
-import { useState } from "react"
+import React from "react"
+
+import { useState, useRef } from "react"
 import { 
   Calculator, FileText, Briefcase, Scale, Shield, 
   Upload, ChevronRight, Bell, Menu, User, Home,
   Clock, CheckCircle2, AlertCircle, TrendingUp,
   Building2, Calendar, DollarSign, Star, Sparkles,
   Check, ArrowRight, Zap, Users, Award, Lock,
-  Phone, Mail, Globe, Play, Pause, ChevronDown
+  Phone, Mail, Globe, Play, Pause, ChevronDown, X, ImageIcon
 } from "lucide-react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Progress } from "@/components/ui/progress"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import { Input } from "@/components/ui/input"
+import { Label } from "@/components/ui/label"
 import Link from "next/link"
 
 // Temas disponibles para white-label
@@ -96,7 +100,7 @@ const LOGO_VARIANTS = {
 }
 
 // Componente SVG del Logo segun variante
-function LogoSVG({ variant, color, size = "md" }: { variant: LogoVariant; color: string; size?: "sm" | "md" | "lg" | "xl" }) {
+function LogoSVG({ variant, color, size = "md", customLogoUrl }: { variant: LogoVariant; color: string; size?: "sm" | "md" | "lg" | "xl"; customLogoUrl?: string | null }) {
   const sizes = {
     sm: { height: "h-8", viewBox: "0 0 140 45" },
     md: { height: "h-12", viewBox: "0 0 140 45" },
@@ -106,13 +110,14 @@ function LogoSVG({ variant, color, size = "md" }: { variant: LogoVariant; color:
   
   const s = sizes[size]
   
+  // Usar logo custom si esta disponible y es variante original
   if (variant === "original") {
     return (
       <div className={`${s.height} flex items-center`}>
         <img 
-          src="/images/pp-abogados-logo.png" 
-          alt="P&P Abogados"
-          className={`${s.height} object-contain`}
+          src={customLogoUrl || "/images/pp-abogados-logo.png"} 
+          alt="Logo"
+          className={`${s.height} object-contain max-w-[100px]`}
         />
       </div>
     )
@@ -188,15 +193,15 @@ function LogoSVG({ variant, color, size = "md" }: { variant: LogoVariant; color:
 }
 
 // Componente del Logo completo con texto
-function PPLogo({ theme, variant, size = "md" }: { theme: typeof THEMES.ppAbogados; variant: LogoVariant; size?: "sm" | "md" | "lg" }) {
+function PPLogo({ theme, variant, size = "md", customLogoUrl, firmName }: { theme: typeof THEMES.ppAbogados; variant: LogoVariant; size?: "sm" | "md" | "lg"; customLogoUrl?: string | null; firmName?: string }) {
   const isDark = theme.style === "luxury"
   const goldColor = isDark ? "#D4AF37" : theme.primary
   
   const showAbogadosText = variant !== "elegante" && variant !== "original"
   
   return (
-    <div className="flex items-center gap-2">
-      <LogoSVG variant={variant} color={goldColor} size={size} />
+  <div className="flex items-center gap-2">
+  <LogoSVG variant={variant} color={goldColor} size={size} customLogoUrl={customLogoUrl} />
       {showAbogadosText && (
         <span 
           className="font-serif tracking-widest text-[10px] md:text-xs"
@@ -210,7 +215,7 @@ function PPLogo({ theme, variant, size = "md" }: { theme: typeof THEMES.ppAbogad
 }
 
 // Header Mockup mejorado
-function HeaderMockup({ theme, logoVariant }: { theme: typeof THEMES.ppAbogados; logoVariant: LogoVariant }) {
+function HeaderMockup({ theme, logoVariant, customLogoUrl, firmName }: { theme: typeof THEMES.ppAbogados; logoVariant: LogoVariant; customLogoUrl?: string | null; firmName?: string }) {
   const isDark = theme.style === "luxury"
   
   return (
@@ -225,7 +230,7 @@ function HeaderMockup({ theme, logoVariant }: { theme: typeof THEMES.ppAbogados;
         <Button variant="ghost" size="icon" className="md:hidden h-8 w-8">
           <Menu className="h-4 w-4" style={{ color: theme.textPrimary }} />
         </Button>
-        <PPLogo theme={theme} variant={logoVariant} size="sm" />
+        <PPLogo theme={theme} variant={logoVariant} size="sm" customLogoUrl={customLogoUrl} firmName={firmName} />
       </div>
       
       <div className="flex items-center gap-1 md:gap-2">
@@ -244,12 +249,12 @@ function HeaderMockup({ theme, logoVariant }: { theme: typeof THEMES.ppAbogados;
 }
 
 // Dashboard Mockup
-function DashboardMockup({ theme, logoVariant }: { theme: typeof THEMES.ppAbogados; logoVariant: LogoVariant }) {
+function DashboardMockup({ theme, logoVariant, customLogoUrl, firmName }: { theme: typeof THEMES.ppAbogados; logoVariant: LogoVariant; customLogoUrl?: string | null; firmName?: string }) {
   const isDark = theme.style === "luxury"
   
   return (
     <div className="min-h-[520px]" style={{ backgroundColor: theme.background }}>
-      <HeaderMockup theme={theme} logoVariant={logoVariant} />
+      <HeaderMockup theme={theme} logoVariant={logoVariant} customLogoUrl={customLogoUrl} firmName={firmName} />
       
       <div className={`p-4 md:p-6 bg-gradient-to-br ${theme.gradient}`}>
         <div className="text-white">
@@ -300,7 +305,7 @@ function DashboardMockup({ theme, logoVariant }: { theme: typeof THEMES.ppAbogad
         
         <Card style={{ backgroundColor: isDark ? '#252525' : '#fffbeb', borderColor: isDark ? '#333' : '#fbbf24' }}>
           <CardContent className="p-2.5 md:p-3 flex items-center gap-2 md:gap-3">
-            <div className="h-8 w-8 rounded-full bg-amber-100 flex items-center justify-center flex-shrink-0">
+            <div className="h-8 w-8 md:h-10 md:w-10 rounded-full bg-amber-100 flex items-center justify-center flex-shrink-0">
               <Calendar className="h-4 w-4 text-amber-600" />
             </div>
             <div className="flex-1 min-w-0">
@@ -324,12 +329,12 @@ function DashboardMockup({ theme, logoVariant }: { theme: typeof THEMES.ppAbogad
 }
 
 // Calculadora Mockup
-function CalculadoraMockup({ theme, logoVariant }: { theme: typeof THEMES.ppAbogados; logoVariant: LogoVariant }) {
+function CalculadoraMockup({ theme, logoVariant, customLogoUrl, firmName }: { theme: typeof THEMES.ppAbogados; logoVariant: LogoVariant; customLogoUrl?: string | null; firmName?: string }) {
   const isDark = theme.style === "luxury"
   
   return (
     <div className="min-h-[520px] p-0" style={{ backgroundColor: theme.background }}>
-      <HeaderMockup theme={theme} logoVariant={logoVariant} />
+      <HeaderMockup theme={theme} logoVariant={logoVariant} customLogoUrl={null} firmName={null} />
       
       <div className="p-3 md:p-4 space-y-3 md:space-y-4">
         <Card style={{ backgroundColor: theme.cardBg, borderColor: isDark ? '#333' : '#e5e7eb' }}>
@@ -396,7 +401,7 @@ function CalculadoraMockup({ theme, logoVariant }: { theme: typeof THEMES.ppAbog
 }
 
 // Boveda Mockup
-function BovedaMockup({ theme, logoVariant }: { theme: typeof THEMES.ppAbogados; logoVariant: LogoVariant }) {
+function BovedaMockup({ theme, logoVariant, customLogoUrl, firmName }: { theme: typeof THEMES.ppAbogados; logoVariant: LogoVariant; customLogoUrl?: string | null; firmName?: string }) {
   const isDark = theme.style === "luxury"
   
   const documentos = [
@@ -407,7 +412,7 @@ function BovedaMockup({ theme, logoVariant }: { theme: typeof THEMES.ppAbogados;
   
   return (
     <div className="min-h-[520px]" style={{ backgroundColor: theme.background }}>
-      <HeaderMockup theme={theme} logoVariant={logoVariant} />
+      <HeaderMockup theme={theme} logoVariant={logoVariant} customLogoUrl={null} firmName={null} />
       
       <div className="p-3 md:p-4 space-y-3 md:space-y-4">
         <div className="grid grid-cols-3 gap-2">
@@ -473,12 +478,12 @@ function BovedaMockup({ theme, logoVariant }: { theme: typeof THEMES.ppAbogados;
 }
 
 // Casos Mockup
-function CasosMockup({ theme, logoVariant }: { theme: typeof THEMES.ppAbogados; logoVariant: LogoVariant }) {
+function CasosMockup({ theme, logoVariant, customLogoUrl, firmName }: { theme: typeof THEMES.ppAbogados; logoVariant: LogoVariant; customLogoUrl?: string | null; firmName?: string }) {
   const isDark = theme.style === "luxury"
   
   return (
     <div className="min-h-[520px]" style={{ backgroundColor: theme.background }}>
-      <HeaderMockup theme={theme} logoVariant={logoVariant} />
+      <HeaderMockup theme={theme} logoVariant={logoVariant} customLogoUrl={null} firmName={null} />
       
       <div className="p-3 md:p-4 space-y-3 md:space-y-4">
         <Card 
@@ -636,11 +641,40 @@ export default function WhiteLabelPreview() {
   const [selectedTheme, setSelectedTheme] = useState<ThemeKey>("ppAbogados")
   const [selectedLogo, setSelectedLogo] = useState<LogoVariant>("balanza")
   const [selectedScreen, setSelectedScreen] = useState("dashboard")
+  const [customLogoUrl, setCustomLogoUrl] = useState<string | null>(null)
+  const [firmName, setFirmName] = useState("P&P Abogados")
+  const fileInputRef = useRef<HTMLInputElement>(null)
   
   const theme = THEMES[selectedTheme]
   const isDark = theme.style === "luxury"
   
   const goldColor = isDark ? "#D4AF37" : theme.primary
+  
+  // Manejo de subida de logo
+  const handleLogoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+    
+    // Revocar URL anterior para liberar memoria
+    if (customLogoUrl) {
+      URL.revokeObjectURL(customLogoUrl)
+    }
+    
+    // Crear nueva URL temporal
+    const url = URL.createObjectURL(file)
+    setCustomLogoUrl(url)
+    setSelectedLogo("original") // Cambiar a logo original para mostrar el subido
+  }
+  
+  const handleRemoveLogo = () => {
+    if (customLogoUrl) {
+      URL.revokeObjectURL(customLogoUrl)
+      setCustomLogoUrl(null)
+    }
+    if (fileInputRef.current) {
+      fileInputRef.current.value = ''
+    }
+  }
   
   return (
     <div className="min-h-screen bg-gradient-to-b from-gray-50 to-gray-100">
@@ -683,22 +717,86 @@ export default function WhiteLabelPreview() {
           <CardHeader className="bg-gray-50 border-b">
             <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
               <div>
-                <CardTitle className="text-lg md:text-xl">Vista previa: P&P Abogados</CardTitle>
+                <CardTitle className="text-lg md:text-xl">Vista previa: {firmName}</CardTitle>
                 <p className="text-sm text-gray-600 mt-1">Personaliza y visualiza como se veria tu app</p>
               </div>
               <div className="flex items-center gap-2">
-                <img 
-                  src="/images/pp-abogados-logo.png" 
-                  alt="P&P Abogados"
-                  className="h-10 md:h-12 object-contain"
-                />
+                {customLogoUrl ? (
+                  <img 
+                    src={customLogoUrl || "/placeholder.svg"} 
+                    alt={firmName}
+                    className="h-10 md:h-12 object-contain max-w-[120px]"
+                  />
+                ) : (
+                  <img 
+                    src="/images/pp-abogados-logo.png" 
+                    alt="P&P Abogados"
+                    className="h-10 md:h-12 object-contain"
+                  />
+                )}
               </div>
             </div>
           </CardHeader>
           <CardContent className="p-4 md:p-6">
+            {/* Subir logo y nombre */}
+            <div className="mb-6 p-4 bg-amber-50 border border-amber-200 rounded-xl">
+              <h3 className="font-semibold mb-4 text-sm md:text-base flex items-center gap-2">
+                <Upload className="h-4 w-4 text-amber-600" />
+                Personaliza con tu marca
+              </h3>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {/* Nombre del despacho */}
+                <div>
+                  <Label htmlFor="firmName" className="text-sm text-gray-700">Nombre del despacho</Label>
+                  <Input
+                    id="firmName"
+                    value={firmName}
+                    onChange={(e) => setFirmName(e.target.value)}
+                    placeholder="Ej: Lopez & Asociados"
+                    className="mt-1"
+                  />
+                </div>
+                
+                {/* Subir logo */}
+                <div>
+                  <Label className="text-sm text-gray-700">Logo del despacho</Label>
+                  <div className="mt-1 flex items-center gap-2">
+                    <input
+                      ref={fileInputRef}
+                      type="file"
+                      accept="image/*"
+                      onChange={handleLogoUpload}
+                      className="hidden"
+                      id="logo-upload"
+                    />
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => fileInputRef.current?.click()}
+                      className="flex-1 bg-transparent"
+                    >
+                      <Upload className="h-4 w-4 mr-2" />
+                      {customLogoUrl ? 'Cambiar logo' : 'Subir logo'}
+                    </Button>
+                    {customLogoUrl && (
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={handleRemoveLogo}
+                        className="text-red-600 hover:text-red-700 hover:bg-red-50"
+                      >
+                        <X className="h-4 w-4" />
+                      </Button>
+                    )}
+                  </div>
+                  <p className="text-[10px] text-gray-500 mt-1">PNG, JPG o SVG. Solo para preview.</p>
+                </div>
+              </div>
+            </div>
+            
             {/* Selector de Logo */}
             <div className="mb-6">
-              <h3 className="font-semibold mb-3 text-sm md:text-base">1. Selecciona estilo de logo</h3>
+              <h3 className="font-semibold mb-3 text-sm md:text-base">1. Selecciona estilo de logo {customLogoUrl && <Badge variant="outline" className="ml-2 text-[10px]">Usando tu logo</Badge>}</h3>
               <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-2 md:gap-3">
                 {(Object.keys(LOGO_VARIANTS) as LogoVariant[]).map((key) => {
                   const v = LOGO_VARIANTS[key]
@@ -787,10 +885,10 @@ export default function WhiteLabelPreview() {
                     <div className="h-6 flex justify-center items-end pb-1" style={{ backgroundColor: isDark ? theme.cardBg : theme.background }}>
                       <div className="w-20 h-4 bg-black rounded-full" />
                     </div>
-                    {selectedScreen === "dashboard" && <DashboardMockup theme={theme} logoVariant={selectedLogo} />}
-                    {selectedScreen === "calculadora" && <CalculadoraMockup theme={theme} logoVariant={selectedLogo} />}
-                    {selectedScreen === "boveda" && <BovedaMockup theme={theme} logoVariant={selectedLogo} />}
-                    {selectedScreen === "casos" && <CasosMockup theme={theme} logoVariant={selectedLogo} />}
+{selectedScreen === "dashboard" && <DashboardMockup theme={theme} logoVariant={selectedLogo} customLogoUrl={customLogoUrl} firmName={firmName} />}
+                {selectedScreen === "calculadora" && <CalculadoraMockup theme={theme} logoVariant={selectedLogo} customLogoUrl={customLogoUrl} firmName={firmName} />}
+                {selectedScreen === "boveda" && <BovedaMockup theme={theme} logoVariant={selectedLogo} customLogoUrl={customLogoUrl} firmName={firmName} />}
+                {selectedScreen === "casos" && <CasosMockup theme={theme} logoVariant={selectedLogo} customLogoUrl={customLogoUrl} firmName={firmName} />}
                   </div>
                 </div>
               </div>

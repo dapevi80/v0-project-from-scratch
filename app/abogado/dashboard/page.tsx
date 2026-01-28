@@ -1,79 +1,33 @@
 'use client'
 
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
+import Image from 'next/image'
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Progress } from '@/components/ui/progress'
 import { createClient } from '@/lib/supabase/client'
 import { useAuth } from '@/lib/auth/auth-provider'
-import { useInactivityLogout } from '@/hooks/use-inactivity-logout'
-import { type UserRole } from '@/lib/types'
 import confetti from 'canvas-confetti'
 import { AyudaUrgenteButton } from '@/components/ayuda-urgente-button'
 import { CryptoWallet } from '@/components/wallet/crypto-wallet'
-import { DowngradeAlert } from '@/components/downgrade-alert'
-import { UpgradeAlert } from '@/components/upgrade-alert'
-import { AccountLimitsBanner } from '@/components/account-limits-banner'
-import { LawyerCelebration } from '@/components/lawyer-celebration'
-
-interface LawyerData {
-  profile: {
-    id: string
-    full_name: string
-    email: string
-    phone: string | null
-    role: string
-    verification_status: string
-    celebration_shown: boolean
-    downgrade_reason?: string
-    upgrade_at?: string
-  }
-  lawyerProfile: {
-    display_name: string | null
-    verification_status: string
-    is_available: boolean
-    verified_at: string | null
-    cedula_profesional: string | null
-    photo_url: string | null
-  } | null
-  stats: {
-    casosActivos: number
-    casosCompletados: number
-    calculosActivos: number
-    ingresosMes: number
-    creditosCCL: number
-  }
-  verificationProgress: {
-    datosBasicos: boolean
-    cedulaSubida: boolean
-    identificacionSubida: boolean
-    comprobanteSubido: boolean
-    enRevision: boolean
-    verificado: boolean
-  }
-  isVerified: boolean
-  isGuestLawyer: boolean
-  limites: {
-    maxCasos: number
-    maxCalculos: number
-  }
-}
+import { DashboardSkeleton } from '@/components/ui/dashboard-skeleton'
+import { LogoutButton } from '@/app/dashboard/logout-button'
+import { 
+  Calculator, Folder, BookOpen, FileCheck, ShoppingBag, Briefcase, 
+  Users, Shield, ChevronRight, CheckCircle2, AlertCircle, Clock,
+  Award, Coins
+} from 'lucide-react'
 
 export default function AbogadoDashboardPage() {
   const router = useRouter()
-  const { user, profile: authProfile, loading: authLoading, role: authRole } = useAuth()
-  const [loading, setLoading] = useState(true)
-  const [data, setData] = useState<LawyerData | null>(null)
-  const [showCelebration, setShowCelebration] = useState(false)
-  const [celebrationType, setCelebrationType] = useState<'verification_approved' | 'reactivation'>('verification_approved')
-  
-  useInactivityLogout({ 
-    userRole: (data?.profile?.role as UserRole) || null,
-    enabled: !loading && !!data
-  })
+  const { user, profile, loading: authLoading, role } = useAuth()
+  const [pageLoading, setPageLoading] = useState(true)
+  const [stats, setStats] = useState({ casos: 0, completados: 0, calculos: 0 })
+  const [lawyerProfile, setLawyerProfile] = useState<{ display_name?: string; verification_status?: string; cedula_profesional?: string; photo_url?: string } | null>(null)
+  const [verificationProgress, setVerificationProgress] = useState(0)
 
   // Redirigir si no es abogado
   useEffect(() => {
@@ -84,602 +38,271 @@ export default function AbogadoDashboardPage() {
       return
     }
     
-    if (authRole !== 'lawyer' && authRole !== 'guestlawyer' && authRole !== 'admin' && authRole !== 'superadmin') {
+    if (role !== 'lawyer' && role !== 'guestlawyer' && role !== 'admin' && role !== 'superadmin') {
       router.replace('/dashboard')
       return
     }
     
-    // Cargar datos adicionales del abogado
-    loadLawyerData()
-  }, [authLoading, user, authRole, router])
+    // Usuario valido, cargar datos
+    loadData()
+  }, [authLoading, user, role, router])
 
-  const loadLawyerData = useCallback(async () => {
-    if (!user || !authProfile) return
+  async function loadData() {
+    if (!user) return
     
     const supabase = createClient()
-    const profile = authProfile
-
-    const { data: lawyerProfile } = await supabase
-      .from('lawyer_profiles')
-      .select('display_name, verification_status, is_available, verified_at, cedula_profesional, photo_url')
-      .eq('user_id', user.id)
-      .maybeSingle()
-
-    const isVerified = lawyerProfile?.verification_status === 'verified' || 
-                       lawyerProfile?.verification_status === 'approved' ||
-                       profile.role === 'lawyer' ||
-                       profile.role === 'admin' ||
-                       profile.role === 'superadmin'
     
-    const isGuestLawyer = profile.role === 'guestlawyer'
-
-    // Verificar celebracion pendiente
-    if (isVerified && !profile.celebration_shown) {
-      const wasReactivation = profile.upgrade_type === 'reactivation'
-      setCelebrationType(wasReactivation ? 'reactivation' : 'verification_approved')
-      setShowCelebration(true)
+    try {
+      // Cargar en paralelo
+      const [lawyerRes, casosRes, completadosRes, calculosRes] = await Promise.all([
+        supabase.from('lawyer_profiles').select('display_name, verification_status, cedula_profesional, photo_url').eq('user_id', user.id).maybeSingle(),
+        supabase.from('casos').select('*', { count: 'exact', head: true }).eq('abogado_id', user.id).in('status', ['assigned', 'in_progress']),
+        supabase.from('casos').select('*', { count: 'exact', head: true }).eq('abogado_id', user.id).eq('status', 'completed'),
+        supabase.from('calculos_liquidacion').select('*', { count: 'exact', head: true }).eq('user_id', user.id)
+      ])
       
-      // Confetti
-      const duration = 3000
-      const end = Date.now() + duration
-      const frame = () => {
-        confetti({
-          particleCount: 3,
-          angle: 60,
-          spread: 55,
-          origin: { x: 0 },
-          colors: ['#3b82f6', '#10b981', '#f59e0b']
-        })
-        confetti({
-          particleCount: 3,
-          angle: 120,
-          spread: 55,
-          origin: { x: 1 },
-          colors: ['#3b82f6', '#10b981', '#f59e0b']
-        })
-        if (Date.now() < end) requestAnimationFrame(frame)
+      if (lawyerRes.data) setLawyerProfile(lawyerRes.data)
+      setStats({
+        casos: casosRes.count || 0,
+        completados: completadosRes.count || 0,
+        calculos: calculosRes.count || 0
+      })
+      
+      // Calcular progreso de verificacion
+      let progress = 0
+      if (lawyerRes.data?.cedula_profesional) progress += 50
+      if (lawyerRes.data?.verification_status === 'verified') progress = 100
+      else if (lawyerRes.data?.verification_status === 'pending') progress = 75
+      setVerificationProgress(progress)
+      
+      // Celebracion si es abogado verificado que no ha visto
+      if (profile?.role === 'lawyer' && !profile?.celebration_shown) {
+        confetti({ particleCount: 100, spread: 70, origin: { y: 0.6 } })
+        supabase.from('profiles').update({ celebration_shown: true }).eq('id', user.id)
       }
-      frame()
-      
-      await supabase.from('profiles').update({ celebration_shown: true }).eq('id', user.id)
+    } catch (e) {
+      console.log('[v0] Error loading lawyer data:', e)
+    } finally {
+      setPageLoading(false)
     }
-
-    // Estadisticas
-    const [casosActivosRes, casosCompletadosRes, calculosRes] = await Promise.all([
-      supabase.from('casos').select('*', { count: 'exact', head: true }).eq('abogado_id', user.id).in('status', ['assigned', 'in_progress', 'negotiation']),
-      supabase.from('casos').select('*', { count: 'exact', head: true }).eq('abogado_id', user.id).eq('status', 'completed'),
-      supabase.from('calculos_liquidacion').select('*', { count: 'exact', head: true }).eq('user_id', user.id)
-    ])
-
-    // Documentos subidos
-    const { data: docs } = await supabase
-      .from('lawyer_documents')
-      .select('document_type')
-      .eq('lawyer_id', user.id)
-
-    const docTypes = docs?.map(d => d.document_type) || []
-
-    const verificationProgress = {
-      datosBasicos: !!profile.full_name && !!profile.email && !!profile.phone,
-      cedulaSubida: docTypes.includes('cedula'),
-      identificacionSubida: docTypes.includes('ine') || docTypes.includes('passport'),
-      comprobanteSubido: docTypes.includes('comprobante_domicilio'),
-      enRevision: lawyerProfile?.verification_status === 'pending' || lawyerProfile?.verification_status === 'in_review',
-      verificado: isVerified
-    }
-
-    // Limites segun rol
-    const limites = isGuestLawyer 
-      ? { maxCasos: 1, maxCalculos: 3 }
-      : { maxCasos: -1, maxCalculos: -1 }
-
-    setData({
-      profile: {
-        ...profile,
-        celebration_shown: profile.celebration_shown || false
-      },
-      lawyerProfile,
-      stats: {
-        casosActivos: casosActivosRes.count || 0,
-        casosCompletados: casosCompletadosRes.count || 0,
-        calculosActivos: calculosRes.count || 0,
-        ingresosMes: 0,
-        creditosCCL: isGuestLawyer ? 0 : (profile.role === 'superadmin' ? -1 : 10)
-      },
-      verificationProgress,
-      isVerified,
-      isGuestLawyer,
-      limites
-    })
-
-    setLoading(false)
-  }, [user, authProfile])
-
-  if (loading) {
-    return (
-      <div className="min-h-screen bg-background flex items-center justify-center">
-        <div className="text-center space-y-4">
-          <div className="w-8 h-8 rounded-full bg-primary flex items-center justify-center mx-auto animate-pulse">
-            <span className="text-destructive font-bold text-sm">!m!</span>
-          </div>
-          <p className="text-muted-foreground">Cargando...</p>
-        </div>
-      </div>
-    )
   }
 
-  if (!data) return null
+  if (authLoading || pageLoading) {
+    return <DashboardSkeleton />
+  }
 
-  const { profile, lawyerProfile, stats, verificationProgress, isVerified, isGuestLawyer, limites } = data
+  const isVerified = role === 'lawyer' || role === 'admin' || role === 'superadmin'
+  const isGuestLawyer = role === 'guestlawyer'
+  const displayName = lawyerProfile?.display_name || profile?.full_name || 'Abogado'
 
-  const completedSteps = Object.values(verificationProgress).filter(Boolean).length
-  const totalSteps = Object.keys(verificationProgress).length
-  const progressPercent = Math.round((completedSteps / totalSteps) * 100)
-
-  // Herramientas gratuitas
+  // Herramientas
   const freeTools = [
-    { 
-      name: 'Calculadora', 
-      href: '/calculadora', 
-      description: 'Liquidaciones laborales',
-      icon: (
-        <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-          <path strokeLinecap="round" strokeLinejoin="round" d="M9 7h6m0 10v-3m-3 3h.01M9 17h.01M9 14h.01M12 14h.01M15 11h.01M12 11h.01M9 11h.01M7 21h10a2 2 0 002-2V5a2 2 0 00-2-2H7a2 2 0 00-2 2v14a2 2 0 002 2z" />
-        </svg>
-      ),
-      color: 'bg-emerald-50 text-emerald-600'
-    },
-    { 
-      name: 'Boveda', 
-      href: '/boveda', 
-      description: 'Documentos y evidencias',
-      icon: (
-        <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-          <path strokeLinecap="round" strokeLinejoin="round" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
-        </svg>
-      ),
-      color: 'bg-blue-50 text-blue-600'
-    },
-    { 
-      name: 'Guia LFT', 
-      href: '/como-funciona', 
-      description: 'Ley Federal del Trabajo',
-      icon: (
-        <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-          <path strokeLinecap="round" strokeLinejoin="round" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
-        </svg>
-      ),
-      color: 'bg-purple-50 text-purple-600'
-    }
+    { name: 'Calculadora', href: '/calculadora', icon: Calculator, description: 'Calcula liquidaciones', available: true },
+    { name: 'Boveda', href: '/boveda', icon: Folder, description: 'Guarda documentos', available: true },
+    { name: 'Guia LFT', href: '/guia-lft', icon: BookOpen, description: 'Ley Federal del Trabajo', available: true }
   ]
 
-  // Herramientas para abogados
   const lawyerTools = [
-    { 
-      name: 'Oficina Virtual', 
-      href: '/oficina-virtual', 
-      description: 'Centro de operaciones',
-      icon: (
-        <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-          <path strokeLinecap="round" strokeLinejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-        </svg>
-      ),
-      color: 'from-indigo-500 to-purple-600',
-      badge: 'Principal',
-      locked: false
-    },
-    { 
-      name: 'AutoCCL', 
-      href: '/oficina-virtual/ccl', 
-      description: 'Solicitudes con IA',
-      icon: (
-        <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-          <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
-        </svg>
-      ),
-      color: 'from-green-500 to-emerald-600',
-      badge: 'IA',
-      badgeColor: 'bg-green-100 text-green-700',
-      locked: !isVerified,
-      credits: stats.creditosCCL
-    },
-    { 
-      name: 'Mis Casos', 
-      href: '/abogado/casos', 
-      description: 'Gestion de casos activos',
-      icon: (
-        <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-          <path strokeLinecap="round" strokeLinejoin="round" d="M3 6l3 1m0 0l-3 9a5.002 5.002 0 006.001 0M6 7l3 9M6 7l6-2m6 2l3-1m-3 1l-3 9a5.002 5.002 0 006.001 0M18 7l3 9m-3-9l-6-2m0-2v2m0 16V5m0 16H9m3 0h3" />
-        </svg>
-      ),
-      color: 'from-amber-500 to-orange-600',
-      locked: !isVerified
-    },
-    { 
-      name: 'Leads', 
-      href: '/abogado/leads', 
-      description: 'Casos disponibles',
-      icon: (
-        <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-          <path strokeLinecap="round" strokeLinejoin="round" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
-        </svg>
-      ),
-      color: 'from-cyan-500 to-blue-600',
-      badge: 'Nuevo',
-      badgeColor: 'bg-cyan-100 text-cyan-700',
-      locked: !isVerified
-    }
+    { name: 'AutoCCL', href: '/oficina-virtual/ccl', icon: FileCheck, description: 'Genera solicitudes CCL', available: isVerified, badge: isGuestLawyer ? 'Verificate' : undefined },
+    { name: 'Marketplace', href: '/oficina-virtual/casos', icon: ShoppingBag, description: 'Casos disponibles', available: isVerified, badge: isGuestLawyer ? 'Verificate' : undefined },
+    { name: 'Mis Casos', href: '/abogado/casos', icon: Briefcase, description: 'Gestiona tus casos', available: true },
+    { name: 'Leads', href: '/oficina-virtual/leads', icon: Users, description: 'Clientes potenciales', available: isVerified, badge: isGuestLawyer ? 'Verificate' : undefined }
   ]
-
-  // Herramientas PRO (admin/superadmin)
-  const proTools = [
-    { 
-      name: 'Verificaciones', 
-      href: '/admin/solicitudes-abogados', 
-      description: 'Aprobar abogados',
-      icon: (
-        <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-          <path strokeLinecap="round" strokeLinejoin="round" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
-        </svg>
-      ),
-      roles: ['admin', 'superadmin']
-    },
-    { 
-      name: 'Panel Admin', 
-      href: '/admin', 
-      description: 'Vista global',
-      icon: (
-        <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-          <path strokeLinecap="round" strokeLinejoin="round" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
-        </svg>
-      ),
-      roles: ['admin', 'superadmin']
-    }
-  ]
-
-  const showProTools = profile.role === 'admin' || profile.role === 'superadmin'
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="min-h-screen bg-muted/30">
       {/* Header */}
-      <header className="border-b bg-card sticky top-0 z-40">
-        <div className="container mx-auto px-3 sm:px-4 py-3 flex items-center justify-between">
+      <header className="sticky top-0 z-40 border-b bg-background/95 backdrop-blur">
+        <div className="container flex h-14 items-center justify-between px-4">
           <Link href="/" className="flex items-center gap-2">
-            <div className="w-8 h-8 rounded-full bg-primary flex items-center justify-center flex-shrink-0">
-              <span className="text-destructive font-bold text-sm">!m!</span>
+            <div className="w-8 h-8 rounded-full bg-primary flex items-center justify-center">
+              <span className="text-primary-foreground font-bold text-sm">!m!</span>
             </div>
-            <span className="text-base sm:text-lg font-semibold hidden xs:inline">mecorrieron.mx</span>
+            <span className="font-semibold hidden sm:inline">mecorrieron.mx</span>
           </Link>
           
           <div className="flex items-center gap-2">
-            <AyudaUrgenteButton />
-            <Button variant="ghost" size="sm" asChild>
-              <Link href="/perfil">Mi perfil</Link>
-            </Button>
+            <AyudaUrgenteButton variant="outline" size="sm" className="hidden sm:flex" />
+            <LogoutButton />
           </div>
         </div>
       </header>
 
-      {/* Celebracion */}
-      {showCelebration && (
-        <LawyerCelebration
-          userId={profile.id}
-          upgradeType={celebrationType}
-          userName={profile.full_name}
-          onClose={() => setShowCelebration(false)}
-        />
-      )}
-
-      <main className="container mx-auto px-3 sm:px-4 py-4 sm:py-8">
-        <div className="max-w-4xl mx-auto space-y-6">
-          
-          {/* Alertas */}
-          {profile.verification_status === 'verified' && !profile.celebration_shown && profile.upgrade_at && (
-            <UpgradeAlert userId={profile.id} />
-          )}
-          {profile.verification_status === 'documents_missing' && (
-            <DowngradeAlert userId={profile.id} />
-          )}
-
-          {/* Perfil Card */}
-          <Card className="border-slate-200">
-            <CardContent className="p-4 sm:p-6">
-              <div className="flex items-start gap-4">
-                <div className="w-14 h-14 sm:w-16 sm:h-16 rounded-full bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center text-white text-xl font-bold flex-shrink-0">
-                  {lawyerProfile?.photo_url ? (
-                    <img src={lawyerProfile.photo_url || "/placeholder.svg"} alt="" className="w-full h-full rounded-full object-cover" />
-                  ) : (
-                    profile.full_name?.charAt(0).toUpperCase() || 'A'
+      <main className="container px-4 py-6 space-y-6 max-w-5xl">
+        {/* Perfil */}
+        <Card>
+          <CardContent className="p-4 sm:p-6">
+            <div className="flex items-center gap-4">
+              <div className="w-16 h-16 rounded-full bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center text-white text-xl font-bold">
+                {displayName.charAt(0).toUpperCase()}
+              </div>
+              <div className="flex-1 min-w-0">
+                <h1 className="text-lg sm:text-xl font-bold truncate">{displayName}</h1>
+                <div className="flex flex-wrap items-center gap-2 mt-1">
+                  <Badge variant={isVerified ? 'default' : 'secondary'} className="text-xs">
+                    {isVerified ? 'Abogado Verificado' : 'En Verificacion'}
+                  </Badge>
+                  {lawyerProfile?.cedula_profesional && (
+                    <span className="text-xs text-muted-foreground">
+                      Cedula: {lawyerProfile.cedula_profesional}
+                    </span>
                   )}
                 </div>
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-2 flex-wrap">
-                    <h1 className="text-lg sm:text-xl font-semibold text-foreground truncate">
-                      {lawyerProfile?.display_name || profile.full_name}
-                    </h1>
-                    {isVerified ? (
-                      <Badge className="bg-green-100 text-green-700 text-xs">
-                        <svg className="w-3 h-3 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                          <path strokeLinecap="round" strokeLinejoin="round" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
-                        </svg>
-                        Verificado
-                      </Badge>
-                    ) : (
-                      <Badge className="bg-amber-100 text-amber-700 text-xs">
-                        <svg className="w-3 h-3 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                          <path strokeLinecap="round" strokeLinejoin="round" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-                        </svg>
-                        Pendiente
-                      </Badge>
-                    )}
-                    {isGuestLawyer && (
-                      <Badge variant="outline" className="text-xs">Abogado Invitado</Badge>
-                    )}
-                  </div>
-                  <p className="text-sm text-muted-foreground mt-0.5">
-                    {lawyerProfile?.cedula_profesional || 'Cedula pendiente'}
+              </div>
+              {isVerified && <Award className="w-8 h-8 text-yellow-500" />}
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Limites para guestlawyer */}
+        {isGuestLawyer && (
+          <Card className="border-amber-200 bg-amber-50">
+            <CardContent className="p-4">
+              <div className="flex items-start gap-3">
+                <AlertCircle className="w-5 h-5 text-amber-600 mt-0.5" />
+                <div className="flex-1">
+                  <p className="font-medium text-amber-800">Cuenta en verificacion</p>
+                  <p className="text-sm text-amber-700 mt-1">
+                    Tienes limite de 1 caso y 3 calculos. Verifica tu cuenta para acceso ilimitado.
                   </p>
-                  <p className="text-xs text-muted-foreground">{profile.email}</p>
+                  <div className="mt-3">
+                    <div className="flex justify-between text-xs text-amber-700 mb-1">
+                      <span>Progreso de verificacion</span>
+                      <span>{verificationProgress}%</span>
+                    </div>
+                    <Progress value={verificationProgress} className="h-2" />
+                  </div>
+                  <Button size="sm" className="mt-3" asChild>
+                    <Link href="/oficina-virtual/guestlawyer">Completar verificacion</Link>
+                  </Button>
                 </div>
               </div>
             </CardContent>
           </Card>
+        )}
 
-          {/* Limites de cuenta para guestlawyer */}
-          {isGuestLawyer && (
-            <AccountLimitsBanner
-              role="guestlawyer"
-              casosActuales={stats.casosActivos}
-              calculosActuales={stats.calculosActivos}
-              maxCasos={limites.maxCasos}
-              maxCalculos={limites.maxCalculos}
-              showUpgradeButton={true}
-            />
-          )}
+        {/* Estadisticas */}
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+          <Card>
+            <CardContent className="p-4 text-center">
+              <Briefcase className="w-6 h-6 mx-auto text-blue-500" />
+              <p className="text-2xl font-bold mt-2">{stats.casos}</p>
+              <p className="text-xs text-muted-foreground">Casos Activos</p>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardContent className="p-4 text-center">
+              <CheckCircle2 className="w-6 h-6 mx-auto text-green-500" />
+              <p className="text-2xl font-bold mt-2">{stats.completados}</p>
+              <p className="text-xs text-muted-foreground">Completados</p>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardContent className="p-4 text-center">
+              <Calculator className="w-6 h-6 mx-auto text-purple-500" />
+              <p className="text-2xl font-bold mt-2">{stats.calculos}</p>
+              <p className="text-xs text-muted-foreground">Calculos</p>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardContent className="p-4 text-center">
+              <Coins className="w-6 h-6 mx-auto text-yellow-500" />
+              <p className="text-2xl font-bold mt-2">{isVerified ? '10' : '0'}</p>
+              <p className="text-xs text-muted-foreground">Creditos CCL</p>
+            </CardContent>
+          </Card>
+        </div>
 
-          {/* Progreso de verificacion */}
-          {!isVerified && (
-            <Card className="border-amber-200 bg-amber-50/50">
-              <CardHeader className="pb-2">
-                <div className="flex items-center justify-between">
-                  <CardTitle className="text-base font-medium">Completa tu verificacion</CardTitle>
-                  <span className="text-sm text-muted-foreground">{progressPercent}%</span>
-                </div>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <Progress value={progressPercent} className="h-2" />
-                
-                <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 text-xs">
-                  {[
-                    { key: 'datosBasicos', label: 'Datos basicos' },
-                    { key: 'cedulaSubida', label: 'Cedula profesional' },
-                    { key: 'identificacionSubida', label: 'INE/Pasaporte' },
-                    { key: 'comprobanteSubido', label: 'Comprobante domicilio' },
-                    { key: 'enRevision', label: 'En revision' },
-                    { key: 'verificado', label: 'Verificado' }
-                  ].map(step => (
-                    <div 
-                      key={step.key} 
-                      className={`flex items-center gap-1.5 ${
-                        verificationProgress[step.key as keyof typeof verificationProgress] 
-                          ? 'text-green-600' 
-                          : 'text-muted-foreground'
-                      }`}
-                    >
-                      {verificationProgress[step.key as keyof typeof verificationProgress] ? (
-                        <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                          <path strokeLinecap="round" strokeLinejoin="round" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-                        </svg>
-                      ) : (
-                        <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                          <path strokeLinecap="round" strokeLinejoin="round" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-                        </svg>
-                      )}
-                      {step.label}
+        {/* Herramientas Gratuitas */}
+        <div>
+          <h2 className="text-lg font-semibold mb-3">Herramientas Gratuitas</h2>
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+            {freeTools.map((tool) => (
+              <Link key={tool.name} href={tool.href}>
+                <Card className="hover:shadow-md transition-shadow cursor-pointer h-full">
+                  <CardContent className="p-4 flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center">
+                      <tool.icon className="w-5 h-5 text-primary" />
                     </div>
-                  ))}
-                </div>
-
-                <Button asChild className="w-full" size="sm">
-                  <Link href="/oficina-virtual/verificacion">
-                    Completar verificacion
-                    <svg className="w-4 h-4 ml-1" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                      <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
-                    </svg>
-                  </Link>
-                </Button>
-              </CardContent>
-            </Card>
-          )}
-
-          {/* Estadisticas */}
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-            <Card>
-              <CardContent className="p-4 text-center">
-                <p className="text-2xl sm:text-3xl font-bold text-foreground">{stats.casosActivos}</p>
-                <p className="text-xs text-muted-foreground">Casos activos</p>
-              </CardContent>
-            </Card>
-            <Card>
-              <CardContent className="p-4 text-center">
-                <p className="text-2xl sm:text-3xl font-bold text-foreground">{stats.casosCompletados}</p>
-                <p className="text-xs text-muted-foreground">Completados</p>
-              </CardContent>
-            </Card>
-            <Card>
-              <CardContent className="p-4 text-center">
-                <p className="text-2xl sm:text-3xl font-bold text-green-600">
-                  ${stats.ingresosMes.toLocaleString()}
-                </p>
-                <p className="text-xs text-muted-foreground">Este mes</p>
-              </CardContent>
-            </Card>
-            <Card>
-              <CardContent className="p-4 text-center">
-                <p className="text-2xl sm:text-3xl font-bold text-blue-600">
-                  {stats.creditosCCL === -1 ? '∞' : stats.creditosCCL}
-                </p>
-                <p className="text-xs text-muted-foreground">Creditos CCL</p>
-              </CardContent>
-            </Card>
-          </div>
-
-          {/* Herramientas Gratuitas */}
-          <div>
-            <div className="flex items-center gap-2 mb-4">
-              <h3 className="text-lg font-semibold">Herramientas Gratuitas</h3>
-              <Badge variant="secondary" className="text-xs">Sin costo</Badge>
-            </div>
-            <div className="grid grid-cols-3 gap-3">
-              {freeTools.map((tool) => (
-                <Link key={tool.name} href={tool.href}>
-                  <Card className="hover:border-primary hover:shadow-md transition-all cursor-pointer h-full">
-                    <CardContent className="p-3 sm:p-4 flex flex-col items-center text-center gap-2">
-                      <div className={`w-10 h-10 rounded-lg ${tool.color} flex items-center justify-center`}>
-                        {tool.icon}
-                      </div>
-                      <p className="font-medium text-foreground text-xs sm:text-sm">{tool.name}</p>
-                      <p className="text-xs text-muted-foreground hidden sm:block">{tool.description}</p>
-                    </CardContent>
-                  </Card>
-                </Link>
-              ))}
-            </div>
-          </div>
-
-          {/* Herramientas para Abogados */}
-          <div>
-            <div className="flex items-center gap-2 mb-4">
-              <h3 className="text-lg font-semibold">Herramientas para Abogados</h3>
-              {isVerified ? (
-                <Badge className="bg-blue-600 text-white text-xs">Activas</Badge>
-              ) : (
-                <Badge variant="outline" className="text-xs">
-                  <svg className="w-3 h-3 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
-                  </svg>
-                  Requiere verificacion
-                </Badge>
-              )}
-            </div>
-            <div className="grid grid-cols-2 gap-3">
-              {lawyerTools.map((tool) => (
-                <Card 
-                  key={tool.name}
-                  className={`${tool.locked ? 'opacity-50' : 'hover:shadow-lg'} transition-all h-full ${
-                    !tool.locked ? 'cursor-pointer' : ''
-                  }`}
-                >
-                  <CardContent className="p-4">
-                    {tool.locked ? (
-                      <div className="flex items-start gap-3">
-                        <div className="w-12 h-12 rounded-lg bg-muted flex items-center justify-center flex-shrink-0">
-                          <svg className="w-6 h-6 text-muted-foreground" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                            <path strokeLinecap="round" strokeLinejoin="round" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
-                          </svg>
-                        </div>
-                        <div className="flex-1 min-w-0">
-                          <div className="flex items-center gap-2 flex-wrap">
-                            <h4 className="font-medium text-muted-foreground text-sm">{tool.name}</h4>
-                            {tool.badge && (
-                              <Badge variant="outline" className="text-xs">{tool.badge}</Badge>
-                            )}
-                          </div>
-                          <p className="text-xs text-muted-foreground mt-0.5">{tool.description}</p>
-                        </div>
-                      </div>
-                    ) : (
-                      <Link href={tool.href} className="flex items-start gap-3">
-                        <div className={`w-12 h-12 rounded-lg bg-gradient-to-br ${tool.color} flex items-center justify-center text-white flex-shrink-0`}>
-                          {tool.icon}
-                        </div>
-                        <div className="flex-1 min-w-0">
-                          <div className="flex items-center gap-2 flex-wrap">
-                            <h4 className="font-medium text-foreground text-sm">{tool.name}</h4>
-                            {tool.badge && (
-                              <Badge className={`text-xs ${tool.badgeColor || 'bg-blue-100 text-blue-700'}`}>
-                                {tool.badge}
-                              </Badge>
-                            )}
-                          </div>
-                          <p className="text-xs text-muted-foreground mt-0.5">{tool.description}</p>
-                          {tool.credits !== undefined && (
-                            <p className="text-xs text-blue-600 mt-1">
-                              {tool.credits === -1 ? 'Creditos ilimitados' : `${tool.credits} creditos disponibles`}
-                            </p>
-                          )}
-                        </div>
-                        <svg className="w-5 h-5 text-muted-foreground flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                          <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
-                        </svg>
-                      </Link>
-                    )}
+                    <div className="flex-1 min-w-0">
+                      <p className="font-medium">{tool.name}</p>
+                      <p className="text-xs text-muted-foreground truncate">{tool.description}</p>
+                    </div>
+                    <ChevronRight className="w-4 h-4 text-muted-foreground" />
                   </CardContent>
                 </Card>
-              ))}
+              </Link>
+            ))}
+          </div>
+        </div>
+
+        {/* Herramientas de Abogado */}
+        <div>
+          <h2 className="text-lg font-semibold mb-3">Herramientas para Abogados</h2>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            {lawyerTools.map((tool) => (
+              <Link key={tool.name} href={tool.available ? tool.href : '#'} className={!tool.available ? 'pointer-events-none' : ''}>
+                <Card className={`transition-shadow h-full ${tool.available ? 'hover:shadow-md cursor-pointer' : 'opacity-60'}`}>
+                  <CardContent className="p-4 flex items-center gap-3">
+                    <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${tool.available ? 'bg-blue-500/10' : 'bg-muted'}`}>
+                      <tool.icon className={`w-5 h-5 ${tool.available ? 'text-blue-500' : 'text-muted-foreground'}`} />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2">
+                        <p className="font-medium">{tool.name}</p>
+                        {tool.badge && (
+                          <Badge variant="outline" className="text-xs">{tool.badge}</Badge>
+                        )}
+                      </div>
+                      <p className="text-xs text-muted-foreground truncate">{tool.description}</p>
+                    </div>
+                    <ChevronRight className="w-4 h-4 text-muted-foreground" />
+                  </CardContent>
+                </Card>
+              </Link>
+            ))}
+          </div>
+        </div>
+
+        {/* Admin Tools */}
+        {(role === 'admin' || role === 'superadmin') && (
+          <div>
+            <h2 className="text-lg font-semibold mb-3">Administracion</h2>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <Link href="/admin/solicitudes-abogados">
+                <Card className="hover:shadow-md transition-shadow cursor-pointer">
+                  <CardContent className="p-4 flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-lg bg-indigo-500/10 flex items-center justify-center">
+                      <Shield className="w-5 h-5 text-indigo-500" />
+                    </div>
+                    <div className="flex-1">
+                      <p className="font-medium">Verificar Abogados</p>
+                      <p className="text-xs text-muted-foreground">Aprobar solicitudes</p>
+                    </div>
+                    <ChevronRight className="w-4 h-4 text-muted-foreground" />
+                  </CardContent>
+                </Card>
+              </Link>
+              <Link href="/admin">
+                <Card className="hover:shadow-md transition-shadow cursor-pointer">
+                  <CardContent className="p-4 flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-lg bg-indigo-500/10 flex items-center justify-center">
+                      <Users className="w-5 h-5 text-indigo-500" />
+                    </div>
+                    <div className="flex-1">
+                      <p className="font-medium">Panel Admin</p>
+                      <p className="text-xs text-muted-foreground">Gestionar plataforma</p>
+                    </div>
+                    <ChevronRight className="w-4 h-4 text-muted-foreground" />
+                  </CardContent>
+                </Card>
+              </Link>
             </div>
           </div>
+        )}
 
-          {/* Herramientas PRO */}
-          {showProTools && (
-            <div>
-              <div className="flex items-center gap-2 mb-4">
-                <h3 className="text-lg font-semibold">Herramientas PRO</h3>
-                <Badge className="bg-gradient-to-r from-indigo-600 to-purple-600 text-white text-xs">ADMIN</Badge>
-              </div>
-              <div className="grid grid-cols-2 gap-3">
-                {proTools
-                  .filter(tool => tool.roles.includes(profile.role))
-                  .map((tool) => (
-                    <Link key={tool.name} href={tool.href}>
-                      <Card className="hover:shadow-md transition-all cursor-pointer h-full border-indigo-200 bg-gradient-to-br from-indigo-50 to-purple-50">
-                        <CardContent className="p-4 flex items-center gap-3">
-                          <div className="w-10 h-10 rounded-lg bg-indigo-100 flex items-center justify-center text-indigo-600">
-                            {tool.icon}
-                          </div>
-                          <div>
-                            <p className="font-medium text-foreground text-sm">{tool.name}</p>
-                            <p className="text-xs text-muted-foreground">{tool.description}</p>
-                          </div>
-                        </CardContent>
-                      </Card>
-                    </Link>
-                  ))}
-              </div>
-            </div>
-          )}
-
-          {/* Crypto Wallet */}
-          <CryptoWallet 
-            userId={profile.id}
-            isVerified={isVerified}
-          />
-
-          {/* CTA para verificacion */}
-          {!isVerified && (
-            <Card className="border-blue-300 bg-gradient-to-r from-blue-50 via-indigo-50 to-purple-50">
-              <CardContent className="p-6 text-center">
-                <div className="w-16 h-16 rounded-full bg-blue-100 flex items-center justify-center mx-auto mb-4">
-                  <svg className="w-8 h-8 text-blue-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
-                  </svg>
-                </div>
-                <h3 className="text-lg font-semibold text-foreground mb-2">
-                  Verifica tu cuenta para desbloquear todas las herramientas
-                </h3>
-                <p className="text-sm text-muted-foreground mb-4">
-                  Como abogado verificado tendras acceso ilimitado a casos, calculos, creditos CCL y el marketplace de trabajadores.
-                </p>
-                <Button asChild size="lg">
-                  <Link href="/oficina-virtual/verificacion">
-                    Comenzar verificacion
-                  </Link>
-                </Button>
-              </CardContent>
-            </Card>
-          )}
-
-        </div>
+        {/* Wallet */}
+        <CryptoWallet />
       </main>
     </div>
   )
