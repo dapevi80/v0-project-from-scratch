@@ -75,12 +75,16 @@ export default function AccesoPage() {
 
   // Verificar si ya hay sesion activa (solo redirige si hay sesion, NO auto-login)
   useEffect(() => {
+    let isMounted = true
+    
     const checkSession = async () => {
       try {
         const supabase = createClient()
         
         // Verificar si ya hay sesion activa
         const { data: { session } } = await supabase.auth.getSession()
+        
+        if (!isMounted) return
         
         if (session) {
           window.location.href = '/dashboard'
@@ -101,13 +105,17 @@ export default function AccesoPage() {
           }
         }
       } catch (err) {
-        console.error('Session check error:', err)
+        // Ignorar errores de abort cuando el componente se desmonta
+        if (err instanceof Error && err.name === 'AbortError') return
+        if (isMounted) console.error('Session check error:', err)
       } finally {
-        setCheckingSession(false)
+        if (isMounted) setCheckingSession(false)
       }
     }
     
     checkSession()
+    
+    return () => { isMounted = false }
   }, [])
 
   // Funcion para acceso rapido con cuenta guardada

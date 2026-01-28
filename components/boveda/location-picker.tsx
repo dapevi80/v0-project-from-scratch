@@ -128,90 +128,74 @@ export function LocationPicker({ onSave, onClose, casoId }: LocationPickerProps)
       
       {/* ===== INTRO - Tutorial visual ===== */}
       {step === 'intro' && (
-        <>
-          {/* Header animado */}
-          <div className="relative bg-gradient-to-br from-orange-500 via-red-500 to-pink-500 p-5 overflow-hidden">
-            {/* Burbujas animadas */}
-            <div className="absolute top-2 right-8 w-16 h-16 bg-white/10 rounded-full animate-pulse" />
-            <div className="absolute bottom-3 right-2 w-8 h-8 bg-white/10 rounded-full animate-ping" style={{ animationDuration: '2s' }} />
+        <div className="flex flex-col h-full max-h-[75vh]">
+          {/* Header compacto */}
+          <div className="relative bg-gradient-to-br from-orange-500 via-red-500 to-pink-500 p-4 overflow-hidden shrink-0">
+            <div className="absolute top-2 right-8 w-12 h-12 bg-white/10 rounded-full animate-pulse" />
             
             <button 
               onClick={onClose} 
-              className="absolute top-3 right-3 w-7 h-7 rounded-full bg-white/20 hover:bg-white/30 flex items-center justify-center transition-colors"
+              className="absolute top-2 right-2 w-6 h-6 rounded-full bg-white/20 hover:bg-white/30 flex items-center justify-center"
             >
-              <X className="w-4 h-4 text-white" />
+              <X className="w-3.5 h-3.5 text-white" />
             </button>
             
-            <div className="relative z-10 text-center pt-2">
-              <div className="w-14 h-14 bg-white/20 rounded-2xl flex items-center justify-center mx-auto mb-3 animate-bounce" style={{ animationDuration: '2s' }}>
-                <MapPin className="w-7 h-7 text-white" />
+            <div className="relative z-10 flex items-center gap-3">
+              <div className="w-10 h-10 bg-white/20 rounded-xl flex items-center justify-center">
+                <MapPin className="w-5 h-5 text-white" />
               </div>
-              <h2 className="text-xl font-bold text-white">Ubicacion del trabajo</h2>
-              <p className="text-white/80 text-sm mt-1">Donde se enviaran notificaciones</p>
+              <div>
+                <h2 className="text-lg font-bold text-white">Ubicacion del trabajo</h2>
+                <p className="text-white/80 text-xs">Para notificaciones del CCL</p>
+              </div>
             </div>
           </div>
           
-          {/* Pasos visuales */}
-          <div className="p-4 space-y-3">
-            <p className="text-xs text-muted-foreground text-center mb-2">Como funciona:</p>
+          {/* Pasos - scrolleable si es necesario */}
+          <div className="flex-1 overflow-y-auto p-3 space-y-2">
+            <p className="text-[10px] text-muted-foreground text-center">Como funciona:</p>
             
-            <div className="flex items-center gap-3 p-3 rounded-xl bg-blue-50 border border-blue-100">
-              <div className="w-8 h-8 rounded-full bg-blue-500 text-white flex items-center justify-center font-bold text-sm shrink-0">1</div>
-              <div className="flex-1">
-                <p className="font-medium text-sm">Navega el mapa</p>
-                <p className="text-xs text-muted-foreground">Arrastra para moverte, pellizca para zoom</p>
-              </div>
-              <Navigation className="w-5 h-5 text-blue-500 animate-pulse" />
+            <div className="flex items-center gap-2 p-2 rounded-lg bg-blue-50 border border-blue-100">
+              <div className="w-6 h-6 rounded-full bg-blue-500 text-white flex items-center justify-center font-bold text-xs shrink-0">1</div>
+              <p className="text-xs flex-1"><b>Navega el mapa</b> - arrastra y pellizca</p>
+              <Navigation className="w-4 h-4 text-blue-500 animate-pulse" />
             </div>
             
-            <div className="flex items-center gap-3 p-3 rounded-xl bg-purple-50 border border-purple-100">
-              <div className="w-8 h-8 rounded-full bg-purple-500 text-white flex items-center justify-center font-bold text-sm shrink-0">2</div>
-              <div className="flex-1">
-                <p className="font-medium text-sm">Verifica la fachada</p>
-                <p className="text-xs text-muted-foreground">Usa Street View para confirmar</p>
-              </div>
-              <Eye className="w-5 h-5 text-purple-500" />
+            <div className="flex items-center gap-2 p-2 rounded-lg bg-purple-50 border border-purple-100">
+              <div className="w-6 h-6 rounded-full bg-purple-500 text-white flex items-center justify-center font-bold text-xs shrink-0">2</div>
+              <p className="text-xs flex-1"><b>Ver fachada</b> - confirma con Street View</p>
+              <Eye className="w-4 h-4 text-purple-500" />
             </div>
             
-            <div className="flex items-center gap-3 p-3 rounded-xl bg-green-50 border border-green-100">
-              <div className="w-8 h-8 rounded-full bg-green-500 text-white flex items-center justify-center font-bold text-sm shrink-0">3</div>
-              <div className="flex-1">
-                <p className="font-medium text-sm">Presiona "Aqui es!"</p>
-                <p className="text-xs text-muted-foreground">Guarda la ubicacion exacta</p>
-              </div>
-              <CheckCircle className="w-5 h-5 text-green-500" />
-            </div>
-            
-            {/* Nota CCL */}
-            <div className="bg-amber-50 border border-amber-200 rounded-lg p-2.5 mt-3">
-              <p className="text-[10px] text-amber-700 text-center">
-                Esta ubicacion se usara para el citatorio oficial del CCL
-              </p>
+            <div className="flex items-center gap-2 p-2 rounded-lg bg-green-50 border border-green-100">
+              <div className="w-6 h-6 rounded-full bg-green-500 text-white flex items-center justify-center font-bold text-xs shrink-0">3</div>
+              <p className="text-xs flex-1"><b>Presiona "Aqui es!"</b> - guarda ubicacion</p>
+              <CheckCircle className="w-4 h-4 text-green-500" />
             </div>
           </div>
           
-          {/* Boton comenzar */}
-          <div className="p-4 pt-0">
+          {/* Boton fijo abajo */}
+          <div className="p-3 border-t bg-background shrink-0">
             <Button 
               onClick={() => setStep('map')}
               disabled={loadingLocation}
-              className="w-full h-12 bg-gradient-to-r from-orange-500 to-red-500 hover:from-orange-600 hover:to-red-600 text-white font-semibold gap-2"
+              className="w-full h-11 bg-gradient-to-r from-orange-500 to-red-500 hover:from-orange-600 hover:to-red-600 text-white font-semibold gap-2"
             >
               {loadingLocation ? (
                 <>
-                  <Loader2 className="w-5 h-5 animate-spin" />
-                  Obteniendo ubicacion...
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                  Cargando...
                 </>
               ) : (
                 <>
-                  <MapPin className="w-5 h-5" />
+                  <MapPin className="w-4 h-4" />
                   Abrir mapa
                   <ChevronRight className="w-4 h-4" />
                 </>
               )}
             </Button>
           </div>
-        </>
+        </div>
       )}
 
       {/* ===== MAPA INTERACTIVO ===== */}
