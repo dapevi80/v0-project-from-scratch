@@ -58,6 +58,7 @@ import {
 } from './actions'
 import { AyudaUrgenteButton } from '@/components/ayuda-urgente-button'
 import { CedulaDigital } from '@/components/cedula-digital'
+import { AILegalAssistant, FloatingAIButton } from '@/components/ai-legal-assistant'
 import { AyudaUrgenteFlow } from '@/components/ayuda-urgente-flow'
 import { LogoutButton } from '@/app/dashboard/logout-button'
 
@@ -179,6 +180,9 @@ export default function BovedaPage() {
   const [renameDoc, setRenameDoc] = useState<{ open: boolean; docId: string | null; currentName: string }>({ open: false, docId: null, currentName: '' })
   const [newDocName, setNewDocName] = useState('')
   const [renaming, setRenaming] = useState(false)
+  
+  // Estado para asistente legal IA
+  const [showAIAssistant, setShowAIAssistant] = useState(false)
   
   // Función para ver documento (obtiene URL firmada)
   const verDocumento = async (documentoId: string) => {
@@ -1348,6 +1352,16 @@ export default function BovedaPage() {
             </DialogFooter>
           </DialogContent>
         </Dialog>
+        
+        {/* Botón flotante de asistente IA */}
+        <FloatingAIButton onClick={() => setShowAIAssistant(true)} />
+        
+        {/* Asistente Legal IA */}
+        <AILegalAssistant
+          isOpen={showAIAssistant}
+          onClose={() => setShowAIAssistant(false)}
+          mode="general"
+        />
       </div>
     </div>
   )

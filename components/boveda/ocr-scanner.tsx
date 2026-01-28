@@ -50,6 +50,8 @@ import {
 } from '@/lib/ocr-scanner'
 import { subirDocumento, type CategoriaDocumento } from '@/app/boveda/actions'
 import jsPDF from 'jspdf'
+import { QualityGauge } from '@/components/quality-gauge'
+import { AILegalAssistant } from '@/components/ai-legal-assistant'
 
 interface OCRScannerProps {
   onClose: () => void
@@ -76,6 +78,8 @@ export function OCRScanner({ onClose, onComplete, initialImages }: OCRScannerPro
   const [documentName, setDocumentName] = useState('')
   const [ocrQuality, setOcrQuality] = useState(0)
   const [showRetryPrompt, setShowRetryPrompt] = useState(false)
+  const [showAIAssistant, setShowAIAssistant] = useState(false)
+  const [scanQuality, setScanQuality] = useState(0)
   
   // Estados para recorte inteligente
   const [documentBounds, setDocumentBounds] = useState<DocumentBounds | null>(null)
@@ -319,8 +323,17 @@ export function OCRScanner({ onClose, onComplete, initialImages }: OCRScannerPro
       }
     }
     
-    // Actualizar texto total
-    setExtractedText(pages.map(p => p.ocrResult?.text || '').join('\n\n--- Página ---\n\n'))
+    // Actualizar texto total y calcular calidad
+    const allTexts = pages.map(p => p.ocrResult?.text || '').join('\n\n--- Página ---\n\n')
+    setExtractedText(allTexts)
+    
+    // Calcular calidad promedio del escaneo
+    const qualities = pages.map(p => p.ocrResult?.confidence || 0).filter(q => q > 0)
+    const avgQuality = qualities.length > 0 
+      ? Math.round(qualities.reduce((a, b) => a + b, 0) / qualities.length)
+      : 0
+    setScanQuality(avgQuality)
+    
     setIsProcessingOCR(false)
     setStep('review')
   }
@@ -810,37 +823,49 @@ export function OCRScanner({ onClose, onComplete, initialImages }: OCRScannerPro
               <div className="flex-1 min-w-0">
                 <p className="text-xs text-muted-foreground truncate">{pdfFile?.name}</p>
                 <p className="text-[10px] text-muted-foreground">
-                  {pdfFile ? `${(pdfFile.size / 1024).toFixed(1)} KB` : ''} 
-                  {ocrQuality > 0 && ` - Calidad: ${ocrQuality}%`}
+                  {pdfFile ? `${(pdfFile.size / 1024).toFixed(1)} KB` : ''}
                 </p>
               </div>
               <CheckCircle className="w-5 h-5 text-green-600 shrink-0" />
             </div>
             
-            {/* Resumen IA - solo si calidad >= 98% */}
-            {aiSummary && ocrQuality >= 98 && (
-              <div className="p-4 bg-gradient-to-br from-blue-50 to-indigo-50 rounded-xl border border-blue-200">
-                <div className="flex items-center gap-2 mb-2">
-                  <div className="w-6 h-6 rounded-full bg-blue-500 flex items-center justify-center">
-                    <Sparkles className="w-3.5 h-3.5 text-white" />
-                  </div>
-                  <span className="text-xs font-semibold text-blue-700">Resumen IA</span>
-                </div>
-                <p className="text-sm text-blue-900 leading-relaxed">{aiSummary}</p>
+            {/* Velocímetro de calidad */}
+            <div className="bg-white rounded-xl border p-4">
+              <p className="text-xs font-medium text-center mb-3">Calidad del documento</p>
+              <div className="flex justify-center">
+                <QualityGauge quality={ocrQuality} size="md" />
               </div>
+            </div>
+            
+            {/* Botón de Resumen IA - solo si calidad >= 95% */}
+            {ocrQuality >= 95 && (
+              <button
+                onClick={() => setShowAIAssistant(true)}
+                className="w-full p-4 bg-gradient-to-r from-blue-500 to-indigo-600 rounded-xl text-white flex items-center justify-center gap-3 hover:from-blue-600 hover:to-indigo-700 transition-all shadow-lg hover:shadow-xl"
+              >
+                <div className="relative">
+                  <Sparkles className="w-6 h-6" />
+                  <div className="absolute -top-1 -right-1 w-2 h-2 bg-yellow-300 rounded-full animate-ping" />
+                </div>
+                <div className="text-left">
+                  <p className="font-semibold text-sm">Resumen</p>
+                  <p className="text-[10px] text-blue-100">Asistente legal explica tu documento</p>
+                </div>
+                <ChevronRight className="w-5 h-5 ml-auto" />
+              </button>
             )}
             
             {/* Mensaje de reintentar si calidad baja */}
-            {showRetryPrompt && (
+            {ocrQuality < 95 && (
               <div className="p-4 bg-amber-50 rounded-xl border border-amber-200">
                 <div className="flex items-start gap-3">
                   <div className="w-10 h-10 rounded-full bg-amber-100 flex items-center justify-center shrink-0">
                     <AlertCircle className="w-5 h-5 text-amber-600" />
                   </div>
                   <div className="flex-1">
-                    <p className="text-sm font-medium text-amber-800">Calidad insuficiente</p>
+                    <p className="text-sm font-medium text-amber-800">Reintentar resumen</p>
                     <p className="text-xs text-amber-700 mt-1">
-                      La calidad del documento es del {ocrQuality}%. Para generar un resumen necesitamos al menos 98%.
+                      Para generar un resumen IA necesitamos calidad de al menos 95%.
                     </p>
                     <Button
                       size="sm"
@@ -855,14 +880,6 @@ export function OCRScanner({ onClose, onComplete, initialImages }: OCRScannerPro
                 </div>
               </div>
             )}
-            
-            {/* Tip */}
-            <p className="text-[10px] text-muted-foreground text-center">
-              {ocrQuality >= 98 
-                ? 'El documento se guardará con su resumen en tu bóveda'
-                : 'El documento se guardará sin resumen (puedes subirlo de nuevo con mejor calidad)'
-              }
-            </p>
           </div>
           
           {/* Acciones */}
@@ -1289,104 +1306,82 @@ export function OCRScanner({ onClose, onComplete, initialImages }: OCRScannerPro
         </div>
       )}
 
-      {/* ===== REVISIÓN Y TEXTO ===== */}
+      {/* ===== REVISIÓN CON VELOCÍMETRO DE CALIDAD ===== */}
       {step === 'review' && (
         <div className="flex flex-col h-full">
           {/* Header */}
-          <div className="flex items-center justify-between p-2 border-b">
-            <button onClick={() => setStep('scan')} className="p-1.5 hover:bg-muted rounded-lg">
+          <div className="flex items-center justify-between p-2 border-b bg-gradient-to-r from-slate-50 to-blue-50">
+            <button onClick={() => setStep('scan')} className="p-1.5 hover:bg-white/50 rounded-lg">
               <ChevronLeft className="w-4 h-4" />
             </button>
-            <span className="text-xs font-medium">Revisa y corrige</span>
-            <button onClick={onClose} className="p-1.5 hover:bg-muted rounded-lg">
+            <span className="text-xs font-medium">Documento escaneado</span>
+            <button onClick={onClose} className="p-1.5 hover:bg-white/50 rounded-lg">
               <X className="w-4 h-4" />
             </button>
           </div>
           
-          {/* Resumen IA (solo para documentos largos) */}
-          {(aiSummary || isGeneratingSummary) && (
-            <div className="p-2 bg-gradient-to-r from-blue-50 to-indigo-50 border-b">
-              <div className="flex items-start gap-2">
-                <div className="w-5 h-5 rounded-full bg-blue-500 flex items-center justify-center shrink-0 mt-0.5">
-                  <Sparkles className="w-3 h-3 text-white" />
-                </div>
-                <div className="flex-1 min-w-0">
-                  <p className="text-[10px] font-medium text-blue-700 mb-0.5">Resumen del documento</p>
-                  {isGeneratingSummary ? (
-                    <div className="flex items-center gap-1 text-xs text-blue-600">
-                      <Loader2 className="w-3 h-3 animate-spin" />
-                      Analizando...
-                    </div>
-                  ) : (
-                    <p className="text-xs text-blue-800 font-medium leading-snug">{aiSummary}</p>
-                  )}
-                </div>
-              </div>
-            </div>
-          )}
-          
-          {/* Toggle entre imagen y texto */}
-          <div className="flex border-b">
-            <button
-              onClick={() => setShowText(false)}
-              className={`flex-1 py-2 text-xs font-medium transition-colors ${
-                !showText ? 'bg-blue-50 text-blue-600 border-b-2 border-blue-500' : 'text-muted-foreground'
-              }`}
-            >
-              <Eye className="w-3 h-3 inline mr-1" />
-              Vista previa
-            </button>
-            <button
-              onClick={() => { setShowText(true); prepareReview() }}
-              className={`flex-1 py-2 text-xs font-medium transition-colors ${
-                showText ? 'bg-blue-50 text-blue-600 border-b-2 border-blue-500' : 'text-muted-foreground'
-              }`}
-            >
-              <FileText className="w-3 h-3 inline mr-1" />
-              Editar texto
-            </button>
-          </div>
-          
-          {/* Contenido */}
+          {/* Vista previa de páginas */}
           <div className="flex-1 overflow-auto">
-            {!showText ? (
-              // Vista previa de páginas
-              <div className="p-3 grid grid-cols-2 gap-2">
+            <div className="p-3">
+              {/* Grid de páginas escaneadas */}
+              <div className="grid grid-cols-2 gap-2 mb-4">
                 {pages.map((page, index) => (
                   <div key={page.id} className="relative rounded-lg overflow-hidden border bg-white shadow-sm">
-                    <img src={page.imageUrl || "/placeholder.svg"} alt="" className="w-full h-24 object-cover" />
-                    <div className="absolute bottom-0.5 right-0.5 w-3 h-3 bg-green-500 rounded-full flex items-center justify-center">
-                      <Check className="w-2.5 h-2.5 text-white" />
+                    <img src={page.imageUrl || "/placeholder.svg"} alt="" className="w-full h-28 object-cover" />
+                    <div className="absolute bottom-1 right-1 px-1.5 py-0.5 bg-green-500 rounded text-[8px] text-white font-medium">
+                      Pág {index + 1}
                     </div>
                   </div>
                 ))}
               </div>
-            ) : (
-              // Texto editable
-              <div className="p-3 space-y-2">
-                <div className="flex items-center justify-between">
-                  <span className="text-[10px] text-muted-foreground">
-                    Puedes editar el texto antes de guardar
-                  </span>
-                  <button
-                    onClick={handleCopyText}
-                    className="text-[10px] text-blue-600 hover:underline flex items-center gap-1"
-                  >
-                    {copied ? <Check className="w-3 h-3" /> : <Copy className="w-3 h-3" />}
-                    {copied ? 'Copiado' : 'Copiar'}
-                  </button>
+              
+              {/* Velocímetro de calidad */}
+              <div className="bg-white rounded-xl border p-4 mb-4">
+                <p className="text-xs font-medium text-center mb-3">Calidad del escaneo</p>
+                <div className="flex justify-center">
+                  <QualityGauge quality={scanQuality} size="lg" />
                 </div>
-                <textarea
-                  value={editableText}
-                  onChange={(e) => setEditableText(e.target.value)}
-                  className="w-full min-h-[200px] p-3 text-xs rounded-lg border bg-white resize-none focus:ring-2 focus:ring-blue-200 focus:border-blue-400 outline-none"
-                  placeholder="El texto extraído aparecerá aquí. Puedes corregirlo antes de guardar."
-                />
-                <p className="text-[9px] text-muted-foreground">
-                  {editableText.length} caracteres • Las correcciones se guardarán en el PDF
+                <p className="text-[10px] text-muted-foreground text-center mt-3">
+                  {scanQuality >= 95 
+                    ? 'Calidad excelente - puedes obtener un resumen IA'
+                    : scanQuality >= 80
+                    ? 'Calidad aceptable - el documento se guardará correctamente'
+                    : 'Calidad baja - considera volver a escanear con mejor iluminación'}
                 </p>
               </div>
-            )}
+              
+              {/* Botón de Resumen IA - solo si calidad >= 95% */}
+              {scanQuality >= 95 && (
+                <button
+                  onClick={() => setShowAIAssistant(true)}
+                  className="w-full p-4 bg-gradient-to-r from-blue-500 to-indigo-600 rounded-xl text-white flex items-center justify-center gap-3 hover:from-blue-600 hover:to-indigo-700 transition-all shadow-lg hover:shadow-xl mb-4"
+                >
+                  <div className="relative">
+                    <Sparkles className="w-6 h-6" />
+                    <div className="absolute -top-1 -right-1 w-2 h-2 bg-yellow-300 rounded-full animate-ping" />
+                  </div>
+                  <div className="text-left">
+                    <p className="font-semibold text-sm">Obtener Resumen IA</p>
+                    <p className="text-[10px] text-blue-100">Asistente legal explica tu documento</p>
+                  </div>
+                  <ChevronRight className="w-5 h-5 ml-auto" />
+                </button>
+              )}
+              
+              {/* Info del documento */}
+              <div className="bg-slate-50 rounded-lg p-3">
+                <div className="flex items-center justify-between text-xs">
+                  <span className="text-muted-foreground">{pages.length} página{pages.length > 1 ? 's' : ''}</span>
+                  <button
+                    onClick={handleCopyText}
+                    className="text-blue-600 hover:underline flex items-center gap-1"
+                  >
+                    {copied ? <Check className="w-3 h-3" /> : <Copy className="w-3 h-3" />}
+                    {copied ? 'Copiado' : 'Copiar texto'}
+                  </button>
+                </div>
+              </div>
+            </div>
           </div>
           
           {/* Acciones */}
@@ -1398,13 +1393,10 @@ export function OCRScanner({ onClose, onComplete, initialImages }: OCRScannerPro
               <Download className="w-4 h-4" />
               Guardar en Bóveda
             </Button>
-            <p className="text-[10px] text-muted-foreground text-center">
-              {pages.length} página{pages.length > 1 ? 's' : ''} • El texto editado se incluirá
-            </p>
           </div>
         </div>
       )}
-
+      
       {/* ===== GUARDANDO ===== */}
       {step === 'saving' && (
         <div className="flex-1 flex flex-col items-center justify-center p-8">
@@ -1427,6 +1419,15 @@ export function OCRScanner({ onClose, onComplete, initialImages }: OCRScannerPro
           <p className="text-xs text-muted-foreground mt-1">Ya está disponible en tu bóveda</p>
         </div>
       )}
+      
+      {/* Asistente Legal IA - disponible en todos los pasos */}
+      <AILegalAssistant
+        isOpen={showAIAssistant}
+        onClose={() => setShowAIAssistant(false)}
+        documentContext={step === 'pdf-review' ? editableText : extractedText}
+        documentName={step === 'pdf-review' ? (documentName || pdfFile?.name || 'Documento PDF') : `Documento escaneado (${pages.length} páginas)`}
+        mode="document"
+      />
     </div>
   )
 }
