@@ -157,7 +157,7 @@ export default function AbogadoCasosPage() {
         *,
         case_messages(id, read_by_lawyer_at, created_at),
         case_events(id, title, starts_at, event_type),
-        calculos_liquidacion!inner(id, antiguedad_anos, salario_diario, fecha_despido)
+        calculos_liquidacion(id, antiguedad_anios, salario_diario, fecha_ingreso)
       `)
       .eq('lawyer_id', user.id)
       .neq('status', 'closed')
@@ -246,13 +246,13 @@ export default function AbogadoCasosPage() {
       return
     }
 
-    // Buscar caso disponible en el estado del abogado (solo con datos reales de calculo)
+    // Buscar caso disponible en el estado del abogado (con datos reales)
     const { data: lead } = await supabase
       .from('casos')
       .select(`
         id, folio, empresa_nombre, tipo_caso, monto_estimado,
         ciudad, estado, creditos_cobrados,
-        calculos_liquidacion!inner(id, antiguedad_anos, fecha_despido, salario_diario)
+        calculos_liquidacion(id, antiguedad_anios, fecha_ingreso, salario_diario)
       `)
       .eq('disponible_para_leads', true)
       .eq('estado_lead', 'disponible')
@@ -276,8 +276,8 @@ export default function AbogadoCasosPage() {
         monto_estimado: lead.monto_estimado,
         ciudad: lead.ciudad,
         estado: lead.estado,
-        antiguedad_anos: calculo?.antiguedad_anos || 0,
-        fecha_despido: calculo?.fecha_despido || '',
+        antiguedad_anos: calculo?.antiguedad_anios || 0,
+        fecha_despido: calculo?.fecha_ingreso || '',
         costo_creditos: lead.creditos_cobrados || 10
       })
     } else {
