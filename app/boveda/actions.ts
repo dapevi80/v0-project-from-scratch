@@ -4,22 +4,45 @@ import { createClient } from '@/lib/supabase/server'
 import { revalidatePath } from 'next/cache'
 import { Buffer } from 'buffer'
 
-// Tipos para la bóveda
+// Tipos para la boveda - Categorias expandidas para evidencias laborales
 export type CategoriaDocumento = 
+  // Documentos principales
   | 'calculo_liquidacion'
   | 'propuesta_empresa'
-  | 'evidencia_foto'
-  | 'evidencia_video'
-  | 'evidencia_audio'
-  | 'grabacion_audio'
   | 'contrato_laboral'
   | 'hoja_renuncia'
+  | 'hojas_firmadas'
+  | 'recibo_nomina'
+  | 'recibo_dinero'
+  // Evidencias multimedia
+  | 'evidencia_foto'
+  | 'evidencia_video'
+  | 'video_despido'
+  | 'evidencia_audio'
+  | 'grabacion_audio'
+  | 'grabacion_llamada'
+  // Identificaciones
   | 'ine_frente'
   | 'ine_reverso'
   | 'pasaporte'
-  | 'comprobante_domicilio'
   | 'cedula_profesional'
   | 'credencial_elector'
+  // Proceso legal
+  | 'solicitud_conciliacion'
+  | 'notificacion'
+  | 'acuse'
+  | 'expediente'
+  // Audiencia y conciliacion
+  | 'foto_lugar'
+  | 'acta_audiencia'
+  | 'acta_conciliacion'
+  | 'constancia_no_conciliacion'
+  // Resolucion
+  | 'convenio'
+  | 'sentencia'
+  // Domicilio
+  | 'comprobante_domicilio'
+  // Otro
   | 'otro'
 
 // Categorias que requieren verificacion
