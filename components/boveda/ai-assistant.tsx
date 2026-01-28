@@ -39,7 +39,7 @@ const QUICK_QUESTIONS = [
   { icon: HelpCircle, text: "Plazo para demandar", color: "bg-purple-50 text-purple-600 border-purple-200" },
 ]
 
-// FAQ por asistente - Con urgencia de 60 dias
+// FAQ por asistente - Con urgencia de 60 dias y pregunta persuasiva
 const FAQ_RESPONSES: Record<string, Record<string, string>> = {
   lia: {
     "Calcular liquidacion": `**Para calcular tu liquidacion:**
@@ -48,94 +48,156 @@ Solo necesitas tu **salario** y **fechas de trabajo**.
 
 La app calcula: 3 meses + 20 dias/año + aguinaldo + vacaciones.
 
-**Importante:** Los primeros **60 dias** son clave para negociar. Despues la empresa se pone mas dificil.
+**Importante:** Los primeros **60 dias** son clave para negociar.
 
-Calcula ahora y guarda en tu Boveda.`,
+Ya tienes todo para empezar. **Quieres calcular tu liquidacion ahora mismo?**`,
     "Iniciar conciliacion": `**Para iniciar conciliacion:**
 
-1. Junta tus documentos (INE, nomina)
+1. Junta documentos (INE, nomina)
 2. Pide cita en el Centro de Conciliacion
 3. Asiste y expon tu caso
 
-**Ojo:** Tienes solo **60 dias** desde el problema para tener mas fuerza legal. Despues se complica.
+**Ojo:** Tienes solo **60 dias** para tener mas fuerza legal.
 
-Guarda todo en la Boveda y actua rapido.`,
+**Te ayudo a organizar tus documentos en la app?**`,
     "Despido sin causa": `**Si te despiden sin causa, te deben:**
 
 - 3 meses de salario
 - 20 dias por año trabajado
 - Prima de antiguedad
 
-**Tip:** En los primeros **60 dias** tienes mejor posicion para negociar. No dejes pasar el tiempo.
+**Tip:** En los primeros **60 dias** tienes mejor posicion.
 
-Calcula cuanto te deben ahora.`,
+**Quieres ver cuanto te corresponde exactamente?**`,
     "Plazo para demandar": `**Plazos importantes:**
 
-- **60 dias:** Mejor momento para negociar (la empresa aun quiere arreglar)
+- **60 dias:** Mejor momento para negociar
 - **1 año:** Limite legal para demandar
 
-Entre mas rapido actues, mejor resultado. Las pruebas estan frescas y la empresa negocia.
+Entre mas rapido actues, mejor resultado.
 
-Calcula tu liquidacion ahora.`
+**Empezamos con tu calculo ahora?**`
   },
   mandu: {
-    "Calcular liquidacion": `*bosteza* Solo pon tu salario y fechas...
+    "Calcular liquidacion": `*bosteza* Salario y fechas... la app hace todo.
 
-La app hace la matematica. Yo duermo.
+*abre un ojo* **60 dias** para que te tomen en serio.
 
-*abre un ojo* Oye, tienes **60 dias** para que la empresa te tome en serio. Despues... meh.
+**Entramos a la app? Prometo no dormirme...**`,
+    "Iniciar conciliacion": `*abre un ojo* Papeles, cita, audiencia.
 
-Hazlo ya. *se estira*`,
-    "Iniciar conciliacion": `*abre un ojo*
+*se lame la pata* **60 dias** para actuar con fuerza.
 
-Junta papeles, pide cita, ve a la audiencia.
+**Guardamos tus documentos? Yo vigilo mientras duermo...**`,
+    "Despido sin causa": `*levanta las orejas* 3 meses + 20 dias/año + prima.
 
-*se lame la pata* Son **60 dias** para actuar con fuerza. Despues la empresa se hace la dormida... como yo.
+*ronronea* **60 dias** o la empresa se pone dificil.
 
-Guarda todo en la Boveda.`,
-    "Despido sin causa": `*levanta las orejas*
+**Calculamos tu lana? No me cuesta nada... solo siestas.**`,
+    "Plazo para demandar": `*bosteza* 60 dias para negociar. Un año limite.
 
-Te deben 3 meses + 20 dias/año + prima.
-
-*ronronea* Pero actua en los primeros **60 dias**... o la empresa se pone dificil.
-
-Calcula tu lana ya.`,
-    "Plazo para demandar": `*bosteza* 60 dias para negociar bien. Un año limite.
-
-Entre mas duermas, peor. *ironia gatuna*
-
-Calculamos? *se rasca la oreja*`
+**Hacemos numeros? Sera rapido, como mi siesta #47...**`
   },
   bora: {
-    "Calcular liquidacion": `*suspira pesadamente*
+    "Calcular liquidacion": `*suspira* Ay mijo... Salario y fechas. Ya.
 
-Ay mijo... Pon tu salario y fechas. Ya.
+*te mira seria* **60 dias** o se hacen los sordos.
 
-*te mira seria* Tienes **60 dias** para que te hagan caso. Despues se hacen los sordos. Lo he visto mil veces.
+**Vas a calcular o seguimos platicando? No tengo todo el dia... bueno, si tengo.**`,
+    "Iniciar conciliacion": `*ojos entrecerrados* Papeles. Cita. Audiencia.
 
-Calculalo ya. *se acuesta*`,
-    "Iniciar conciliacion": `*te mira con ojos entrecerrados*
+*gruñe* **60 dias**. Tu tiempo de oro.
 
-Papeles. Cita. Audiencia. Listo.
+**Organizamos tus papeles o prefieres perder tu caso? Tu decides.**`,
+    "Despido sin causa": `*ronquido interrumpido* 3 meses, 20 dias/año, prima.
 
-*gruñe* **60 dias**. Ese es tu tiempo de oro. Despues la empresa ya no te pela. Hazme caso, soy vieja y sabia.
+*te ve fijamente* **60 dias** o pierdes ventaja.
 
-Guarda todo en la Boveda. *mueve la cola molesta*`,
-    "Despido sin causa": `*ronquido interrumpido*
+**Calculamos de una vez? Esta gata vieja no tiene paciencia.**`,
+    "Plazo para demandar": `*te observa* 60 dias para negociar. Un año limite.
 
-Te deben 3 meses, 20 dias por año, prima... lo de siempre.
+**Vas a actuar o seguiras preguntando? Porque yo tengo sueño.**`
+  },
+  licperez: {
+    "Calcular liquidacion": `*se acomoda lentamente* Mmm... liquidacion...
 
-*te ve fijamente* Pero si dejas pasar **60 dias**, la empresa ya no negocia igual. Aprende de esta gata vieja.
+Salario, fechas... la app lo hace... eventualmente...
 
-Calcula ahora. *se da la vuelta*`,
-    "Plazo para demandar": `*te observa con desden*
+*parpadea despacio* **60 dias**... es importante... aunque todo es relativo...
 
-En mis tiempos la gente actuaba rapido. Ahora todo lo dejan.
+**Vamos a la app? Yo te guio... a mi ritmo...**`,
+    "Iniciar conciliacion": `*se rasca la cabeza lentamente*
 
-**60 dias** para negociar con fuerza. Un año limite. Tictac.
+Documentos... cita... audiencia... paso a paso...
 
-Hazlo ahora. *cierra los ojos*`
+*bosteza suavemente* **60 dias**... el tiempo vuela... o camina despacio como yo...
+
+**Te ayudo a guardar tus papeles? Sin prisa... pero sin pausa...**`,
+    "Despido sin causa": `*ajusta sus lentes despacio*
+
+3 meses... 20 dias por año... prima... matematicas simples...
+
+*parpadea* **60 dias** para negociar bien...
+
+**Calculamos juntos? Lento pero seguro gana la carrera...**`,
+    "Plazo para demandar": `*reflexiona pausadamente*
+
+60 dias... optimo... un año... limite...
+
+*se estira muy lento* El tiempo pasa... incluso para un perezoso...
+
+**Empezamos? Prometo ser... eficiente... a mi manera...**`
   }
+}
+
+// Respuesta generica cuando no se conoce la respuesta (despues de 2 intentos)
+const FALLBACK_RESPONSES: Record<string, string> = {
+  lia: `Mmm, esa pregunta es muy especifica. Para darte la mejor respuesta, necesito que uses la app donde tengo acceso a toda la informacion legal.
+
+**Creamos tu cuenta en 30 segundos?** Asi puedo ayudarte mejor.`,
+  mandu: `*se rasca la oreja* Eso esta muy complicado para contestar aqui...
+
+*bosteza* En la app tengo mas herramientas... y una cama mas comoda.
+
+**Entramos? Te prometo despertar para ayudarte...**`,
+  bora: `*suspira* Mira mijo, eso no te lo puedo contestar bien aqui afuera.
+
+*mueve la cola* En la app tengo todo lo que necesitas. Soy vieja pero no tonta.
+
+**Vas a entrar o seguimos perdiendo el tiempo?**`,
+  licperez: `*parpadea lentamente* Mmm... esa pregunta... requiere mas... contexto...
+
+*se acomoda* En la app tengo... todas las herramientas... eventualmente...
+
+**Vamos juntos? Despacio... pero llegaremos...**`
+}
+
+// Preguntas persuasivas para mantener la conversacion
+const FOLLOWUP_QUESTIONS: Record<string, string[]> = {
+  lia: [
+    "Te gustaria calcular tu liquidacion ahora?",
+    "Quieres que te explique algo mas?",
+    "Necesitas ayuda con tus documentos?",
+    "Empezamos con tu caso?"
+  ],
+  mandu: [
+    "Calculamos? *se estira*",
+    "Algo mas? *bosteza*",
+    "Entramos a la app? *abre un ojo*",
+    "Te ayudo con algo? *ronronea*"
+  ],
+  bora: [
+    "Vas a actuar o no?",
+    "Algo mas? *suspira*",
+    "Entramos de una vez?",
+    "Mas preguntas? *te mira fijamente*"
+  ],
+  licperez: [
+    "Continuamos... despacio?",
+    "Algo mas... sin prisa?",
+    "Vamos a la app... eventualmente?",
+    "Te ayudo... con calma?"
+  ]
 }
 
 // Configuracion por asistente
@@ -146,9 +208,9 @@ const ASSISTANTS = {
     avatar: "/lia-avatar.jpg",
     color: "bg-emerald-500",
     api: "/api/legal-assistant",
-    welcomeMessage: `Hola! Soy **Lia**, tu asistente legal. Recuerda: los primeros **60 dias** son clave para tu caso. En que te ayudo?`,
+    welcomeMessage: `Hola! Soy **Lia**, tu asistente legal. Los primeros **60 dias** son clave. En que te ayudo?`,
     loadingText: "Escribiendo...",
-    ctaMessage: `**El tiempo corre!** Crea tu cuenta gratis y calcula tu liquidacion antes de que pasen los 60 dias.`
+    ctaMessage: `**El tiempo corre!** Crea tu cuenta y calcula tu liquidacion ahora.`
   },
   mandu: {
     name: "Mandu",
@@ -156,9 +218,9 @@ const ASSISTANTS = {
     avatar: "/mandu-avatar.jpg",
     color: "bg-slate-500",
     api: "/api/mandu-assistant",
-    welcomeMessage: `*bosteza* Soy **Mandu**... Oye, no duermas tanto como yo. Tienes **60 dias** para actuar. Que necesitas?`,
+    welcomeMessage: `*bosteza* Soy **Mandu**... Tienes **60 dias** para actuar. Que necesitas? *se estira*`,
     loadingText: "Pensando... zzz",
-    ctaMessage: `*se estira* Ya sabes lo basico. Ahora deja de ronronear y entra a la app. El tiempo no espera.`
+    ctaMessage: `*se estira* Ya sabes lo basico. Entra a la app antes de que me duerma.`
   },
   bora: {
     name: "Bora",
@@ -166,14 +228,24 @@ const ASSISTANTS = {
     avatar: "/bora-avatar.jpg",
     color: "bg-orange-500",
     api: "/api/bora-assistant",
-    welcomeMessage: `*te mira* Soy **Bora**. Vieja y sabia. Se que tienes problemas laborales... y se que tienes **60 dias** para actuar. Que quieres saber?`,
+    welcomeMessage: `*te mira* Soy **Bora**. Vieja y sabia. **60 dias** tienes. Que quieres saber?`,
     loadingText: "Pensando... *suspira*",
-    ctaMessage: `*suspira* Ya te di la informacion. Ahora actua. Los 60 dias pasan rapido. Entra a la app.`
+    ctaMessage: `*suspira* Ya te di la info. Actua. Los 60 dias pasan rapido.`
+  },
+  licperez: {
+    name: "Lic. Perez",
+    emoji: "🦥",
+    avatar: "/licperez-avatar.jpg",
+    color: "bg-amber-600",
+    api: "/api/licperez-assistant",
+    welcomeMessage: `*parpadea lentamente* Hola... soy el **Lic. Perez**... perezoso de profesion... pero muy eficiente... **60 dias** tienes... en que te ayudo... sin prisa?`,
+    loadingText: "Pensando... despacio...",
+    ctaMessage: `*se acomoda* Bueno... ya tienes info... ahora... entremos a la app... con calma...`
   }
 }
 
 type AssistantType = keyof typeof ASSISTANTS
-const ASSISTANT_ORDER: AssistantType[] = ['lia', 'mandu', 'bora']
+const ASSISTANT_ORDER: AssistantType[] = ['lia', 'mandu', 'bora', 'licperez']
 
 function findFAQResponse(question: string, assistant: AssistantType): string | null {
   const q = question.toLowerCase()
@@ -244,6 +316,10 @@ export function AIAssistant({ isOpen, onClose, documentText, documentName }: AIA
     setMessages(prev => [...prev, userMessage])
     setInputValue("")
     
+    // Contar preguntas no-FAQ del usuario
+    const nonFaqQuestions = messages.filter(m => m.role === "user").length + 1
+    
+    // Primero buscar en FAQ
     const faqResponse = findFAQResponse(text, currentAssistant)
     
     if (faqResponse) {
@@ -255,6 +331,17 @@ export function AIAssistant({ isOpen, onClose, documentText, documentName }: AIA
       return
     }
     
+    // Si ya hizo 2+ preguntas no-FAQ, usar respuesta generica que dirige a la app
+    if (nonFaqQuestions >= 2) {
+      setIsLoading(true)
+      await new Promise(r => setTimeout(r, 400))
+      const fallback = FALLBACK_RESPONSES[currentAssistant]
+      setMessages(prev => [...prev, { id: `assistant-${Date.now()}`, role: "assistant", content: fallback }])
+      setIsLoading(false)
+      return
+    }
+    
+    // Llamar a Grok AI para preguntas especificas
     setIsLoading(true)
     try {
       const response = await fetch(assistant.api, {
@@ -268,9 +355,16 @@ export function AIAssistant({ isOpen, onClose, documentText, documentName }: AIA
       })
 
       const data = await response.json()
-      setMessages(prev => [...prev, { id: `assistant-${Date.now()}`, role: "assistant", content: data.content || "Error." }])
+      // Agregar pregunta persuasiva al final de la respuesta de la IA
+      const followups = FOLLOWUP_QUESTIONS[currentAssistant]
+      const randomFollowup = followups[Math.floor(Math.random() * followups.length)]
+      const contentWithFollowup = `${data.content || "No tengo esa informacion."}\n\n**${randomFollowup}**`
+      
+      setMessages(prev => [...prev, { id: `assistant-${Date.now()}`, role: "assistant", content: contentWithFollowup }])
     } catch {
-      setMessages(prev => [...prev, { id: `error-${Date.now()}`, role: "assistant", content: "Error. Intenta de nuevo." }])
+      // En caso de error, usar respuesta generica
+      const fallback = FALLBACK_RESPONSES[currentAssistant]
+      setMessages(prev => [...prev, { id: `assistant-${Date.now()}`, role: "assistant", content: fallback }])
     } finally {
       setIsLoading(false)
     }
