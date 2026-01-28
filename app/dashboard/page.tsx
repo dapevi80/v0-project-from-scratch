@@ -25,88 +25,64 @@ export default function DashboardPage() {
   const [showVerifiedEffect, setShowVerifiedEffect] = useState(false)
 
   useEffect(() => {
-    let retries = 0
-    const maxRetries = 2
-    
     async function loadUser() {
       try {
         const supabase = createClient()
         const { data: { user: currentUser }, error: authError } = await supabase.auth.getUser()
         
-        if (authError) {
-          // Si hay error de auth y aun tenemos reintentos, reintentar
-          if (retries < maxRetries && authError.message?.includes('fetch')) {
-            retries++
-            await new Promise(r => setTimeout(r, 1000 * retries))
-            return loadUser()
-          }
-          // Si no hay sesion o fallo, continuar como invitado
+        if (authError || !currentUser) {
           setLoading(false)
           return
         }
         
-        if (currentUser) {
-          setUser(currentUser)
+        setUser(currentUser)
+        
+        // Ejecutar consultas en paralelo para mejor rendimiento
+        const [profileResult, casosResult] = await Promise.all([
+          supabase.from('profiles').select('role, full_name, codigo_usuario, is_verified, celebration_shown').eq('id', currentUser.id).single(),
+          supabase.from('calculos_liquidacion').select('*', { count: 'exact', head: true }).eq('user_id', currentUser.id)
+        ])
+        
+        const profileData = profileResult.data
+        
+        if (profileData) {
+          setProfile(profileData)
           
-          const { data: profileData } = await supabase
-            .from('profiles')
-            .select('*')
-            .eq('id', currentUser.id)
-            .single()
+          // Redirigir segun el rol
+          const userRole = profileData.role
           
-          if (profileData) {
-            setProfile(profileData)
-            
-            // Redirigir segun el rol
-            const userRole = profileData.role
-            
-            // Abogados (verificados o no) van al dashboard de abogado
-            if (userRole === 'guestlawyer' || userRole === 'lawyer') {
-              router.replace('/abogado/dashboard')
-              return
-            }
-            
-            // Admin y superadmin van a panel de admin
-            if (userRole === 'admin' || userRole === 'superadmin') {
-              router.replace('/admin')
-              return
-            }
-            
-            // Verificar si es usuario verificado que aún no ha visto la celebración
-            const isNewlyVerified = profileData.is_verified && 
-                                    profileData.role === 'worker' && 
-                                    !profileData.celebration_shown
-            
-            if (isNewlyVerified) {
-              // Mostrar celebración y marcarla como vista
-              setShowVerifiedEffect(true)
-              
-              // Actualizar en BD para no mostrar de nuevo
-              await supabase
-                .from('profiles')
-                .update({ celebration_shown: true })
-                .eq('id', currentUser.id)
-            }
+          // Abogados van al dashboard de abogado
+          if (userRole === 'guestlawyer' || userRole === 'lawyer') {
+            router.replace('/abogado/dashboard')
+            return
           }
           
-          const { count } = await supabase
-            .from('calculos_liquidacion')
-            .select('*', { count: 'exact', head: true })
-            .eq('user_id', currentUser.id)
+          // Admin y superadmin van a panel de admin
+          if (userRole === 'admin' || userRole === 'superadmin') {
+            router.replace('/admin')
+            return
+          }
           
-          if (count && count > 0) {
-            setCasosActivos(count)
+          // Verificar si es usuario verificado que aun no ha visto la celebracion
+          if (profileData.is_verified && profileData.role === 'worker' && !profileData.celebration_shown) {
+            setShowVerifiedEffect(true)
+            // Actualizar en BD sin bloquear
+            supabase.from('profiles').update({ celebration_shown: true }).eq('id', currentUser.id)
           }
         }
+        
+        if (casosResult.count && casosResult.count > 0) {
+          setCasosActivos(casosResult.count)
+        }
       } catch {
-        // Error de conexión - continuar como invitado
+        // Error de conexion - continuar como invitado
       } finally {
         setLoading(false)
       }
     }
 
     loadUser()
-  }, [])
+  }, [router])
 
   const isGuest = !user
   const role = user?.user_metadata?.role || profile?.role || 'guest'

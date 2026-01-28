@@ -17,6 +17,7 @@ import { ArrowLeft, Save, Mail, Phone, Briefcase, Building2, Calendar, Loader2, 
 import { LogOut as LogOutIcon, Trash2 as Trash2Icon } from 'lucide-react'
 import { CasoCreadoCelebration } from '@/components/caso-creado-celebration'
 import { crearCasoDesdeVerificacion } from '@/app/casos/actions'
+import { createClient } from '@/lib/supabase/client'
 
 interface DatosLaborales {
   empresa: string
@@ -119,7 +120,7 @@ export default function PerfilPage() {
   const handleContratarAbogado = async () => {
     setCreatingCaso(true)
     try {
-      const { createClient } = await import('@/lib/supabase/client')
+      
       const supabase = createClient()
       const { data: { user } } = await supabase.auth.getUser()
       
@@ -180,7 +181,7 @@ export default function PerfilPage() {
   // Cargar codigo_usuario desde Supabase si el usuario está autenticado
   const loadCodigoFromDB = async () => {
     try {
-      const { createClient } = await import('@/lib/supabase/client')
+      
       const supabase = createClient()
       const { data: { user } } = await supabase.auth.getUser()
       
@@ -206,7 +207,7 @@ export default function PerfilPage() {
   const loadUserData = async () => {
     try {
       // Primero intentar cargar datos desde Supabase (usuario autenticado)
-      const { createClient } = await import('@/lib/supabase/client')
+      
       const supabase = createClient()
       const { data: { user } } = await supabase.auth.getUser()
       
@@ -304,7 +305,7 @@ export default function PerfilPage() {
     setSaving(true)
     
     try {
-      const { createClient } = await import('@/lib/supabase/client')
+      
       const supabase = createClient()
       const { data: { user } } = await supabase.auth.getUser()
       

@@ -13,6 +13,7 @@ import { TEST_USERS } from '@/lib/types'
 import { Eye, EyeOff, Mail, Lock, User, ArrowRight, CheckCircle2, Shield, Scale, Loader2, Home, Calculator, AlertTriangle } from 'lucide-react'
 import { registrarUsuarioGuest, loginUsuario } from './actions'
 import { AyudaUrgenteFlow } from '@/components/ayuda-urgente-flow'
+import { createClient } from '@/lib/supabase/client'
 
 // Key para guardar credenciales guest en localStorage
 const GUEST_CREDENTIALS_KEY = 'mc_guest_credentials'
@@ -76,7 +77,6 @@ export default function AccesoPage() {
   useEffect(() => {
     const checkSession = async () => {
       try {
-        const { createClient } = await import('@/lib/supabase/client')
         const supabase = createClient()
         
         // Verificar si ya hay sesion activa
@@ -108,7 +108,7 @@ export default function AccesoPage() {
     }
     
     checkSession()
-  }, [router])
+  }, [])
 
   // Funcion para acceso rapido con cuenta guardada
   const handleQuickLogin = async () => {
@@ -118,7 +118,6 @@ export default function AccesoPage() {
     setError(null)
     
     try {
-      const { createClient } = await import('@/lib/supabase/client')
       const supabase = createClient()
       
       const { error } = await supabase.auth.signInWithPassword({
