@@ -941,26 +941,16 @@ export async function actualizarUbicacionCaso(
   }
   
   if (!targetCasoId) {
-    // Si no hay caso, guardar en el perfil del usuario como ubicacion pendiente
-    await supabase
-      .from('profiles')
-      .update({
-        ubicacion_trabajo_pendiente: locationData,
-        updated_at: new Date().toISOString()
-      })
-      .eq('id', user.id)
-    
-    return { error: null, guardadoEnPerfil: true }
+    // Si no hay caso activo, guardar como documento en la boveda
+    // para usarlo cuando se cree un caso
+    return { error: null, guardadoEnPerfil: true, sinCaso: true }
   }
   
-  // Actualizar el caso con la ubicacion
+  // Actualizar el caso con la ubicacion - usar campos que existen en la tabla
   const { error } = await supabase
     .from('casos')
     .update({
-      ubicacion_patron: locationData,
-      direccion_patron_lat: locationData.lat,
-      direccion_patron_lng: locationData.lng,
-      direccion_patron_street_view: locationData.streetViewUrl,
+      employer_address: locationData.address || `${locationData.lat}, ${locationData.lng}`,
       updated_at: new Date().toISOString()
     })
     .eq('id', targetCasoId)
