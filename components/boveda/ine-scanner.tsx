@@ -27,9 +27,9 @@ import {
   RefreshCw
 } from 'lucide-react'
 import { 
-  processImageOCR, 
+  processImageOCR,
+  imageToCanvas, 
   fileToBase64, 
-  imageToCanvas,
   rotateImage,
   detectDocumentCorners,
   applyPerspectiveTransform,
@@ -152,8 +152,11 @@ export function INEScanner({ onClose, onComplete, lado, datosExistentes }: INESc
     setIsProcessing(true)
     
     try {
-      const rotated = await rotateImage(processedUrl, 90)
-      setProcessedUrl(rotated)
+      // Convertir URL a canvas primero
+      const canvas = await imageToCanvas(processedUrl)
+      const rotatedCanvas = rotateImage(canvas, 90)
+      const rotatedUrl = rotatedCanvas.toDataURL('image/jpeg', 0.92)
+      setProcessedUrl(rotatedUrl)
     } catch (err) {
       console.error('Error rotando:', err)
     } finally {
