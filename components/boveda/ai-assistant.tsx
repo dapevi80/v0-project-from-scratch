@@ -73,7 +73,7 @@ export function AIAssistant({
   const assistant = ASSISTANTS[assistantType]
   const welcomeMessage = assistant.welcomeMessage(documentName)
 
-  const { messages, handleSubmit, isLoading, setInput } = useChat({
+  const { messages, append, isLoading } = useChat({
     api: assistantType === 'mandu' ? "/api/mandu-assistant" : "/api/legal-assistant",
     body: {
       documentContext: documentText,
@@ -91,27 +91,23 @@ export function AIAssistant({
     }
   }, [isOpen])
 
+  const sendMessage = async (text: string) => {
+    if (!text.trim() || isLoading) return
+    setInputValue("")
+    await append({ role: "user", content: text })
+  }
+
   const handleQuickQuestion = (question: string) => {
-    setInputValue(question)
-    setInput(question)
-    // Submit after setting input
-    setTimeout(() => {
-      const form = document.getElementById('chat-form') as HTMLFormElement
-      if (form) form.requestSubmit()
-    }, 50)
+    sendMessage(question)
   }
 
   const onFormSubmit = (e: React.FormEvent) => {
     e.preventDefault()
-    if (!inputValue.trim()) return
-    setInput(inputValue)
-    handleSubmit(e)
-    setInputValue("")
+    sendMessage(inputValue)
   }
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setInputValue(e.target.value)
-    setInput(e.target.value)
   }
 
   // Mostrar mensaje de bienvenida + mensajes del chat
