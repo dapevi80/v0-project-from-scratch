@@ -13,12 +13,16 @@ import {
   Scale,
   HelpCircle,
   RefreshCw,
+  ArrowRight,
+  UserPlus,
 } from "lucide-react"
+import Link from "next/link"
 
 interface Message {
   id: string
   role: "user" | "assistant"
   content: string
+  isFAQ?: boolean
 }
 
 interface AIAssistantProps {
@@ -36,175 +40,136 @@ const QUICK_QUESTIONS = [
   { icon: HelpCircle, text: "¿Cuánto tiempo tengo para demandar?", color: "bg-purple-100 text-purple-700" },
 ]
 
-// FAQ - Respuestas predefinidas que se muestran inmediatamente sin llamar a la IA
-const FAQ_RESPONSES: Record<string, string> = {
-  "¿Cómo calculo mi liquidación?": `**Cómo calcular tu liquidación paso a paso:**
+// FAQ - Respuestas CORTAS y PERSUASIVAS
+const FAQ_RESPONSES_LIA: Record<string, string> = {
+  "¿Cómo calculo mi liquidación?": `**Es muy fácil calcular tu liquidación:**
 
-**Paso 1: Reúne tu información básica**
-• Tu salario mensual (lo que ganas antes de descuentos)
-• Fecha de inicio de tu trabajo
-• Fecha de despido o terminación
-• Tipo de despido (justificado o injustificado)
+Con nuestra **Calculadora** solo necesitas:
+• Tu salario mensual
+• Fecha de inicio y fin de tu trabajo
 
-**Paso 2: Usa nuestra Calculadora**
-En Me Corrieron tenemos una calculadora automática que hace todo por ti:
-1. Ve al menú principal de la app
-2. Selecciona "Calculadora de Liquidación"
-3. Ingresa tus datos básicos
-4. La app calculará automáticamente:
-   - **3 meses de salario** (indemnización constitucional)
-   - **20 días por año trabajado** (indemnización)
-   - **Prima de antigüedad** (12 días por año)
-   - **Vacaciones y prima vacacional** proporcionales
-   - **Aguinaldo** proporcional
-   - **Salarios pendientes**
+La app calcula automáticamente: **3 meses de indemnización + 20 días por año + aguinaldo + vacaciones**.
 
-**Paso 3: Guarda tu cálculo en la Bóveda**
-Como usuario invitado puedes:
-1. Hacer el cálculo en la calculadora
-2. Al terminar, presiona "Guardar en Bóveda"
-3. Crea una cuenta gratuita con tu correo
-4. Tu cálculo quedará guardado y podrás acceder desde cualquier dispositivo
-5. También puedes descargar el PDF del cálculo
+**Puedes guardar tu cálculo en la Bóveda** para tenerlo siempre disponible y mostrárselo a un abogado cuando lo necesites.
 
-**Paso 4: Solicita ayuda de un abogado**
-Si el monto es mayor a $50,000 MXN, te conviene que un abogado te ayude. En la app puedes:
-1. Presionar "Quiero un abogado"
-2. Un abogado especializado revisará tu caso
-3. Solo pagas si ganas (cobro por éxito)
+**¿Listo para saber cuánto te deben?** Crea tu cuenta de invitado y empieza ahora.`,
 
-¿Quieres que te ayude a usar la calculadora ahora?`,
+  "¿Cómo inicio un reclamo en conciliación?": `**Para iniciar tu reclamo necesitas:**
 
-  "¿Cómo inicio un reclamo en conciliación?": `**Guía para iniciar un reclamo en el Centro de Conciliación:**
+1. **Junta tus documentos**: INE, comprobante de domicilio, recibos de nómina
+2. **Solicita cita** en el Centro de Conciliación (te ayudo a hacerlo)
+3. **Asiste a la audiencia** y expón tu caso
 
-**¿Qué es la Conciliación?**
-Desde 2019, antes de demandar a tu patrón, DEBES pasar por el Centro Federal de Conciliación y Registro Laboral (CFCRL). Es un paso obligatorio donde un conciliador intenta que tú y tu patrón lleguen a un acuerdo.
+**Tip importante:** Guarda todos tus documentos en la **Bóveda** antes de ir. Así los tendrás organizados y listos.
 
-**Paso 1: Prepara tus documentos**
-Necesitarás:
-• INE o identificación oficial
-• Comprobante de domicilio
-• Contrato de trabajo (si lo tienes)
-• Recibos de nómina (los últimos que tengas)
-• Carta de despido (si te la dieron)
-• Cualquier prueba de tu relación laboral
+**Tienes 1 año desde tu despido** para reclamar. No pierdas tiempo.
 
-**Tip:** Usa la Bóveda de Me Corrieron para escanear y guardar todos estos documentos. Así los tendrás organizados y seguros.
+**¿Empezamos?** Crea tu cuenta y organiza tus documentos.`,
 
-**Paso 2: Solicita tu cita**
-Tienes 3 opciones:
-1. **En línea:** centrolaboral.gob.mx
-2. **Por teléfono:** 800 012 0066 (lunes a viernes, 9am-6pm)
-3. **Presencial:** Acude a tu Centro de Conciliación más cercano
+  "¿Me pueden despedir sin causa?": `**Sí pueden despedirte, PERO deben pagarte:**
 
-**Paso 3: Asiste a la audiencia de conciliación**
-• Llega 15 minutos antes con todos tus documentos
-• El conciliador te explicará el proceso
-• Podrás exponer tu caso
-• Tu patrón (o su representante) expondrá su versión
-• El conciliador propondrá soluciones
+Sin causa justificada te corresponde:
+• **3 meses de salario**
+• **20 días por año trabajado**
+• **Prima de antigüedad**
+• Vacaciones y aguinaldo proporcionales
 
-**Paso 4: Posibles resultados**
-1. **Convenio:** Si hay acuerdo, se firma y es obligatorio para ambos
-2. **No convenio:** Si no hay acuerdo, te dan una Constancia de No Conciliación para poder demandar
-3. **Patrón no asiste:** También te dan constancia para demandar
+**¿Tu patrón no quiere pagar?** Podemos ayudarte con un abogado que solo cobra si ganas.
 
-**Plazos importantes:**
-• Tienes **45 días hábiles** desde que te notifican para asistir
-• La audiencia debe resolverse en **máximo 45 días**
-• Para demandar, tienes **1 año** desde el despido
+**Calcula cuánto te deben** con nuestra herramienta gratuita.`,
 
-**¿Necesitas ayuda?**
-1. Usa nuestra Calculadora para saber cuánto te corresponde
-2. Guarda tus documentos en la Bóveda
-3. Solicita un abogado si necesitas representación
+  "¿Cuánto tiempo tengo para demandar?": `**Tienes 1 AÑO desde tu despido.**
 
-¿Te ayudo a preparar tus documentos para la conciliación?`,
+Después de ese plazo, pierdes el derecho a reclamar.
 
-  "¿Me pueden despedir sin causa?": `**Despido sin causa justificada:**
+**Mi consejo:** No esperes. Entre más rápido actúes:
+• Más fácil reunir pruebas
+• Mejor posición para negociar
+• Mayor probabilidad de éxito
 
-**La respuesta corta:** Sí, tu patrón puede despedirte, pero si no tiene una causa justificada, **DEBE pagarte una indemnización completa**.
-
-**¿Qué es una causa justificada?**
-La Ley Federal del Trabajo (Art. 47) lista las causas válidas:
-• Engaño con documentos falsos
-• Violencia o amenazas en el trabajo
-• Daños intencionales a la empresa
-• Faltas de asistencia (más de 3 en 30 días sin permiso)
-• Desobedecer sin justificación
-• Acoso sexual
-• Revelar secretos de la empresa
-
-**Si NO hay causa justificada, te corresponde:**
-• **3 meses de salario** (indemnización constitucional)
-• **20 días de salario por año trabajado**
-• **Prima de antigüedad** (12 días por año, tope de 2 salarios mínimos)
-• **Vacaciones y prima vacacional** proporcionales
-• **Aguinaldo** proporcional
-• **Salarios pendientes**
-
-**Usa la Calculadora** de Me Corrieron para saber exactamente cuánto te corresponde.
-
-¿Quieres calcular tu liquidación ahora?`,
-
-  "¿Cuánto tiempo tengo para demandar?": `**Plazos para reclamar tus derechos laborales:**
-
-**Plazo general: 1 AÑO**
-Desde la fecha de tu despido, tienes **1 año** para:
-• Solicitar conciliación
-• Presentar demanda laboral
-• Reclamar tu liquidación
-
-**Importante:** El reloj empieza a correr desde:
-• La fecha del despido, O
-• La fecha del último día que trabajaste, O
-• La fecha en que dejaron de pagarte
-
-**Casos especiales:**
-• **Salarios caídos:** Se pueden reclamar hasta por 12 meses
-• **IMSS/INFONAVIT:** Las semanas cotizadas no prescriben
-• **Accidentes de trabajo:** 2 años para reclamar
-
-**Mi recomendación:**
-¡No esperes! Entre más pronto actúes:
-1. Es más fácil reunir pruebas
-2. Los testigos recuerdan mejor
-3. Tienes más opciones de negociación
-
-**Próximos pasos:**
-1. Calcula tu liquidación en la app
-2. Guarda tus documentos en la Bóveda
-3. Solicita conciliación lo antes posible
-
-¿Te ayudo a calcular lo que te corresponde?`
+**¿Cuándo te despidieron?** Calcula tu liquidación ahora y guarda tus documentos.`
 }
 
-// Función para detectar si una pregunta coincide con alguna FAQ
-function findFAQResponse(question: string): string | null {
+// FAQ con personalidad de Mandu (gato perezoso)
+const FAQ_RESPONSES_MANDU: Record<string, string> = {
+  "¿Cómo calculo mi liquidación?": `*se estira lentamente*
+
+Mira, calcular tu liquidación es más fácil que atrapar una bola de estambre...
+
+Solo necesitas tu **salario** y **fechas de trabajo**. La app hace la matemática mientras yo duermo. 😺
+
+Te corresponde: indemnización + aguinaldo + vacaciones... *ronronea*
+
+**Guarda tu cálculo en la Bóveda** para cuando despiertes mañana y no recuerdes nada. Como yo con mis siestas.
+
+¿Entramos a la app? Prometo no dormirme... *bosteza* ...mucho.`,
+
+  "¿Cómo inicio un reclamo en conciliación?": `*abre un ojo*
+
+Conciliación, dices... Es como cuando dos gatos pelean por territorio y llega el humano a separarnos.
+
+**Paso 1:** Junta tus papeles (INE, nómina, etc.)
+**Paso 2:** Pide cita en el Centro de Conciliación
+**Paso 3:** Ve y expón tu caso
+
+*se lame la pata*
+
+Guarda todo en la **Bóveda** antes de ir. No seas como yo que olvido dónde escondí mis juguetes.
+
+Tienes **1 año** para reclamar. Eso son como... 365 siestas. ¿Entramos? 🐱`,
+
+  "¿Me pueden despedir sin causa?": `*levanta las orejas*
+
+Técnicamente sí pueden correrte... igual que un humano puede quitarte tu lugar favorito en el sillón.
+
+PERO si no hay causa justificada, te deben:
+• 3 meses de lana 💰
+• 20 días por año
+• Prima de antigüedad
+
+*se acurruca*
+
+¿Quieres saber cuánto? Usa la calculadora mientras yo tomo mi siesta #47 del día.`,
+
+  "¿Cuánto tiempo tengo para demandar?": `*bosteza enormemente*
+
+Un año. 365 días. 8,760 horas de siestas... digo, de plazo.
+
+Pero no seas como yo que dejo todo para después de dormir...
+
+**Actúa rápido.** Entre más pronto, mejor. Como atrapar un ratón antes de que escape.
+
+*ronronea*
+
+¿Calculamos tu liquidación ahora? Solo toma 2 minutos... tiempo suficiente para una microsiesta. 😸`
+}
+
+// Función para detectar FAQ
+function findFAQResponse(question: string, isManduActive: boolean): string | null {
   const normalizedQuestion = question.toLowerCase().trim()
+  const responses = isManduActive ? FAQ_RESPONSES_MANDU : FAQ_RESPONSES_LIA
   
-  for (const [faqQuestion, response] of Object.entries(FAQ_RESPONSES)) {
+  for (const [faqQuestion] of Object.entries(responses)) {
     const normalizedFAQ = faqQuestion.toLowerCase()
-    // Coincidencia exacta o muy similar
     if (normalizedQuestion === normalizedFAQ || 
         normalizedQuestion.includes(normalizedFAQ.replace("¿", "").replace("?", "")) ||
         normalizedFAQ.includes(normalizedQuestion.replace("¿", "").replace("?", ""))) {
-      return response
+      return responses[faqQuestion]
     }
   }
   
   // Detección por palabras clave
   if (normalizedQuestion.includes("calcul") && normalizedQuestion.includes("liquidaci")) {
-    return FAQ_RESPONSES["¿Cómo calculo mi liquidación?"]
+    return responses["¿Cómo calculo mi liquidación?"]
   }
-  if (normalizedQuestion.includes("conciliaci") && (normalizedQuestion.includes("inicio") || normalizedQuestion.includes("reclamo") || normalizedQuestion.includes("cómo"))) {
-    return FAQ_RESPONSES["¿Cómo inicio un reclamo en conciliación?"]
+  if (normalizedQuestion.includes("conciliaci")) {
+    return responses["¿Cómo inicio un reclamo en conciliación?"]
   }
   if (normalizedQuestion.includes("despedir") && normalizedQuestion.includes("sin causa")) {
-    return FAQ_RESPONSES["¿Me pueden despedir sin causa?"]
+    return responses["¿Me pueden despedir sin causa?"]
   }
   if (normalizedQuestion.includes("tiempo") && normalizedQuestion.includes("demandar")) {
-    return FAQ_RESPONSES["¿Cuánto tiempo tengo para demandar?"]
+    return responses["¿Cuánto tiempo tengo para demandar?"]
   }
   
   return null
@@ -221,9 +186,10 @@ const ASSISTANTS = {
     buttonColor: "bg-green-600 hover:bg-green-700",
     api: "/api/legal-assistant",
     welcomeMessage: (docName?: string) => docName 
-      ? `¡Hola! Soy **Lía**, tu asistente legal de **Me Corrieron**. Mi nombre viene de "Ley" + "IA" - soy tu aliada en derecho laboral mexicano.\n\nVeo que tienes el documento "${docName}". Puedo ayudarte a entenderlo.\n\n¿Qué quieres saber?`
-      : `¡Hola! Soy **Lía**, tu asistente legal de **Me Corrieron**. Mi nombre viene de "Ley" + "IA" - soy tu aliada en derecho laboral mexicano.\n\nPuedo ayudarte con:\n• **Calcular tu liquidación**\n• **Entender documentos**\n• **Conocer tus derechos**\n• **El proceso legal**\n\n¿En qué te ayudo hoy?`,
+      ? `¡Hola! Soy **Lía**, tu aliada legal. Veo que tienes "${docName}". ¿Qué quieres saber?`
+      : `¡Hola! Soy **Lía**, tu asistente legal de Me Corrieron.\n\nPuedo ayudarte a **calcular tu liquidación**, entender tus derechos y guiarte en el proceso legal.\n\n¿En qué te ayudo?`,
     loadingText: "Lía está escribiendo...",
+    ctaMessage: `**¡Ya tienes la información que necesitas!**\n\nPara calcular exactamente cuánto te deben y guardar tus documentos seguros, crea tu cuenta de invitado. Es gratis y toma 30 segundos.`
   },
   mandu: {
     name: "Mandu",
@@ -233,8 +199,9 @@ const ASSISTANTS = {
     borderColor: "border-slate-300",
     buttonColor: "bg-slate-600 hover:bg-slate-700",
     api: "/api/mandu-assistant",
-    welcomeMessage: () => `*bosteza* Miau... Soy **Mandu**, el gato legal. Preferiría dormir, pero te ayudo... 😺\n\nPuedo ayudarte con:\n• **Liquidaciones** - *ronronea*\n• **Documentos legales**\n• **Tus derechos laborales**\n\n¿Qué necesitas? *se lame la pata* 💤`,
+    welcomeMessage: () => `*bosteza* Soy **Mandu**, el gato legal... preferiría dormir pero te ayudo. 😺\n\n¿Qué necesitas? *se lame la pata*`,
     loadingText: "Mandu piensa... *bosteza*",
+    ctaMessage: `*se estira*\n\n**Miau, ya sabes lo básico.**\n\nAhora entra a la app para calcular tu lana y guardar tus papeles. Yo seguiré aquí... durmiendo... 😸💤`
   }
 }
 
@@ -251,16 +218,26 @@ export function AIAssistant({
   const [inputValue, setInputValue] = useState("")
   const [isLoading, setIsLoading] = useState(false)
   const [streamingContent, setStreamingContent] = useState("")
+  const [faqCount, setFaqCount] = useState(0)
+  const [showCTA, setShowCTA] = useState(false)
   
-  const messagesEndRef = useRef<HTMLDivElement>(null)
+  const messagesContainerRef = useRef<HTMLDivElement>(null)
   const inputRef = useRef<HTMLInputElement>(null)
 
   const assistant = ASSISTANTS[currentAssistant]
   const welcomeMessage = assistant.welcomeMessage(documentName)
 
+  // Scroll suave solo al nuevo mensaje, no al final
   useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" })
-  }, [messages, streamingContent])
+    if (messagesContainerRef.current && messages.length > 0) {
+      const container = messagesContainerRef.current
+      // Scroll solo un poco para mostrar el inicio del nuevo mensaje
+      const scrollAmount = Math.min(150, container.scrollHeight - container.scrollTop - container.clientHeight)
+      if (scrollAmount > 0) {
+        container.scrollBy({ top: scrollAmount, behavior: 'smooth' })
+      }
+    }
+  }, [messages])
 
   useEffect(() => {
     if (isOpen) {
@@ -272,7 +249,25 @@ export function AIAssistant({
   useEffect(() => {
     setMessages([])
     setStreamingContent("")
+    setFaqCount(0)
+    setShowCTA(false)
   }, [currentAssistant])
+
+  // Mostrar CTA después de 2 FAQs respondidas
+  useEffect(() => {
+    if (faqCount >= 2 && !showCTA) {
+      setShowCTA(true)
+      // Agregar mensaje CTA
+      setTimeout(() => {
+        const ctaMessage: Message = {
+          id: `cta-${Date.now()}`,
+          role: "assistant",
+          content: assistant.ctaMessage,
+        }
+        setMessages(prev => [...prev, ctaMessage])
+      }, 1000)
+    }
+  }, [faqCount, showCTA, assistant.ctaMessage])
 
   const sendMessage = async (text: string) => {
     if (!text.trim() || isLoading) return
@@ -286,20 +281,21 @@ export function AIAssistant({
     setMessages(prev => [...prev, userMessage])
     setInputValue("")
     
-    // Primero verificar si hay una respuesta FAQ predefinida
-    const faqResponse = findFAQResponse(text)
+    // Verificar FAQ
+    const faqResponse = findFAQResponse(text, currentAssistant === 'mandu')
     
     if (faqResponse) {
-      // Simular un pequeño delay para que se sienta natural
       setIsLoading(true)
-      await new Promise(resolve => setTimeout(resolve, 500))
+      await new Promise(resolve => setTimeout(resolve, 400))
       
       const assistantMessage: Message = {
         id: `assistant-${Date.now()}`,
         role: "assistant",
         content: faqResponse,
+        isFAQ: true,
       }
       setMessages(prev => [...prev, assistantMessage])
+      setFaqCount(prev => prev + 1)
       setIsLoading(false)
       return
     }
@@ -426,12 +422,15 @@ export function AIAssistant({
             className="mt-3 w-full flex items-center justify-center gap-2 py-2 px-3 rounded-xl bg-white/20 hover:bg-white/30 transition-colors text-white text-xs font-medium"
           >
             <RefreshCw className="w-3.5 h-3.5" />
-            Cambiar a {currentAssistant === 'lia' ? 'Mandu (gato perezoso)' : 'Lía (asistente legal)'}
+            Cambiar a {currentAssistant === 'lia' ? 'Mandu' : 'Lía'}
           </button>
         </div>
 
         {/* Mensajes */}
-        <div className="flex-1 overflow-y-auto p-4 space-y-4 bg-slate-50">
+        <div 
+          ref={messagesContainerRef}
+          className="flex-1 overflow-y-auto p-4 space-y-4 bg-slate-50"
+        >
           {/* Mensaje de bienvenida */}
           <div className="flex gap-3">
             <div className={`w-8 h-8 rounded-full overflow-hidden shrink-0 border-2 ${assistant.borderColor} bg-white`}>
@@ -441,9 +440,9 @@ export function AIAssistant({
                 className="w-full h-full object-cover"
               />
             </div>
-            <div className="max-w-[80%] rounded-2xl px-4 py-3 bg-white border shadow-sm">
+            <div className="max-w-[85%] rounded-2xl px-4 py-3 bg-white border shadow-sm">
               <div
-                className="text-sm leading-relaxed prose prose-sm max-w-none"
+                className="text-sm leading-relaxed"
                 dangerouslySetInnerHTML={{ __html: formatContent(welcomeMessage) }}
               />
             </div>
@@ -469,14 +468,14 @@ export function AIAssistant({
                 </div>
               )}
               <div
-                className={`max-w-[80%] rounded-2xl px-4 py-3 ${
+                className={`max-w-[85%] rounded-2xl px-4 py-3 ${
                   message.role === "user"
                     ? "bg-blue-600 text-white"
                     : "bg-white border shadow-sm"
                 }`}
               >
                 <div
-                  className={`text-sm leading-relaxed ${message.role === "assistant" ? "prose prose-sm max-w-none" : ""}`}
+                  className="text-sm leading-relaxed"
                   dangerouslySetInnerHTML={{
                     __html: message.role === "assistant" ? formatContent(message.content) : message.content
                   }}
@@ -495,9 +494,9 @@ export function AIAssistant({
                   className="w-full h-full object-cover"
                 />
               </div>
-              <div className="max-w-[80%] rounded-2xl px-4 py-3 bg-white border shadow-sm">
+              <div className="max-w-[85%] rounded-2xl px-4 py-3 bg-white border shadow-sm">
                 <div
-                  className="text-sm leading-relaxed prose prose-sm max-w-none"
+                  className="text-sm leading-relaxed"
                   dangerouslySetInnerHTML={{ __html: formatContent(streamingContent) }}
                 />
               </div>
@@ -524,6 +523,25 @@ export function AIAssistant({
             </div>
           )}
 
+          {/* CTA - Botón crear cuenta */}
+          {showCTA && (
+            <div className="bg-gradient-to-r from-green-50 to-emerald-50 border border-green-200 rounded-2xl p-4 mt-4">
+              <div className="flex items-center gap-2 mb-3">
+                <UserPlus className="w-5 h-5 text-green-600" />
+                <span className="font-semibold text-green-800">Continua en la app</span>
+              </div>
+              <p className="text-sm text-green-700 mb-3">
+                Crea tu cuenta de invitado gratis para calcular tu liquidación y guardar tus documentos.
+              </p>
+              <Link href="/?tab=register&guest=true" onClick={onClose}>
+                <Button className="w-full bg-green-600 hover:bg-green-700 text-white gap-2">
+                  Crear cuenta de invitado
+                  <ArrowRight className="w-4 h-4" />
+                </Button>
+              </Link>
+            </div>
+          )}
+
           {/* Loading indicator */}
           {isLoading && !streamingContent && (
             <div className="flex gap-3">
@@ -542,63 +560,44 @@ export function AIAssistant({
               </div>
             </div>
           )}
-
-          <div ref={messagesEndRef} />
         </div>
 
         {/* Input */}
-        <form
-          onSubmit={onFormSubmit}
-          className="p-4 border-t bg-white flex gap-2"
-        >
-          <input
-            ref={inputRef}
-            type="text"
-            value={inputValue}
-            onChange={(e) => setInputValue(e.target.value)}
-            placeholder="Escribe tu pregunta..."
-            className="flex-1 px-4 py-2.5 rounded-full border-2 bg-slate-50 focus:bg-white focus:border-green-400 outline-none text-sm"
-            disabled={isLoading}
-          />
-          <Button
-            type="submit"
-            size="icon"
-            disabled={isLoading || !inputValue.trim()}
-            className={`rounded-full ${assistant.buttonColor} w-10 h-10`}
-          >
-            {isLoading ? (
-              <Loader2 className="w-4 h-4 animate-spin" />
-            ) : (
+        <div className="p-4 border-t bg-white">
+          <form id="chat-form" onSubmit={onFormSubmit} className="flex gap-2">
+            <input
+              ref={inputRef}
+              type="text"
+              value={inputValue}
+              onChange={(e) => setInputValue(e.target.value)}
+              placeholder="Escribe tu pregunta..."
+              className="flex-1 px-4 py-2.5 rounded-full border-2 bg-slate-50 focus:bg-white focus:border-green-400 outline-none text-sm"
+              disabled={isLoading}
+            />
+            <Button
+              type="submit"
+              size="icon"
+              disabled={isLoading || !inputValue.trim()}
+              className={`rounded-full w-10 h-10 ${assistant.buttonColor}`}
+            >
               <Send className="w-4 h-4" />
-            )}
-          </Button>
-        </form>
+            </Button>
+          </form>
+        </div>
       </div>
     </div>
   )
 }
 
-// Botón flotante para acceder al asistente
+// Botón flotante exportado para uso global
 export function AIAssistantButton({ onClick }: { onClick: () => void }) {
   return (
     <button
       onClick={onClick}
-      className="fixed bottom-20 right-4 z-40 w-14 h-14 rounded-full shadow-lg hover:shadow-xl transition-all flex items-center justify-center group overflow-hidden border-3 border-green-400 bg-white"
+      className="w-14 h-14 rounded-full bg-gradient-to-br from-green-500 to-emerald-600 shadow-lg hover:shadow-xl transition-all hover:scale-105 flex items-center justify-center"
       aria-label="Abrir Lía, tu asistente legal IA"
     >
-      <img 
-        src="/lia-avatar.jpg" 
-        alt="Lía - Asistente Legal" 
-        className="w-full h-full object-cover"
-      />
-      
-      {/* Indicador IA */}
-      <div className="absolute -top-1 -right-1 w-5 h-5 bg-gradient-to-br from-yellow-400 to-orange-500 rounded-full flex items-center justify-center shadow">
-        <Sparkles className="w-3 h-3 text-white" />
-      </div>
-      
-      {/* Anillo pulsante */}
-      <div className="absolute inset-0 rounded-full border-2 border-green-400 animate-ping opacity-30" />
+      <Sparkles className="w-6 h-6 text-white" />
     </button>
   )
 }
