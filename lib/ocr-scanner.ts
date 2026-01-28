@@ -49,13 +49,20 @@ export async function processImageOCR(
     const { data } = await worker.recognize(imageSource)
     
     return {
-      text: data.text,
-      confidence: data.confidence,
-      words: data.words.map(w => ({
-        text: w.text,
-        confidence: w.confidence,
-        bbox: w.bbox
+      text: data.text || '',
+      confidence: data.confidence || 0,
+      words: (data.words || []).map(w => ({
+        text: w.text || '',
+        confidence: w.confidence || 0,
+        bbox: w.bbox || { x0: 0, y0: 0, x1: 0, y1: 0 }
       }))
+    }
+  } catch (error) {
+    console.error('Error en OCR:', error)
+    return {
+      text: '',
+      confidence: 0,
+      words: []
     }
   } finally {
     await worker.terminate()

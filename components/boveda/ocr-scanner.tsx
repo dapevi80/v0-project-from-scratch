@@ -4,6 +4,7 @@ import React from "react"
 
 import { useState, useRef, useCallback } from 'react'
 import { Button } from '@/components/ui/button'
+import { Slider } from '@/components/ui/slider'
 import { 
   X, 
   Camera, 
@@ -632,44 +633,67 @@ export function OCRScanner({ onClose, onComplete, initialImages }: OCRScannerPro
             )}
           </div>
           
-          {/* Miniaturas de páginas */}
-          {pages.length > 1 && (
-            <div className="flex gap-2 p-2 overflow-x-auto bg-muted/30 border-t">
+          {/* Miniaturas y navegación */}
+          <div className="flex items-center gap-2 p-2 bg-muted/30 border-t">
+            {/* Botón anterior */}
+            <button
+              onClick={() => setCurrentPageIndex(prev => Math.max(0, prev - 1))}
+              disabled={currentPageIndex === 0}
+              className="p-1.5 rounded-lg hover:bg-muted disabled:opacity-30 disabled:cursor-not-allowed"
+            >
+              <ChevronLeft className="w-4 h-4" />
+            </button>
+            
+            {/* Miniaturas */}
+            <div className="flex-1 flex gap-2 overflow-x-auto">
               {pages.map((page, index) => (
-                <button
-                  key={page.id}
-                  onClick={() => setCurrentPageIndex(index)}
-                  className={`relative shrink-0 w-12 h-16 rounded-lg overflow-hidden border-2 transition-all ${
-                    index === currentPageIndex ? 'border-blue-500 ring-2 ring-blue-200' : 'border-transparent'
-                  }`}
-                >
-                  <img src={page.imageUrl || "/placeholder.svg"} alt="" className="w-full h-full object-cover" />
-                  {page.ocrResult && (
-                    <div className="absolute top-0.5 right-0.5 w-3 h-3 bg-green-500 rounded-full flex items-center justify-center">
-                      <Check className="w-2 h-2 text-white" />
-                    </div>
-                  )}
+                <div key={page.id} className="relative shrink-0 group">
                   <button
-                    onClick={(e) => { e.stopPropagation(); handleDeletePage(index) }}
-                    className="absolute -top-1 -right-1 w-4 h-4 bg-red-500 rounded-full flex items-center justify-center opacity-0 hover:opacity-100 transition-opacity"
+                    onClick={() => setCurrentPageIndex(index)}
+                    className={`relative w-10 h-14 rounded-lg overflow-hidden border-2 transition-all ${
+                      index === currentPageIndex ? 'border-blue-500 ring-2 ring-blue-200' : 'border-gray-200'
+                    }`}
                   >
-                    <X className="w-2 h-2 text-white" />
+                    <img src={page.imageUrl || "/placeholder.svg"} alt="" className="w-full h-full object-cover" />
+                    {page.ocrResult && (
+                      <div className="absolute bottom-0.5 right-0.5 w-3 h-3 bg-green-500 rounded-full flex items-center justify-center">
+                        <Check className="w-2 h-2 text-white" />
+                      </div>
+                    )}
                   </button>
-                </button>
+                  {/* Botón eliminar siempre visible */}
+                  {pages.length > 1 && (
+                    <button
+                      onClick={(e) => { e.stopPropagation(); handleDeletePage(index) }}
+                      className="absolute -top-1 -right-1 w-4 h-4 bg-red-500 hover:bg-red-600 rounded-full flex items-center justify-center shadow-sm"
+                    >
+                      <X className="w-2.5 h-2.5 text-white" />
+                    </button>
+                  )}
+                </div>
               ))}
               <button
                 onClick={() => fileInputRef.current?.click()}
-                className="shrink-0 w-12 h-16 rounded-lg border-2 border-dashed border-gray-300 flex items-center justify-center hover:bg-muted"
+                className="shrink-0 w-10 h-14 rounded-lg border-2 border-dashed border-gray-300 flex items-center justify-center hover:bg-muted"
               >
                 <Plus className="w-4 h-4 text-muted-foreground" />
               </button>
             </div>
-          )}
+            
+            {/* Botón siguiente */}
+            <button
+              onClick={() => setCurrentPageIndex(prev => Math.min(pages.length - 1, prev + 1))}
+              disabled={currentPageIndex === pages.length - 1}
+              className="p-1.5 rounded-lg hover:bg-muted disabled:opacity-30 disabled:cursor-not-allowed"
+            >
+              <ChevronRight className="w-4 h-4" />
+            </button>
+          </div>
           
           {/* Herramientas */}
           <div className="p-2 border-t space-y-2">
-            {/* Controles de imagen */}
-            <div className="flex items-center justify-center gap-1">
+            {/* Botones de acción principales */}
+            <div className="flex items-center justify-between gap-1">
               <button 
                 onClick={handleDetectCorners}
                 disabled={isDetecting}
@@ -696,31 +720,63 @@ export function OCRScanner({ onClose, onComplete, initialImages }: OCRScannerPro
                 <RotateCw className="w-4 h-4" />
                 <span className="text-[8px]">Rotar</span>
               </button>
-              <button 
-                onClick={() => handleEnhance('brightness', 10)}
-                className="p-1.5 hover:bg-muted rounded-lg flex flex-col items-center gap-0.5"
-                title="Más brillo"
-              >
-                <Sun className="w-4 h-4" />
-                <span className="text-[8px]">Brillo</span>
-              </button>
-              <button 
-                onClick={() => handleEnhance('contrast', 10)}
-                className="p-1.5 hover:bg-muted rounded-lg flex flex-col items-center gap-0.5"
-                title="Más contraste"
-              >
-                <Contrast className="w-4 h-4" />
-                <span className="text-[8px]">Contraste</span>
-              </button>
               <button
                 onClick={handleProcessOCR}
                 disabled={isProcessingOCR || currentPage?.ocrResult !== undefined}
-                className="p-1.5 hover:bg-muted rounded-lg flex flex-col items-center gap-0.5 disabled:opacity-50"
+                className="p-1.5 hover:bg-blue-50 rounded-lg flex flex-col items-center gap-0.5 text-blue-600 disabled:opacity-50"
                 title="Extraer texto"
               >
                 <ScanLine className="w-4 h-4" />
                 <span className="text-[8px]">OCR</span>
               </button>
+              {pages.length > 0 && (
+                <button
+                  onClick={() => handleDeletePage(currentPageIndex)}
+                  className="p-1.5 hover:bg-red-100 bg-red-50 rounded-lg flex flex-col items-center gap-0.5 text-red-600"
+                  title="Eliminar página"
+                >
+                  <Trash2 className="w-4 h-4" />
+                  <span className="text-[8px]">Eliminar</span>
+                </button>
+              )}
+            </div>
+            
+            {/* Sliders de brillo y contraste */}
+            <div className="grid grid-cols-2 gap-3 px-1">
+              <div className="space-y-1">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-1">
+                    <Sun className="w-3 h-3 text-amber-500" />
+                    <span className="text-[9px] text-muted-foreground">Brillo</span>
+                  </div>
+                  <span className="text-[9px] font-medium">{enhancement.brightness > 0 ? '+' : ''}{enhancement.brightness}</span>
+                </div>
+                <Slider
+                  value={[enhancement.brightness]}
+                  onValueChange={([val]) => setEnhancement(prev => ({ ...prev, brightness: val }))}
+                  min={-50}
+                  max={50}
+                  step={5}
+                  className="w-full"
+                />
+              </div>
+              <div className="space-y-1">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-1">
+                    <Contrast className="w-3 h-3 text-blue-500" />
+                    <span className="text-[9px] text-muted-foreground">Contraste</span>
+                  </div>
+                  <span className="text-[9px] font-medium">{enhancement.contrast > 0 ? '+' : ''}{enhancement.contrast}</span>
+                </div>
+                <Slider
+                  value={[enhancement.contrast]}
+                  onValueChange={([val]) => setEnhancement(prev => ({ ...prev, contrast: val }))}
+                  min={-50}
+                  max={50}
+                  step={5}
+                  className="w-full"
+                />
+              </div>
             </div>
             
             {/* Botones de acción */}
