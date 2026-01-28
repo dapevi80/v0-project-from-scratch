@@ -35,6 +35,7 @@ import { CedulaDigitalModal } from '@/components/abogado/cedula-digital-modal'
 import { EfirmaConfig } from '@/components/abogado/efirma-config'
 import { LawyerCelebration } from '@/components/lawyer-celebration'
 import { DowngradeAlert } from '@/components/downgrade-alert'
+import { AccountLimitsBanner } from '@/components/account-limits-banner'
 
 export default function GuestLawyerDashboardPage() {
   const [loading, setLoading] = useState(true)
@@ -145,6 +146,16 @@ export default function GuestLawyerDashboardPage() {
       </header>
 
       <main className="container mx-auto px-4 py-6 space-y-6 max-w-4xl">
+        {/* Banner de limites de cuenta */}
+        <AccountLimitsBanner
+          role="guestlawyer"
+          casosActuales={stats.casosActivos}
+          calculosActuales={stats.calculosActivos || 0}
+          maxCasos={data.limites?.maxCasos || 1}
+          maxCalculos={data.limites?.maxCalculos || 3}
+          showUpgradeButton={false}
+        />
+
         {/* Alerta de downgrade si aplica */}
         {data.wasDowngraded && (
           <DowngradeAlert userId={profile.id} />

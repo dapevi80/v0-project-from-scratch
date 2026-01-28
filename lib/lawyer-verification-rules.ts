@@ -265,6 +265,183 @@ export function evaluarDowngradeAbogado(
 }
 
 // ===========================================
+// LIMITES DE CUENTA POR ROL
+// ===========================================
+
+export const LIMITES_CUENTA = {
+  guest: {
+    maxCasos: 1,
+    maxCalculos: 3,
+    maxDocumentos: 5,
+    puedeCrearCasos: true,
+    puedeVerMarketplace: false,
+    puedeTomarCasos: false
+  },
+  guestworker: {
+    maxCasos: 2,
+    maxCalculos: 5,
+    maxDocumentos: 10,
+    puedeCrearCasos: true,
+    puedeVerMarketplace: false,
+    puedeTomarCasos: false
+  },
+  worker: {
+    maxCasos: 10,
+    maxCalculos: 50,
+    maxDocumentos: 100,
+    puedeCrearCasos: true,
+    puedeVerMarketplace: false,
+    puedeTomarCasos: false
+  },
+  guestlawyer: {
+    maxCasos: 1,           // Solo 1 caso como guestlawyer
+    maxCalculos: 3,        // Solo 3 calculos como guestlawyer
+    maxDocumentos: 20,
+    puedeCrearCasos: true,
+    puedeVerMarketplace: true,  // Puede ver pero no tomar
+    puedeTomarCasos: false      // No puede tomar casos del marketplace
+  },
+  lawyer: {
+    maxCasos: -1,          // Ilimitado
+    maxCalculos: -1,       // Ilimitado
+    maxDocumentos: -1,     // Ilimitado
+    puedeCrearCasos: true,
+    puedeVerMarketplace: true,
+    puedeTomarCasos: true
+  },
+  admin: {
+    maxCasos: -1,
+    maxCalculos: -1,
+    maxDocumentos: -1,
+    puedeCrearCasos: true,
+    puedeVerMarketplace: true,
+    puedeTomarCasos: true
+  },
+  superadmin: {
+    maxCasos: -1,
+    maxCalculos: -1,
+    maxDocumentos: -1,
+    puedeCrearCasos: true,
+    puedeVerMarketplace: true,
+    puedeTomarCasos: true
+  }
+} as const
+
+export type RolConLimites = keyof typeof LIMITES_CUENTA
+
+// Funcion para verificar si puede crear un caso
+export function puedeCrearCaso(
+  rol: string, 
+  casosActuales: number
+): { permitido: boolean; razon?: string; limitesAlcanzados?: boolean } {
+  const limites = LIMITES_CUENTA[rol as RolConLimites]
+  
+  if (!limites) {
+    return { permitido: false, razon: 'Rol no reconocido' }
+  }
+  
+  if (!limites.puedeCrearCasos) {
+    return { permitido: false, razon: 'Tu tipo de cuenta no permite crear casos' }
+  }
+  
+  // -1 significa ilimitado
+  if (limites.maxCasos === -1) {
+    return { permitido: true }
+  }
+  
+  if (casosActuales >= limites.maxCasos) {
+    const mensaje = rol === 'guestlawyer' 
+      ? `Has alcanzado el limite de ${limites.maxCasos} caso como abogado en verificacion. Verifica tu cuenta para crear casos ilimitados.`
+      : `Has alcanzado el limite de ${limites.maxCasos} casos para tu tipo de cuenta.`
+    
+    return { 
+      permitido: false, 
+      razon: mensaje,
+      limitesAlcanzados: true
+    }
+  }
+  
+  return { permitido: true }
+}
+
+// Funcion para verificar si puede crear un calculo
+export function puedeCrearCalculo(
+  rol: string, 
+  calculosActuales: number
+): { permitido: boolean; razon?: string; limitesAlcanzados?: boolean } {
+  const limites = LIMITES_CUENTA[rol as RolConLimites]
+  
+  if (!limites) {
+    return { permitido: false, razon: 'Rol no reconocido' }
+  }
+  
+  // -1 significa ilimitado
+  if (limites.maxCalculos === -1) {
+    return { permitido: true }
+  }
+  
+  if (calculosActuales >= limites.maxCalculos) {
+    const mensaje = rol === 'guestlawyer'
+      ? `Has alcanzado el limite de ${limites.maxCalculos} calculos como abogado en verificacion. Verifica tu cuenta para calculos ilimitados.`
+      : `Has alcanzado el limite de ${limites.maxCalculos} calculos para tu tipo de cuenta.`
+    
+    return { 
+      permitido: false, 
+      razon: mensaje,
+      limitesAlcanzados: true
+    }
+  }
+  
+  return { permitido: true }
+}
+
+// Funcion para obtener uso actual vs limites
+export function obtenerUsoCuenta(
+  rol: string,
+  casosActuales: number,
+  calculosActuales: number,
+  documentosActuales: number
+): {
+  casos: { actual: number; limite: number; porcentaje: number; ilimitado: boolean }
+  calculos: { actual: number; limite: number; porcentaje: number; ilimitado: boolean }
+  documentos: { actual: number; limite: number; porcentaje: number; ilimitado: boolean }
+  necesitaUpgrade: boolean
+  mensajeUpgrade?: string
+} {
+  const limites = LIMITES_CUENTA[rol as RolConLimites] || LIMITES_CUENTA.guest
+  
+  const casos = {
+    actual: casosActuales,
+    limite: limites.maxCasos,
+    porcentaje: limites.maxCasos === -1 ? 0 : Math.min(100, (casosActuales / limites.maxCasos) * 100),
+    ilimitado: limites.maxCasos === -1
+  }
+  
+  const calculos = {
+    actual: calculosActuales,
+    limite: limites.maxCalculos,
+    porcentaje: limites.maxCalculos === -1 ? 0 : Math.min(100, (calculosActuales / limites.maxCalculos) * 100),
+    ilimitado: limites.maxCalculos === -1
+  }
+  
+  const documentos = {
+    actual: documentosActuales,
+    limite: limites.maxDocumentos,
+    porcentaje: limites.maxDocumentos === -1 ? 0 : Math.min(100, (documentosActuales / limites.maxDocumentos) * 100),
+    ilimitado: limites.maxDocumentos === -1
+  }
+  
+  const necesitaUpgrade = casos.porcentaje >= 80 || calculos.porcentaje >= 80 || documentos.porcentaje >= 80
+  
+  let mensajeUpgrade: string | undefined
+  if (rol === 'guestlawyer' && necesitaUpgrade) {
+    mensajeUpgrade = 'Estas cerca de alcanzar los limites de tu cuenta. Verifica tu cuenta como abogado para desbloquear acceso ilimitado.'
+  }
+  
+  return { casos, calculos, documentos, necesitaUpgrade, mensajeUpgrade }
+}
+
+// ===========================================
 // BENEFICIOS POR ROL
 // ===========================================
 
@@ -287,12 +464,15 @@ export const BENEFICIOS_POR_ROL = {
     beneficios: [
       'Todo lo de usuario invitado',
       'Subir documentos de verificacion',
-      'Vista previa de cedula digital'
+      'Vista previa de cedula digital',
+      'Ver casos en el marketplace (sin tomar)'
     ],
     limitaciones: [
-      'Sin acceso al marketplace de casos',
+      'Maximo 1 caso propio',
+      'Maximo 3 calculos de liquidacion',
+      'No puede tomar casos del marketplace',
       'Cedula digital con marca de agua',
-      'Sin herramientas AutoCCL'
+      'Sin herramientas AutoCCL completas'
     ]
   },
   lawyer: {

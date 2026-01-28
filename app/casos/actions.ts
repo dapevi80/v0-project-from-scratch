@@ -3,15 +3,16 @@
 import { createClient } from '@/lib/supabase/server'
 import { revalidatePath } from 'next/cache'
 import type { CalculoLiquidacion, Caso } from './helpers'
+import { LIMITES_CUENTA, puedeCrearCaso, puedeCrearCalculo } from '@/lib/lawyer-verification-rules'
 
-// Limites de casos y calculos por rol
+// Limites de casos y calculos por rol (sincronizado con lawyer-verification-rules.ts)
 const ROLE_LIMITS = {
-  guest: { maxCasos: 0, maxCalculos: 1, canCreateCaso: false },
-  guestworker: { maxCasos: 0, maxCalculos: 3, canCreateCaso: false },
-  guestlawyer: { maxCasos: 0, maxCalculos: 10, canCreateCaso: false },
-  worker: { maxCasos: 1, maxCalculos: 3, canCreateCaso: true },
-  lawyer: { maxCasos: 50, maxCalculos: 100, canCreateCaso: true },
-  admin: { maxCasos: 50, maxCalculos: 100, canCreateCaso: true },
+  guest: { maxCasos: 1, maxCalculos: 3, canCreateCaso: true },
+  guestworker: { maxCasos: 2, maxCalculos: 5, canCreateCaso: true },
+  guestlawyer: { maxCasos: 1, maxCalculos: 3, canCreateCaso: true },  // 1 caso, 3 calculos
+  worker: { maxCasos: 10, maxCalculos: 50, canCreateCaso: true },
+  lawyer: { maxCasos: Infinity, maxCalculos: Infinity, canCreateCaso: true },
+  admin: { maxCasos: Infinity, maxCalculos: Infinity, canCreateCaso: true },
   superadmin: { maxCasos: Infinity, maxCalculos: Infinity, canCreateCaso: true }
 }
 
@@ -88,13 +89,28 @@ export async function verificarAccesoCasos() {
     }
   }
   
-  // Usuarios lawyer guest no tienen acceso completo
+  // Usuarios guestlawyer tienen acceso limitado (1 caso, 3 calculos)
   if (role === 'guestlawyer') {
+    // Contar casos actuales
+    const { count: casosActuales } = await supabase
+      .from('casos')
+      .select('*', { count: 'exact', head: true })
+      .eq('worker_id', user.id)
+      .eq('archivado', false)
+    
+    const limiteAlcanzado = (casosActuales || 0) >= 1
+    
     return { 
       error: null, 
-      tieneAcceso: false, 
-      razon: 'lawyer_not_verified',
-      mensaje: 'Tu cuenta de abogado esta pendiente de verificacion.'
+      tieneAcceso: true, 
+      razon: limiteAlcanzado ? 'limit_reached' : 'guestlawyer_limited',
+      mensaje: limiteAlcanzado 
+        ? 'Has alcanzado el limite de 1 caso como abogado en verificacion. Verifica tu cuenta para crear mas casos.'
+        : 'Como abogado en verificacion puedes crear hasta 1 caso y 3 calculos.',
+      casosActuales: casosActuales || 0,
+      limitesCasos: 1,
+      limitesCalculos: 3,
+      puedeCrearMas: !limiteAlcanzado
     }
   }
   
