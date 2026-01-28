@@ -10,7 +10,6 @@ import { Separator } from '@/components/ui/separator'
 import { Switch } from '@/components/ui/switch'
 import { Label } from '@/components/ui/label'
 import { AyudaUrgenteButton } from '@/components/ayuda-urgente-button'
-import { AIAssistant, AIAssistantButton } from '@/components/boveda/ai-assistant'
 import { MoneyStepper } from '@/components/calc/money-stepper'
 import { MoneySlider } from '@/components/calc/money-slider'
 import { NumberStepper } from '@/components/calc/number-stepper'
@@ -128,8 +127,7 @@ export default function CalculadoraPage() {
   const [historial, setHistorial] = useState<CalcRun[]>([])
   const [showHistorial, setShowHistorial] = useState(false)
   
-  // Asistente IA
-  const [showAIAssistant, setShowAIAssistant] = useState(false)
+
   
   // Estados para PDF y guardado
   const [descargandoPDF, setDescargandoPDF] = useState(false)
@@ -2693,14 +2691,7 @@ export default function CalculadoraPage() {
         </DialogContent>
       </Dialog>
       
-      {/* Botón flotante de asistente IA */}
-      <AIAssistantButton onClick={() => setShowAIAssistant(true)} />
-      
-      {/* Asistente Legal IA */}
-      <AIAssistant
-        isOpen={showAIAssistant}
-        onClose={() => setShowAIAssistant(false)}
-      />
+
     </div>
   )
 }

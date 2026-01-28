@@ -199,7 +199,7 @@ Conozco las reformas laborales más recientes y los reglamentos de los Centros d
           <Button
             type="submit"
             size="icon"
-            disabled={isLoading || !input.trim()}
+            disabled={isLoading || !input?.trim()}
             className="rounded-full bg-blue-600 hover:bg-blue-700 w-10 h-10"
           >
             {isLoading ? (
