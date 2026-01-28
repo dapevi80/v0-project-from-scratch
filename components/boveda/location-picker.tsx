@@ -1,18 +1,15 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
 import { 
   X, 
   MapPin, 
   Loader2, 
-  CheckCircle, 
-  Building2,
-  Search,
-  ExternalLink,
-  ArrowLeft,
-  Map
+  CheckCircle,
+  Navigation,
+  Eye,
+  ChevronRight
 } from 'lucide-react'
 import { actualizarUbicacionCaso } from '@/app/casos/actions'
 
@@ -32,233 +29,257 @@ export interface LocationData {
 }
 
 export function LocationPicker({ onSave, onClose, casoId }: LocationPickerProps) {
-  const [step, setStep] = useState<'search' | 'confirm' | 'saving' | 'saved'>('search')
-  const [searchQuery, setSearchQuery] = useState('')
-  const [location, setLocation] = useState<{ lat: number; lng: number; address: string } | null>(null)
-  const [searching, setSearching] = useState(false)
+  const [step, setStep] = useState<'intro' | 'map' | 'streetview' | 'saving' | 'saved'>('intro')
+  const [userLocation, setUserLocation] = useState<{ lat: number; lng: number } | null>(null)
+  const [selectedLocation, setSelectedLocation] = useState<{ lat: number; lng: number } | null>(null)
+  const [loadingLocation, setLoadingLocation] = useState(false)
 
-  // Buscar direccion usando Nominatim (OpenStreetMap - gratis)
-  const searchAddress = async () => {
-    if (!searchQuery.trim()) return
-    
-    setSearching(true)
-    try {
-      const response = await fetch(
-        `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(searchQuery)}&limit=1&countrycodes=mx`
+  // Obtener ubicacion del usuario como punto de partida
+  useEffect(() => {
+    if (navigator.geolocation) {
+      setLoadingLocation(true)
+      navigator.geolocation.getCurrentPosition(
+        (pos) => {
+          const loc = { lat: pos.coords.latitude, lng: pos.coords.longitude }
+          setUserLocation(loc)
+          setSelectedLocation(loc) // Punto inicial, el usuario lo cambiara
+          setLoadingLocation(false)
+        },
+        () => {
+          // Si falla, usar ubicacion por defecto (CDMX)
+          const defaultLoc = { lat: 19.4326, lng: -99.1332 }
+          setUserLocation(defaultLoc)
+          setSelectedLocation(defaultLoc)
+          setLoadingLocation(false)
+        },
+        { enableHighAccuracy: true, timeout: 10000 }
       )
-      const data = await response.json()
-      
-      if (data && data.length > 0) {
-        const result = data[0]
-        setLocation({
-          lat: parseFloat(result.lat),
-          lng: parseFloat(result.lon),
-          address: result.display_name
-        })
-        setStep('confirm')
-      } else {
-        alert('No se encontro la direccion. Intenta con mas detalles.')
-      }
-    } catch {
-      alert('Error al buscar. Verifica tu conexion.')
-    } finally {
-      setSearching(false)
     }
-  }
+  }, [])
 
   // Guardar ubicacion
   const handleSave = async () => {
-    if (!location) return
+    if (!selectedLocation) return
     
     setStep('saving')
     
     const locationData: LocationData = {
-      lat: location.lat,
-      lng: location.lng,
-      address: location.address,
-      streetViewUrl: `https://www.google.com/maps/@?api=1&map_action=pano&viewpoint=${location.lat},${location.lng}`,
-      mapsUrl: `https://www.google.com/maps?q=${location.lat},${location.lng}`,
+      lat: selectedLocation.lat,
+      lng: selectedLocation.lng,
+      streetViewUrl: `https://www.google.com/maps/@?api=1&map_action=pano&viewpoint=${selectedLocation.lat},${selectedLocation.lng}`,
+      mapsUrl: `https://www.google.com/maps?q=${selectedLocation.lat},${selectedLocation.lng}`,
       timestamp: new Date().toISOString()
     }
     
     try {
-      const result = await actualizarUbicacionCaso(casoId || null, locationData)
-      if (result.error) {
-        console.log('[v0] Error guardando ubicacion:', result.error)
-      }
+      await actualizarUbicacionCaso(casoId || null, locationData)
       setStep('saved')
       setTimeout(() => {
         onSave(locationData)
       }, 1500)
-    } catch (err) {
-      console.log('[v0] Error:', err)
-      setStep('confirm')
+    } catch {
+      setStep('streetview')
     }
   }
 
-  // Abrir Google Maps para verificar
-  const openGoogleMaps = () => {
-    if (!location) return
-    window.open(`https://www.google.com/maps?q=${location.lat},${location.lng}`, '_blank')
+  // Cuando el usuario mueve el mapa, actualizar coordenadas del centro
+  const handleMapMessage = (event: MessageEvent) => {
+    if (event.data && event.data.type === 'mapCenter') {
+      setSelectedLocation({ lat: event.data.lat, lng: event.data.lng })
+    }
   }
 
-  // Abrir Street View
-  const openStreetView = () => {
-    if (!location) return
-    window.open(`https://www.google.com/maps/@?api=1&map_action=pano&viewpoint=${location.lat},${location.lng}`, '_blank')
-  }
+  useEffect(() => {
+    window.addEventListener('message', handleMapMessage)
+    return () => window.removeEventListener('message', handleMapMessage)
+  }, [])
 
   return (
-    <div className="bg-background rounded-xl shadow-xl border overflow-hidden w-full">
+    <div className="bg-background rounded-xl shadow-xl overflow-hidden w-full max-w-[92vw] sm:max-w-sm">
       
-      {/* ===== BUSQUEDA ===== */}
-      {step === 'search' && (
+      {/* ===== INTRO - Tutorial visual ===== */}
+      {step === 'intro' && (
         <>
-          {/* Header con animacion */}
-          <div className="relative bg-gradient-to-r from-orange-500 to-red-500 p-4 sm:p-5">
+          {/* Header animado */}
+          <div className="relative bg-gradient-to-br from-orange-500 via-red-500 to-pink-500 p-5 overflow-hidden">
+            {/* Burbujas animadas */}
+            <div className="absolute top-2 right-8 w-16 h-16 bg-white/10 rounded-full animate-pulse" />
+            <div className="absolute bottom-3 right-2 w-8 h-8 bg-white/10 rounded-full animate-ping" style={{ animationDuration: '2s' }} />
+            
             <button 
               onClick={onClose} 
-              className="absolute top-3 right-3 w-7 h-7 rounded-full bg-white/20 hover:bg-white/30 flex items-center justify-center"
+              className="absolute top-3 right-3 w-7 h-7 rounded-full bg-white/20 hover:bg-white/30 flex items-center justify-center transition-colors"
             >
               <X className="w-4 h-4 text-white" />
             </button>
             
-            <div className="flex items-center gap-3">
-              <div className="w-12 h-12 bg-white/20 rounded-full flex items-center justify-center">
-                <Building2 className="w-6 h-6 text-white" />
+            <div className="relative z-10 text-center pt-2">
+              <div className="w-14 h-14 bg-white/20 rounded-2xl flex items-center justify-center mx-auto mb-3 animate-bounce" style={{ animationDuration: '2s' }}>
+                <MapPin className="w-7 h-7 text-white" />
               </div>
-              <div>
-                <h2 className="text-lg font-bold text-white">Ubicacion del trabajo</h2>
-                <p className="text-white/80 text-xs">Para notificaciones del CCL</p>
-              </div>
+              <h2 className="text-xl font-bold text-white">Ubicacion del trabajo</h2>
+              <p className="text-white/80 text-sm mt-1">Donde se enviaran notificaciones</p>
             </div>
           </div>
           
-          {/* Busqueda */}
-          <div className="p-4 space-y-4">
-            <div className="space-y-2">
-              <label className="text-sm font-medium">Direccion del lugar de trabajo</label>
-              <div className="flex gap-2">
-                <Input 
-                  placeholder="Ej: Av. Reforma 123, CDMX"
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  onKeyDown={(e) => e.key === 'Enter' && searchAddress()}
-                  className="flex-1"
-                />
-                <Button 
-                  onClick={searchAddress} 
-                  disabled={searching || !searchQuery.trim()}
-                  size="icon"
-                  className="shrink-0"
-                >
-                  {searching ? <Loader2 className="w-4 h-4 animate-spin" /> : <Search className="w-4 h-4" />}
-                </Button>
+          {/* Pasos visuales */}
+          <div className="p-4 space-y-3">
+            <p className="text-xs text-muted-foreground text-center mb-2">Como funciona:</p>
+            
+            <div className="flex items-center gap-3 p-3 rounded-xl bg-blue-50 border border-blue-100">
+              <div className="w-8 h-8 rounded-full bg-blue-500 text-white flex items-center justify-center font-bold text-sm shrink-0">1</div>
+              <div className="flex-1">
+                <p className="font-medium text-sm">Navega el mapa</p>
+                <p className="text-xs text-muted-foreground">Arrastra para moverte, pellizca para zoom</p>
               </div>
-              <p className="text-[10px] text-muted-foreground">
-                Escribe la direccion completa: calle, numero, colonia, ciudad
-              </p>
+              <Navigation className="w-5 h-5 text-blue-500 animate-pulse" />
             </div>
             
-            {/* Tips */}
-            <div className="bg-amber-50 border border-amber-200 rounded-lg p-3 space-y-1">
-              <p className="text-xs font-medium text-amber-800">Por que es importante?</p>
-              <ul className="text-[10px] text-amber-700 space-y-0.5">
-                <li>- Se usara para enviar citatorios oficiales</li>
-                <li>- El CCL verificara que el domicilio exista</li>
-                <li>- Una direccion incorrecta retrasa tu proceso</li>
-              </ul>
+            <div className="flex items-center gap-3 p-3 rounded-xl bg-purple-50 border border-purple-100">
+              <div className="w-8 h-8 rounded-full bg-purple-500 text-white flex items-center justify-center font-bold text-sm shrink-0">2</div>
+              <div className="flex-1">
+                <p className="font-medium text-sm">Verifica la fachada</p>
+                <p className="text-xs text-muted-foreground">Usa Street View para confirmar</p>
+              </div>
+              <Eye className="w-5 h-5 text-purple-500" />
             </div>
+            
+            <div className="flex items-center gap-3 p-3 rounded-xl bg-green-50 border border-green-100">
+              <div className="w-8 h-8 rounded-full bg-green-500 text-white flex items-center justify-center font-bold text-sm shrink-0">3</div>
+              <div className="flex-1">
+                <p className="font-medium text-sm">Presiona "Aqui es!"</p>
+                <p className="text-xs text-muted-foreground">Guarda la ubicacion exacta</p>
+              </div>
+              <CheckCircle className="w-5 h-5 text-green-500" />
+            </div>
+            
+            {/* Nota CCL */}
+            <div className="bg-amber-50 border border-amber-200 rounded-lg p-2.5 mt-3">
+              <p className="text-[10px] text-amber-700 text-center">
+                Esta ubicacion se usara para el citatorio oficial del CCL
+              </p>
+            </div>
+          </div>
+          
+          {/* Boton comenzar */}
+          <div className="p-4 pt-0">
+            <Button 
+              onClick={() => setStep('map')}
+              disabled={loadingLocation}
+              className="w-full h-12 bg-gradient-to-r from-orange-500 to-red-500 hover:from-orange-600 hover:to-red-600 text-white font-semibold gap-2"
+            >
+              {loadingLocation ? (
+                <>
+                  <Loader2 className="w-5 h-5 animate-spin" />
+                  Obteniendo ubicacion...
+                </>
+              ) : (
+                <>
+                  <Navigation className="w-5 h-5" />
+                  Comenzar
+                  <ChevronRight className="w-4 h-4" />
+                </>
+              )}
+            </Button>
           </div>
         </>
       )}
 
-      {/* ===== CONFIRMAR ===== */}
-      {step === 'confirm' && location && (
+      {/* ===== MAPA INTERACTIVO ===== */}
+      {step === 'map' && selectedLocation && (
         <>
-          {/* Header */}
-          <div className="flex items-center justify-between p-3 border-b">
-            <button 
-              onClick={() => setStep('search')} 
-              className="w-8 h-8 rounded-full hover:bg-muted flex items-center justify-center"
-            >
-              <ArrowLeft className="w-4 h-4" />
-            </button>
-            <span className="text-sm font-medium">Confirmar ubicacion</span>
-            <button 
-              onClick={onClose} 
-              className="w-8 h-8 rounded-full hover:bg-muted flex items-center justify-center"
-            >
+          {/* Header compacto */}
+          <div className="flex items-center justify-between p-3 border-b bg-muted/30">
+            <span className="text-sm font-medium">Ubica el lugar de trabajo</span>
+            <button onClick={onClose} className="w-7 h-7 rounded-full hover:bg-muted flex items-center justify-center">
               <X className="w-4 h-4" />
             </button>
           </div>
           
-          {/* Mapa estatico */}
-          <div className="relative aspect-video bg-muted">
-            <img 
-              src={`https://maps.googleapis.com/maps/api/staticmap?center=${location.lat},${location.lng}&zoom=17&size=400x250&markers=color:red%7C${location.lat},${location.lng}&key=AIzaSyBFw0Qbyq9zTFTd-tUY6dZWTgaQzuU17R8`}
-              alt="Mapa"
-              className="w-full h-full object-cover"
-              onError={(e) => {
-                // Fallback a OpenStreetMap si falla Google
-                (e.target as HTMLImageElement).src = `https://staticmap.openstreetmap.de/staticmap.php?center=${location.lat},${location.lng}&zoom=17&size=400x250&markers=${location.lat},${location.lng},red`
-              }}
+          {/* Mapa embebido - interactivo */}
+          <div className="relative h-64 bg-muted">
+            <iframe
+              src={`https://www.google.com/maps/embed/v1/view?key=AIzaSyBFw0Qbyq9zTFTd-tUY6dZWTgaQzuU17R8&center=${selectedLocation.lat},${selectedLocation.lng}&zoom=16&maptype=roadmap`}
+              className="w-full h-full border-0"
+              allowFullScreen
+              loading="lazy"
+              referrerPolicy="no-referrer-when-downgrade"
             />
+            {/* Pin central fijo */}
             <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-              <MapPin className="w-10 h-10 text-red-500 drop-shadow-lg" style={{ transform: 'translateY(-50%)' }} />
+              <MapPin className="w-10 h-10 text-red-500 drop-shadow-lg" style={{ transform: 'translateY(-20px)' }} />
+            </div>
+            
+            {/* Instruccion */}
+            <div className="absolute bottom-2 left-2 right-2 bg-black/70 text-white text-xs text-center py-1.5 px-3 rounded-lg">
+              Mueve el mapa para centrar el pin en el trabajo
             </div>
           </div>
           
-          {/* Direccion */}
-          <div className="p-3 bg-muted/30 border-b">
-            <p className="text-xs text-muted-foreground mb-1">Direccion encontrada:</p>
-            <p className="text-sm font-medium line-clamp-2">{location.address}</p>
+          {/* Coordenadas actuales */}
+          <div className="p-2 bg-muted/50 border-b text-center">
+            <p className="text-[10px] text-muted-foreground font-mono">
+              {selectedLocation.lat.toFixed(6)}, {selectedLocation.lng.toFixed(6)}
+            </p>
           </div>
           
-          {/* Botones de verificacion */}
+          {/* Boton ver fachada */}
           <div className="p-3 space-y-2">
-            <p className="text-xs text-center text-muted-foreground mb-2">Verifica que sea el lugar correcto:</p>
-            
-            <div className="grid grid-cols-2 gap-2">
-              <Button 
-                variant="outline" 
-                size="sm" 
-                onClick={openGoogleMaps}
-                className="gap-1.5 text-xs bg-transparent"
-              >
-                <Map className="w-3.5 h-3.5" />
-                Ver en Maps
-                <ExternalLink className="w-3 h-3" />
-              </Button>
-              <Button 
-                variant="outline" 
-                size="sm" 
-                onClick={openStreetView}
-                className="gap-1.5 text-xs bg-transparent"
-              >
-                <Building2 className="w-3.5 h-3.5" />
-                Street View
-                <ExternalLink className="w-3 h-3" />
-              </Button>
-            </div>
-            
-            {/* Boton guardar */}
             <Button 
-              onClick={handleSave}
-              className="w-full h-11 mt-2 bg-gradient-to-r from-green-500 to-emerald-500 hover:from-green-600 hover:to-emerald-600 text-white font-semibold gap-2"
+              onClick={() => setStep('streetview')}
+              variant="outline"
+              className="w-full h-10 gap-2 bg-purple-50 border-purple-200 text-purple-700 hover:bg-purple-100 hover:text-purple-800"
             >
-              <CheckCircle className="w-5 h-5" />
-              Si, esta es la ubicacion
+              <Eye className="w-4 h-4" />
+              Ver fachada (Street View)
             </Button>
             
-            {/* Buscar otra */}
-            <Button 
-              variant="ghost" 
-              size="sm" 
-              onClick={() => setStep('search')}
-              className="w-full text-xs text-muted-foreground"
+            <p className="text-[10px] text-center text-muted-foreground">
+              Verifica que sea el edificio correcto
+            </p>
+          </div>
+        </>
+      )}
+
+      {/* ===== STREET VIEW ===== */}
+      {step === 'streetview' && selectedLocation && (
+        <>
+          {/* Header */}
+          <div className="flex items-center justify-between p-3 border-b bg-muted/30">
+            <button 
+              onClick={() => setStep('map')} 
+              className="text-xs text-primary hover:underline flex items-center gap-1"
             >
-              Buscar otra direccion
+              ← Volver al mapa
+            </button>
+            <span className="text-sm font-medium">Es esta la fachada?</span>
+            <button onClick={onClose} className="w-7 h-7 rounded-full hover:bg-muted flex items-center justify-center">
+              <X className="w-4 h-4" />
+            </button>
+          </div>
+          
+          {/* Street View embebido */}
+          <div className="relative h-56 bg-black">
+            <iframe
+              src={`https://www.google.com/maps/embed/v1/streetview?key=AIzaSyBFw0Qbyq9zTFTd-tUY6dZWTgaQzuU17R8&location=${selectedLocation.lat},${selectedLocation.lng}&heading=0&pitch=0&fov=90`}
+              className="w-full h-full border-0"
+              allowFullScreen
+              loading="lazy"
+            />
+          </div>
+          
+          {/* Confirmacion */}
+          <div className="p-3 bg-green-50 border-t border-green-100">
+            <p className="text-xs text-green-700 text-center mb-3">
+              Si esta es la ubicacion correcta del trabajo:
+            </p>
+            
+            <Button 
+              onClick={handleSave}
+              className="w-full h-12 bg-gradient-to-r from-green-500 to-emerald-500 hover:from-green-600 hover:to-emerald-600 text-white font-bold text-lg gap-2 shadow-lg"
+            >
+              <CheckCircle className="w-6 h-6" />
+              Aqui es!
             </Button>
           </div>
         </>
@@ -266,24 +287,23 @@ export function LocationPicker({ onSave, onClose, casoId }: LocationPickerProps)
 
       {/* ===== GUARDANDO ===== */}
       {step === 'saving' && (
-        <div className="p-10 flex flex-col items-center justify-center">
+        <div className="p-12 flex flex-col items-center justify-center">
           <div className="relative w-16 h-16">
             <div className="absolute inset-0 border-4 border-green-200 rounded-full" />
             <div className="absolute inset-0 border-4 border-green-500 rounded-full border-t-transparent animate-spin" />
           </div>
-          <p className="font-medium mt-4">Guardando...</p>
-          <p className="text-xs text-muted-foreground">Vinculando a tu caso</p>
+          <p className="font-medium mt-4">Guardando ubicacion...</p>
         </div>
       )}
 
       {/* ===== GUARDADO ===== */}
       {step === 'saved' && (
-        <div className="p-10 flex flex-col items-center justify-center">
-          <div className="w-16 h-16 bg-green-500 rounded-full flex items-center justify-center shadow-lg">
+        <div className="p-12 flex flex-col items-center justify-center">
+          <div className="w-16 h-16 bg-green-500 rounded-full flex items-center justify-center shadow-lg animate-bounce">
             <CheckCircle className="w-8 h-8 text-white" />
           </div>
-          <p className="font-semibold text-green-600 mt-4">Ubicacion guardada</p>
-          <p className="text-xs text-muted-foreground">Se vinculo a tu caso</p>
+          <p className="font-bold text-green-600 mt-4 text-lg">Listo!</p>
+          <p className="text-sm text-muted-foreground">Ubicacion guardada</p>
         </div>
       )}
     </div>
