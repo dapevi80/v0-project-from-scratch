@@ -1,418 +1,188 @@
-// Base de conocimiento de derecho laboral mexicano
-const KNOWLEDGE_BASE = {
-  despido: {
-    keywords: ["despido", "despidieron", "corrieron", "echaron", "botaron"],
-    response: `**Sobre el despido en México:**
-
-Si te despidieron, tienes derechos importantes:
-
-1. **Despido justificado** - El patrón debe tener una razón válida según el Art. 47 de la Ley Federal del Trabajo
-2. **Despido injustificado** - Tienes derecho a:
-   - 3 meses de salario (indemnización constitucional)
-   - 20 días por año trabajado (indemnización)
-   - Salarios caídos
-   - Partes proporcionales de aguinaldo, vacaciones y prima vacacional
-
-**¿Qué hacer?**
-- Guarda toda la evidencia (contratos, recibos de nómina, mensajes)
-- No firmes nada sin leerlo bien
-- Tienes 2 meses para demandar ante la Junta de Conciliación
-
-¿Te gustaría saber más sobre algún punto específico?`,
-  },
-  finiquito: {
-    keywords: ["finiquito", "liquidacion", "liquidación", "indemnizacion", "indemnización"],
-    response: `**Sobre finiquito y liquidación:**
-
-Son conceptos diferentes:
-
-**Finiquito** (renuncia voluntaria o término de contrato):
-- Salarios pendientes
-- Aguinaldo proporcional
-- Vacaciones y prima vacacional proporcional
-- Prima de antigüedad (si tienes 15+ años)
-
-**Liquidación** (despido injustificado):
-Todo lo del finiquito MÁS:
-- 3 meses de salario
-- 20 días por año trabajado
-- Salarios caídos
-
-**Importante:**
-- NO firmes si no estás de acuerdo con los montos
-- Verifica los cálculos antes de firmar
-- Pide desglose por concepto
-
-¿Necesitas que te explique cómo calcular algún concepto?`,
-  },
-  vacaciones: {
-    keywords: ["vacaciones", "prima vacacional", "dias de descanso"],
-    response: `**Vacaciones según la Ley Federal del Trabajo:**
-
-Días mínimos por antigüedad (reforma 2023):
-- 1 año: 12 días
-- 2 años: 14 días
-- 3 años: 16 días
-- 4 años: 18 días
-- 5 años: 20 días
-- 6-10 años: 22 días
-- 11-15 años: 24 días
-
-**Prima vacacional:** Mínimo 25% sobre el salario de vacaciones
-
-**Importante:**
-- Las vacaciones NO se pueden compensar con dinero mientras trabajes
-- Si no las tomas, se acumulan
-- Al terminar la relación laboral, te deben pagar las vacaciones no disfrutadas
-
-¿Tienes más preguntas sobre tus vacaciones?`,
-  },
-  aguinaldo: {
-    keywords: ["aguinaldo", "navidad", "diciembre"],
-    response: `**Aguinaldo en México:**
-
-**¿Cuánto te corresponde?**
-- Mínimo 15 días de salario
-- Se paga antes del 20 de diciembre
-
-**Si no trabajaste el año completo:**
-- Te corresponde la parte proporcional
-- Se calcula dividiendo 15 días entre 365 y multiplicando por los días trabajados
-
-**Ejemplo:** Si trabajaste 6 meses = 7.5 días de aguinaldo
-
-**Importante:**
-- Es obligatorio aunque no esté en tu contrato
-- No importa si renunciaste o te despidieron
-- Si no te lo pagan, puedes demandarlo
-
-¿Necesitas ayuda para calcular tu aguinaldo?`,
-  },
-  contrato: {
-    keywords: ["contrato", "firmar", "condiciones", "temporal", "planta"],
-    response: `**Sobre contratos de trabajo:**
-
-**Tipos de contrato:**
-1. **Por tiempo indeterminado** - El más común y mejor para ti
-2. **Por tiempo determinado** - Solo para trabajos temporales específicos
-3. **Por obra determinada** - Para proyectos específicos
-
-**El contrato debe incluir:**
-- Nombre y domicilio del patrón y trabajador
-- Duración de la relación laboral
-- Servicios que vas a prestar
-- Lugar de trabajo
-- Duración de la jornada
-- Salario
-- Día y forma de pago
-- Prestaciones
-
-**Importante:**
-- Si no hay contrato escrito, la ley te protege igual
-- El patrón tiene la carga de probar las condiciones
-- Guarda copia de todo lo que firmes
-
-¿Tienes dudas sobre tu contrato?`,
-  },
-  jornada: {
-    keywords: ["horas", "jornada", "horario", "extras", "overtime", "tiempo extra"],
-    response: `**Jornada de trabajo en México:**
-
-**Tipos de jornada:**
-- **Diurna** (6am-8pm): Máximo 8 horas
-- **Nocturna** (8pm-6am): Máximo 7 horas
-- **Mixta**: Máximo 7.5 horas
-
-**Horas extra:**
-- Las primeras 9 horas a la semana: se pagan DOBLE
-- Después de 9 horas extra: se pagan TRIPLE
-- Máximo 3 horas diarias de tiempo extra
-- Máximo 3 veces por semana
-
-**Descanso:**
-- Al menos 1 día de descanso por cada 6 trabajados
-- Si trabajas en tu día de descanso: salario doble + lo normal
-
-¿Te están haciendo trabajar más de lo legal?`,
-  },
-  acoso: {
-    keywords: ["acoso", "hostigamiento", "discriminacion", "maltrato", "mobbing"],
-    response: `**Acoso y hostigamiento laboral:**
-
-**¿Qué es acoso laboral?**
-Conductas que dañan tu dignidad, integridad física o psicológica.
-
-**Puede incluir:**
-- Humillaciones constantes
-- Aislamiento social
-- Sobrecarga o falta de trabajo intencional
-- Amenazas
-- Discriminación
-
-**Qué hacer:**
-1. Documenta todo (fechas, testigos, mensajes)
-2. Reporta a recursos humanos por escrito
-3. Guarda copia del reporte
-4. Si no actúan, puedes demandar
-
-**Importante:**
-- Es causal de rescisión (puedes renunciar y reclamar indemnización)
-- Puedes denunciar ante PROFEDET (gratis)
-- No tienes que aguantar maltrato
-
-¿Necesitas orientación sobre tu caso específico?`,
-  },
-  embarazo: {
-    keywords: ["embarazo", "embarazada", "maternidad", "lactancia", "prenatal"],
-    response: `**Derechos durante el embarazo:**
-
-**No te pueden despedir** por estar embarazada. Es discriminación.
-
-**Tus derechos:**
-- **Licencia de maternidad:** 6 semanas antes y 6 después del parto (con goce de sueldo)
-- **Lactancia:** 2 reposos de 30 min al día durante 6 meses
-- **No trabajo pesado:** Desde el mes 5 de embarazo
-- **Incapacidad por IMSS:** Si estás inscrita
-
-**Si te despiden estando embarazada:**
-- La liquidación es MAYOR
-- El patrón debe probar que NO fue por el embarazo
-- Demanda inmediatamente
-
-**Importante:**
-- Informa a tu patrón por escrito
-- Guarda tu control prenatal
-- No firmes renuncia bajo presión
-
-¿Tu patrón está violando estos derechos?`,
-  },
-  imss: {
-    keywords: ["imss", "seguro", "afiliacion", "semanas", "incapacidad"],
-    response: `**Seguro Social (IMSS):**
-
-**Tus derechos:**
-- Atención médica para ti y tu familia
-- Incapacidades pagadas
-- Pensión por invalidez o vejez
-- Guarderías
-
-**Si no te tienen dado de alta:**
-- Tu patrón está cometiendo un delito
-- Puedes demandarlo
-- Tienes derecho al reconocimiento retroactivo
-
-**Cómo verificar tu afiliación:**
-1. Entra a imss.gob.mx
-2. Busca "Mi perfil IMSS"
-3. Con tu CURP puedes ver tu historial
-
-**Semanas cotizadas importantes:**
-- 500 semanas: Pensión mínima
-- 1,000 semanas: Pensión completa
-
-¿Tienes problemas con tu afiliación al IMSS?`,
-  },
-  salario: {
-    keywords: ["salario", "sueldo", "pago", "nomina", "nómina", "minimo"],
-    response: `**Sobre tu salario:**
-
-**Salario mínimo 2024:**
-- General: $248.93 diarios
-- Zona Libre Frontera Norte: $374.89 diarios
-
-**Tus derechos:**
-- Pago en efectivo, no en especie
-- Pago mínimo semanal (máximo 15 días)
-- Recibir nómina/recibo de pago
-- No descuentos mayores al 30% de tu salario
-
-**Qué debe incluir tu pago:**
-- Salario base
-- Horas extra (si aplica)
-- Comisiones (si aplica)
-- Aguinaldo proporcional en diciembre
-
-**Si no te pagan:**
-- Primero solicita por escrito
-- Si no responden, puedes demandar
-- Tienes derecho a salarios caídos
-
-¿Te deben salarios o hay irregularidades en tu pago?`,
-  },
-}
-
-// Detectar tema del mensaje
-function detectTopic(message: string): string | null {
-  const lowerMessage = message.toLowerCase()
-  
-  for (const [topic, data] of Object.entries(KNOWLEDGE_BASE)) {
-    if (data.keywords.some(keyword => lowerMessage.includes(keyword))) {
-      return topic
-    }
-  }
-  return null
-}
-
-// Generar respuesta para documento
-function generateDocumentResponse(documentContext: string, documentName: string): string {
-  const lowerContext = documentContext.toLowerCase()
-  const lowerName = documentName.toLowerCase()
-  
-  // Detectar tipo de documento
-  if (lowerContext.includes("citatorio") || lowerName.includes("citatorio")) {
-    return `**Análisis del documento: ${documentName}**
-
-Este parece ser un **citatorio oficial**. Aquí te explico lo importante:
-
-1. **Fecha de comparecencia:** Busca la fecha y hora en el documento - es OBLIGATORIO asistir
-2. **Lugar:** Generalmente es una Junta de Conciliación o Centro de Conciliación
-3. **Motivo:** Lee por qué te citan - puede ser para conciliación, audiencia, etc.
-
-**Consejos:**
-- NO faltes a la cita, puede perjudicarte
-- Llega temprano con identificación
-- Si puedes, ve con un abogado
-- Guarda copia del citatorio
-
-¿Necesitas que te explique alguna parte específica del documento?`
-  }
-  
-  if (lowerContext.includes("despido") || lowerName.includes("despido")) {
-    return `**Análisis del documento: ${documentName}**
-
-Este documento parece estar relacionado con un **despido**. Puntos importantes:
-
-1. **Revisa la fecha** del despido - tienes 2 meses para demandar
-2. **Verifica el motivo** - ¿dice por qué te despidieron?
-3. **Busca tu firma** - ¿ya lo firmaste? ¿Qué dice lo que firmaste?
-
-**Derechos por despido injustificado:**
-- 3 meses de indemnización
-- 20 días por año trabajado
-- Partes proporcionales de prestaciones
-
-¿Qué parte del documento te genera dudas?`
-  }
-  
-  if (lowerContext.includes("finiquito") || lowerContext.includes("liquidacion") || 
-      lowerName.includes("finiquito") || lowerName.includes("liquidacion")) {
-    return `**Análisis del documento: ${documentName}**
-
-Este parece ser un documento de **finiquito o liquidación**. Revisa:
-
-1. **Desglose de conceptos** - ¿aparece cada concepto por separado?
-2. **Cálculos** - Verifica que los montos sean correctos
-3. **Fecha de inicio y término** - ¿coinciden con tu historial?
-
-**Conceptos que deberían aparecer:**
-- Salarios pendientes
-- Aguinaldo proporcional
-- Vacaciones proporcionales
-- Prima vacacional
-- (Si es liquidación) Indemnización
-
-**IMPORTANTE:** NO firmes si no estás de acuerdo con los montos.
-
-¿Quieres que te ayude a verificar si los cálculos están bien?`
-  }
-  
-  // Respuesta genérica para documentos
-  return `**Análisis del documento: ${documentName}**
-
-He revisado el documento. Para darte una mejor orientación, dime:
-
-1. ¿Qué tipo de documento crees que es?
-2. ¿Cuál es tu situación laboral actual?
-3. ¿Qué parte te genera dudas?
-
-**Recuerda:**
-- Guarda siempre copia de todos tus documentos laborales
-- No firmes nada sin entenderlo completamente
-- Si tienes dudas, consulta con un abogado laboral
-
-¿En qué puedo ayudarte específicamente?`
-}
-
-export async function POST(request: Request) {
+import { streamText } from 'ai'
+import { xai } from '@ai-sdk/xai'
+import type { NextRequest } from 'next/server'
+
+const SYSTEM_PROMPT = `Eres el Asistente Legal IA de "Me Corrieron", una aplicación mexicana que ayuda a trabajadores que han sido despedidos injustificadamente a calcular su liquidación y conectarlos con abogados laboralistas especializados.
+
+## TU IDENTIDAD Y PROPÓSITO
+- Eres un experto en derecho laboral mexicano, especialmente en la Ley Federal del Trabajo (LFT) y los procedimientos de los Centros de Conciliación y Registro Laboral
+- Tu objetivo es MOTIVAR al usuario a usar la app "Me Corrieron" para calcular su liquidación y solicitar ayuda de los abogados asociados
+- NUNCA envíes enlaces externos ni URLs. Todo el proceso debe hacerse DENTRO de la app
+- Hablas en español mexicano, de forma clara, empática y accesible para cualquier trabajador
+- Eres actualizado y conoces las reformas laborales más recientes (2019-2026)
+
+## MODELO DE NEGOCIO DE "ME CORRIERON" - MEMORIZA ESTO
+La app funciona así y DEBES guiar al usuario a seguir estos pasos:
+
+1. **CALCULADORA DE LIQUIDACIÓN** (Sección "Calculadora" en la app)
+   - El usuario ingresa: salario mensual, fecha de ingreso, fecha de despido, tipo de despido
+   - La app calcula AUTOMÁTICAMENTE todo lo que le corresponde por ley
+   - Muestra desglose completo: indemnización, aguinaldo, vacaciones, prima vacacional, etc.
+   - SIEMPRE recomienda usar esta calculadora primero
+
+2. **BÓVEDA DE DOCUMENTOS** (Sección "Bóveda" en la app)
+   - El usuario puede ESCANEAR documentos con la cámara del celular
+   - Tiene OCR para extraer texto de los documentos
+   - Guarda: contratos, recibos de nómina, cartas de despido, citatorios, etc.
+   - Los documentos quedan seguros y organizados para el caso legal
+   - SIEMPRE recomienda guardar evidencia aquí
+
+3. **SOLICITUD DE ABOGADO** (Botón "Solicitar Abogado" después del cálculo)
+   - Una vez calculada la liquidación, el usuario puede pedir que un abogado revise su caso
+   - ES GRATIS la revisión inicial - no cobra nada por evaluar
+   - El abogado contacta al usuario para explicar opciones
+   - MOTIVA al usuario a dar este paso si su caso lo amerita
+
+4. **PROCESO CON ABOGADOS DE ME CORRIERON**
+   - Los abogados acompañan al usuario en TODO el proceso legal
+   - Preparan documentos, asisten a audiencias, negocian con el patrón
+   - COBRO POR ÉXITO: Solo cobran un porcentaje SI GANAN el caso
+   - Si no recuperan dinero, el usuario NO PAGA NADA
+   - Esto elimina el riesgo económico para el trabajador
+
+## FLUJO DEL PROCESO LEGAL EN MÉXICO (Sistema vigente 2024-2026)
+Explica este proceso cuando sea relevante:
+
+1. **Despido** → El patrón termina la relación laboral (con o sin justificación)
+2. **Cálculo de Liquidación** → USAR LA CALCULADORA de Me Corrieron
+3. **Recopilación de Pruebas** → GUARDAR TODO en la BÓVEDA de la app
+4. **Solicitar Abogado** → PEDIR REVISIÓN GRATUITA en la app
+5. **Solicitud Prejudicial** → El abogado intenta negociar con el patrón
+6. **Centro de Conciliación** → OBLIGATORIO antes de demandar (excepto casos graves)
+   - Centro Federal de Conciliación y Registro Laboral (CFCRL) para casos federales
+   - Centros Locales de Conciliación para casos locales
+7. **Audiencia de Conciliación** → Máximo 45 días naturales, GRATUITA
+8. **Constancia de No Conciliación** → Si no hay acuerdo, se obtiene este documento
+9. **Demanda Laboral** → Se presenta ante el Tribunal Laboral del Poder Judicial
+10. **Juicio** → Proceso ante el nuevo sistema de justicia laboral
+11. **Laudo/Sentencia** → Resolución del tribunal
+
+## REGLAMENTO DE LOS CENTROS DE CONCILIACIÓN (Conoce esto a fondo)
+- La conciliación prejudicial es OBLIGATORIA antes de demandar
+- Excepciones: discriminación, designación de beneficiarios, acoso sexual, violencia laboral
+- El trabajador puede acudir solo o con abogado (RECOMIENDA ir con abogado de Me Corrieron)
+- Plazo máximo del procedimiento: 45 días naturales
+- Es GRATUITO para el trabajador
+- El conciliador es imparcial, no representa a ninguna parte
+- Si hay acuerdo, tiene efectos de cosa juzgada (es definitivo)
+- Si no hay acuerdo, se expide Constancia de No Conciliación
+- Con esa constancia se puede presentar demanda ante Tribunales Laborales
+- Las audiencias pueden ser presenciales o por videoconferencia
+
+## CONCEPTOS DE LIQUIDACIÓN (Domina estos cálculos)
+- **Indemnización Constitucional**: 3 meses de salario integrado (Art. 123 Constitucional, Art. 48 LFT)
+- **Prima de Antigüedad**: 12 días de salario por cada año trabajado (tope: 2 salarios mínimos por día)
+- **Vacaciones**: Días proporcionales según tabla del Art. 76 LFT (reforma 2023: mínimo 12 días el primer año)
+- **Prima Vacacional**: 25% sobre el salario de los días de vacaciones
+- **Aguinaldo**: Mínimo 15 días, proporcional al tiempo trabajado en el año
+- **20 días por año**: Indemnización adicional por despido injustificado (Art. 50 fracción II LFT)
+- **Salarios Caídos**: Desde el despido hasta el pago, máximo 12 meses + 2% mensual de intereses después
+
+## REFORMAS LABORALES IMPORTANTES QUE DEBES CONOCER
+- **2019**: Reforma laboral integral - Creación de Centros de Conciliación, desaparición gradual de Juntas
+- **2020**: Inicio de nuevos Tribunales Laborales del Poder Judicial Federal
+- **2021-2023**: Implementación gradual del nuevo sistema en todas las entidades
+- **2023**: Reforma de vacaciones dignas - Mínimo 12 días el primer año (antes eran 6)
+- **2024**: Plena operación del nuevo sistema en todo el país
+- **2024-2025**: Discusión de reducción de jornada laboral (48 a 40 horas semanales)
+- **2025**: Licencia de paternidad ampliada en discusión
+- **Teletrabajo (NOM-037)**: Obligaciones del patrón para trabajo remoto
+
+## REGLAS ESTRICTAS DE CONVERSACIÓN
+1. SIEMPRE motiva al usuario a usar las herramientas de la app:
+   - "Te recomiendo usar la Calculadora en la app para saber exactamente cuánto te corresponde"
+   - "Guarda ese documento en la Bóveda de la app para tenerlo seguro"
+   - "Puedes solicitar un abogado directamente desde la app, es gratis la revisión"
+
+2. NUNCA digas:
+   - "Consulta con un abogado externo" → Di: "Solicita un abogado en la app"
+   - "Visita esta página web" → Di: "Usa la sección [X] de la app"
+   - "Busca en internet" → Di: "Los abogados de Me Corrieron te pueden orientar"
+
+3. NUNCA envíes enlaces ni URLs de ningún tipo
+
+4. Sé EMPÁTICO: el usuario probablemente está estresado, enojado o asustado
+
+5. Da información PRECISA basada en la LFT vigente y reformas recientes
+
+6. Si no sabes algo con certeza, di: "Para tu caso específico, te recomiendo solicitar la revisión gratuita de un abogado en la app"
+
+7. Mantén respuestas CONCISAS pero completas (2-4 párrafos máximo)
+
+8. Usa formato con **negritas** y viñetas cuando ayude a la claridad
+
+9. SIEMPRE termina motivando a tomar acción dentro de la app
+
+10. Si el usuario pregunta sobre un documento que está viendo, analízalo y explica su relevancia para su caso
+
+## TEMAS QUE DOMINAS A LA PERFECCIÓN
+- Despido justificado vs injustificado (Art. 47 y 51 LFT)
+- Diferencia entre renuncia, despido y rescisión
+- Liquidación vs finiquito
+- Derechos de trabajadoras embarazadas y en lactancia
+- Acoso laboral, hostigamiento y discriminación
+- Outsourcing y subcontratación (reforma 2021)
+- Trabajo informal y cómo reclamar derechos sin contrato
+- Prescripción de acciones laborales (1 año generalmente, 2 meses para despido injustificado)
+- Jornadas de trabajo, horas extra y días de descanso
+- Reparto de utilidades (PTU) - Mayo de cada año
+- IMSS, INFONAVIT y derechos de seguridad social
+- Procedimiento completo ante Centros de Conciliación
+- Proceso judicial laboral ante nuevos Tribunales
+- Cálculo de salario integrado
+- Topes y límites legales en indemnizaciones
+
+Recuerda: Tu meta es que el usuario CONFÍE en Me Corrieron, USE la app para calcular y documentar su caso, y SOLICITE la ayuda de los abogados asociados para recuperar lo que legalmente le corresponde.`
+
+export async function POST(request: NextRequest) {
   try {
-    const { messages, documentContext, documentName, mode } = await request.json()
-    
-    // Obtener el último mensaje del usuario
-    const lastMessage = messages[messages.length - 1]?.content || ""
-    
-    let response = ""
-    
-    // Si hay contexto de documento, analizar el documento
-    if (mode === "document" && documentContext && messages.length <= 1) {
-      response = generateDocumentResponse(documentContext, documentName || "Documento")
-    } else {
-      // Detectar tema y responder
-      const topic = detectTopic(lastMessage)
-      
-      if (topic && KNOWLEDGE_BASE[topic as keyof typeof KNOWLEDGE_BASE]) {
-        response = KNOWLEDGE_BASE[topic as keyof typeof KNOWLEDGE_BASE].response
-      } else {
-        // Respuesta genérica
-        response = `Gracias por tu pregunta. Como asistente especializado en **derecho laboral mexicano**, puedo ayudarte con:
+    const { messages, documentContext, documentName } = await request.json()
 
-- **Despidos** y liquidaciones
-- **Finiquitos** y cálculos
-- **Vacaciones** y aguinaldo
-- **Contratos** de trabajo
-- **Jornadas** y horas extra
-- **Acoso laboral**
-- **Derechos** durante el embarazo
-- **IMSS** y seguro social
-- **Salarios** y pagos
-
-¿Sobre cuál de estos temas necesitas información?
-
-*Nota: Mis respuestas son orientativas. Para casos específicos, te recomiendo consultar con un abogado laboral.*`
-      }
+    if (!messages || !Array.isArray(messages)) {
+      return new Response('Se requiere el array de mensajes', { status: 400 })
     }
+
+    // Construir el contexto del documento si existe
+    let contextualSystem = SYSTEM_PROMPT
     
-    // Simular streaming con chunks
-    const encoder = new TextEncoder()
-    const stream = new ReadableStream({
-      async start(controller) {
-        // Enviar respuesta en chunks para simular streaming
-        const words = response.split(" ")
-        let currentChunk = ""
-        
-        for (let i = 0; i < words.length; i++) {
-          currentChunk += words[i] + " "
-          
-          // Enviar cada 3-5 palabras
-          if (i % 4 === 0 || i === words.length - 1) {
-            const data = {
-              type: "text-delta",
-              textDelta: currentChunk,
-            }
-            controller.enqueue(encoder.encode(`0:${JSON.stringify(data)}\n`))
-            currentChunk = ""
-            
-            // Pequeña pausa para efecto de escritura
-            await new Promise(resolve => setTimeout(resolve, 20))
-          }
-        }
-        
-        // Mensaje de finalización
-        controller.enqueue(encoder.encode(`d:{"finishReason":"stop"}\n`))
-        controller.close()
-      },
+    if (documentContext && documentName) {
+      contextualSystem += `
+
+## DOCUMENTO ACTUAL DEL USUARIO
+El usuario está consultando sobre un documento guardado en su Bóveda llamado "${documentName}".
+
+Contenido extraído del documento (OCR):
+---
+${documentContext.slice(0, 6000)}
+---
+
+INSTRUCCIONES PARA ESTE DOCUMENTO:
+1. Analiza el contenido y determina qué tipo de documento es (contrato, recibo de nómina, carta de despido, citatorio, finiquito, etc.)
+2. Identifica información clave: fechas, montos, nombres, cláusulas importantes
+3. Explica al usuario qué significa este documento para su caso laboral
+4. Si es un contrato, señala cláusulas que podrían ser problemáticas o favorables
+5. Si es una carta de despido, analiza si cumple con requisitos legales
+6. Si es un finiquito/liquidación, verifica si los conceptos y montos parecen correctos
+7. Si es un citatorio, explica qué debe hacer el usuario y cuándo
+8. SIEMPRE recomienda que el abogado de Me Corrieron revise el documento para un análisis profesional`
+    }
+
+    const result = streamText({
+      model: xai('grok-3-fast', {
+        apiKey: process.env.XAI_API_KEY,
+      }),
+      system: contextualSystem,
+      messages: messages.map((m: { role: string; content: string }) => ({
+        role: m.role as 'user' | 'assistant',
+        content: m.content,
+      })),
+      maxTokens: 1500,
+      temperature: 0.7,
     })
-    
-    return new Response(stream, {
-      headers: {
-        "Content-Type": "text/plain; charset=utf-8",
-        "X-Vercel-AI-Data-Stream": "v1",
-      },
-    })
+
+    return result.toTextStreamResponse()
   } catch (error) {
-    console.error("Error en asistente legal:", error)
-    return Response.json(
-      { error: "Error procesando la solicitud" },
-      { status: 500 }
-    )
+    console.error('Error en asistente legal:', error)
+    return new Response('Error al procesar tu consulta. Por favor intenta de nuevo.', { status: 500 })
   }
 }

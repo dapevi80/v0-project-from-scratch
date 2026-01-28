@@ -49,27 +49,26 @@ export function AIAssistant({
             {
               id: "initial",
               role: "assistant",
-              content: `¡Hola! Soy tu asistente legal especializado en **derecho laboral mexicano**.
+              content: `¡Hola! Soy tu asistente legal de **Me Corrieron**, especializado en **derecho laboral mexicano**.
 
-${documentName ? `Veo que tienes el documento "${documentName}". ` : ""}Estoy aquí para ayudarte a entenderlo y responder tus dudas.
+${documentName ? `Veo que estás consultando "${documentName}". ` : ""}Puedo ayudarte a entender este documento y cómo afecta tu caso laboral.
 
-¿Qué te gustaría saber sobre este documento?`,
+Pregúntame lo que necesites - estoy actualizado con las reformas laborales más recientes y conozco los procedimientos de los Centros de Conciliación.`,
             },
           ]
         : [
             {
               id: "welcome",
               role: "assistant",
-              content: `¡Hola! Soy tu asistente legal de **mecorrieron.mx**, especializado en derecho laboral mexicano.
+              content: `¡Hola! Soy tu asistente legal de **Me Corrieron**, especializado en derecho laboral mexicano.
 
-Puedo ayudarte con:
-- Despidos y liquidaciones
-- Cálculo de finiquitos
-- Vacaciones y aguinaldo
-- Contratos de trabajo
-- Derechos laborales
+Estoy aquí para ayudarte con:
+• **Calcular tu liquidación** - Te explico cómo usar la calculadora de la app
+• **Entender tus documentos** - Analizo contratos, cartas de despido, finiquitos
+• **Conocer tus derechos** - Despidos, vacaciones, aguinaldo, horas extra
+• **El proceso legal** - Centros de Conciliación, demandas, plazos
 
-¿En qué puedo ayudarte hoy?`,
+Conozco las reformas laborales más recientes y los reglamentos de los Centros de Conciliación. ¿En qué puedo ayudarte?`,
             },
           ],
     })
