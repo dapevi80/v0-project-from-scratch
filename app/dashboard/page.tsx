@@ -20,7 +20,7 @@ import type { User } from '@supabase/supabase-js'
 export default function DashboardPage() {
   const router = useRouter()
   const [user, setUser] = useState<User | null>(null)
-  const [profile, setProfile] = useState<{ role?: string; full_name?: string; codigo_usuario?: string; verification_status?: string } | null>(null)
+  const [profile, setProfile] = useState<{ role?: string; full_name?: string; codigo_usuario?: string; verification_status?: string; downgrade_reason?: string; previous_role?: string } | null>(null)
   const [casosActivos, setCasosActivos] = useState(0)
   const [loading, setLoading] = useState(true)
   const [showVerifiedEffect, setShowVerifiedEffect] = useState(false)
@@ -44,7 +44,7 @@ export default function DashboardPage() {
         
         // Ejecutar consultas en paralelo para mejor rendimiento
         const [profileResult, casosResult] = await Promise.all([
-          supabase.from('profiles').select('role, full_name, codigo_usuario, verification_status, celebration_shown').eq('id', currentUser.id).single(),
+          supabase.from('profiles').select('role, full_name, codigo_usuario, verification_status, celebration_shown, downgrade_reason, previous_role').eq('id', currentUser.id).single(),
           supabase.from('calculos_liquidacion').select('*', { count: 'exact', head: true }).eq('user_id', currentUser.id)
         ])
         
