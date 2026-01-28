@@ -23,7 +23,11 @@ import {
   Check,
   ZoomIn,
   Sun,
-  Contrast
+  Contrast,
+  Crop,
+  Wand2,
+  Move,
+  CornerUpLeft
 } from 'lucide-react'
 import { 
   processImageOCR, 
@@ -31,8 +35,13 @@ import {
   imageToCanvas,
   rotateImage,
   generatePageId,
+  detectDocumentCorners,
+  applyPerspectiveTransform,
+  autoEnhanceDocument,
   type ScanPage,
-  type OCRResult
+  type OCRResult,
+  type DocumentBounds,
+  type Corner
 } from '@/lib/ocr-scanner'
 import { subirDocumento, type CategoriaDocumento } from '@/app/boveda/actions'
 import jsPDF from 'jspdf'
@@ -44,7 +53,7 @@ interface OCRScannerProps {
 }
 
 export function OCRScanner({ onClose, onComplete, initialImages }: OCRScannerProps) {
-  const [step, setStep] = useState<'select' | 'scan' | 'review' | 'saving' | 'done'>('select')
+  const [step, setStep] = useState<'select' | 'scan' | 'crop' | 'review' | 'saving' | 'done'>('select')
   const [pages, setPages] = useState<ScanPage[]>([])
   const [currentPageIndex, setCurrentPageIndex] = useState(0)
   const [isProcessingOCR, setIsProcessingOCR] = useState(false)
@@ -54,6 +63,13 @@ export function OCRScanner({ onClose, onComplete, initialImages }: OCRScannerPro
   const [copied, setCopied] = useState(false)
   const [savingProgress, setSavingProgress] = useState('')
   const [enhancement, setEnhancement] = useState({ brightness: 0, contrast: 0 })
+  
+  // Estados para recorte inteligente
+  const [documentBounds, setDocumentBounds] = useState<DocumentBounds | null>(null)
+  const [isDetecting, setIsDetecting] = useState(false)
+  const [draggedCorner, setDraggedCorner] = useState<string | null>(null)
+  const [imageSize, setImageSize] = useState({ width: 0, height: 0 })
+  const cropContainerRef = useRef<HTMLDivElement>(null)
   
   const fileInputRef = useRef<HTMLInputElement>(null)
   const cameraInputRef = useRef<HTMLInputElement>(null)
@@ -325,6 +341,155 @@ export function OCRScanner({ onClose, onComplete, initialImages }: OCRScannerPro
     setEnhancement(prev => ({ ...prev, [type]: prev[type] + value }))
   }
 
+  // ===== FUNCIONES DE RECORTE INTELIGENTE =====
+  
+  // Detectar esquinas automáticamente
+  const handleDetectCorners = async () => {
+    const page = pages[currentPageIndex]
+    if (!page) return
+    
+    setIsDetecting(true)
+    
+    try {
+      const canvas = await imageToCanvas(page.imageUrl)
+      setImageSize({ width: canvas.width, height: canvas.height })
+      
+      const bounds = detectDocumentCorners(canvas)
+      setDocumentBounds(bounds)
+      setStep('crop')
+    } catch (error) {
+      console.error('Error detectando esquinas:', error)
+    } finally {
+      setIsDetecting(false)
+    }
+  }
+
+  // Manejar arrastre de esquina
+  const handleCornerDrag = (corner: string, clientX: number, clientY: number) => {
+    if (!cropContainerRef.current || !documentBounds) return
+    
+    const rect = cropContainerRef.current.getBoundingClientRect()
+    const scaleX = imageSize.width / rect.width
+    const scaleY = imageSize.height / rect.height
+    
+    const x = Math.max(0, Math.min(imageSize.width, (clientX - rect.left) * scaleX))
+    const y = Math.max(0, Math.min(imageSize.height, (clientY - rect.top) * scaleY))
+    
+    setDocumentBounds(prev => {
+      if (!prev) return prev
+      return {
+        ...prev,
+        [corner]: { x, y }
+      }
+    })
+  }
+
+  // Iniciar arrastre
+  const handleDragStart = (corner: string) => (e: React.MouseEvent | React.TouchEvent) => {
+    e.preventDefault()
+    setDraggedCorner(corner)
+  }
+
+  // Mover esquina
+  const handleDragMove = useCallback((e: MouseEvent | TouchEvent) => {
+    if (!draggedCorner) return
+    
+    const clientX = 'touches' in e ? e.touches[0].clientX : e.clientX
+    const clientY = 'touches' in e ? e.touches[0].clientY : e.clientY
+    
+    handleCornerDrag(draggedCorner, clientX, clientY)
+  }, [draggedCorner, imageSize, documentBounds])
+
+  // Terminar arrastre
+  const handleDragEnd = useCallback(() => {
+    setDraggedCorner(null)
+  }, [])
+
+  // Event listeners para arrastre
+  React.useEffect(() => {
+    if (draggedCorner) {
+      window.addEventListener('mousemove', handleDragMove)
+      window.addEventListener('mouseup', handleDragEnd)
+      window.addEventListener('touchmove', handleDragMove)
+      window.addEventListener('touchend', handleDragEnd)
+      
+      return () => {
+        window.removeEventListener('mousemove', handleDragMove)
+        window.removeEventListener('mouseup', handleDragEnd)
+        window.removeEventListener('touchmove', handleDragMove)
+        window.removeEventListener('touchend', handleDragEnd)
+      }
+    }
+  }, [draggedCorner, handleDragMove, handleDragEnd])
+
+  // Aplicar recorte y mejora
+  const handleApplyCrop = async () => {
+    const page = pages[currentPageIndex]
+    if (!page || !documentBounds) return
+    
+    setIsDetecting(true)
+    
+    try {
+      let canvas = await imageToCanvas(page.imageUrl)
+      
+      // Aplicar transformación de perspectiva
+      canvas = applyPerspectiveTransform(canvas, documentBounds)
+      
+      // Auto mejorar documento
+      canvas = autoEnhanceDocument(canvas)
+      
+      const newUrl = canvas.toDataURL('image/jpeg', 0.92)
+      
+      setPages(prev => prev.map((p, i) => 
+        i === currentPageIndex 
+          ? { ...p, imageUrl: newUrl, ocrResult: undefined }
+          : p
+      ))
+      
+      setDocumentBounds(null)
+      setStep('scan')
+    } catch (error) {
+      console.error('Error aplicando recorte:', error)
+    } finally {
+      setIsDetecting(false)
+    }
+  }
+
+  // Auto mejorar imagen sin recorte
+  const handleAutoEnhance = async () => {
+    const page = pages[currentPageIndex]
+    if (!page) return
+    
+    setIsDetecting(true)
+    
+    try {
+      let canvas = await imageToCanvas(page.imageUrl)
+      canvas = autoEnhanceDocument(canvas)
+      
+      const newUrl = canvas.toDataURL('image/jpeg', 0.92)
+      
+      setPages(prev => prev.map((p, i) => 
+        i === currentPageIndex 
+          ? { ...p, imageUrl: newUrl, ocrResult: undefined }
+          : p
+      ))
+    } catch (error) {
+      console.error('Error mejorando imagen:', error)
+    } finally {
+      setIsDetecting(false)
+    }
+  }
+
+  // Convertir coordenadas de imagen a coordenadas de pantalla
+  const getScreenCoords = (corner: Corner) => {
+    if (!cropContainerRef.current) return { x: 0, y: 0 }
+    const rect = cropContainerRef.current.getBoundingClientRect()
+    return {
+      x: (corner.x / imageSize.width) * rect.width,
+      y: (corner.y / imageSize.height) * rect.height
+    }
+  }
+
   const currentPage = pages[currentPageIndex]
 
   return (
@@ -504,39 +669,57 @@ export function OCRScanner({ onClose, onComplete, initialImages }: OCRScannerPro
           {/* Herramientas */}
           <div className="p-2 border-t space-y-2">
             {/* Controles de imagen */}
-            <div className="flex items-center justify-center gap-2">
+            <div className="flex items-center justify-center gap-1">
+              <button 
+                onClick={handleDetectCorners}
+                disabled={isDetecting}
+                className="p-1.5 hover:bg-purple-100 bg-purple-50 rounded-lg flex flex-col items-center gap-0.5 text-purple-600"
+                title="Recorte inteligente"
+              >
+                {isDetecting ? <Loader2 className="w-4 h-4 animate-spin" /> : <Crop className="w-4 h-4" />}
+                <span className="text-[8px] font-medium">Recortar</span>
+              </button>
+              <button 
+                onClick={handleAutoEnhance}
+                disabled={isDetecting}
+                className="p-1.5 hover:bg-amber-100 bg-amber-50 rounded-lg flex flex-col items-center gap-0.5 text-amber-600"
+                title="Mejorar automáticamente"
+              >
+                <Wand2 className="w-4 h-4" />
+                <span className="text-[8px]">Auto</span>
+              </button>
               <button 
                 onClick={handleRotate}
-                className="p-2 hover:bg-muted rounded-lg flex flex-col items-center gap-0.5"
+                className="p-1.5 hover:bg-muted rounded-lg flex flex-col items-center gap-0.5"
                 title="Rotar"
               >
                 <RotateCw className="w-4 h-4" />
-                <span className="text-[9px]">Rotar</span>
+                <span className="text-[8px]">Rotar</span>
               </button>
               <button 
                 onClick={() => handleEnhance('brightness', 10)}
-                className="p-2 hover:bg-muted rounded-lg flex flex-col items-center gap-0.5"
+                className="p-1.5 hover:bg-muted rounded-lg flex flex-col items-center gap-0.5"
                 title="Más brillo"
               >
                 <Sun className="w-4 h-4" />
-                <span className="text-[9px]">Brillo+</span>
+                <span className="text-[8px]">Brillo</span>
               </button>
               <button 
                 onClick={() => handleEnhance('contrast', 10)}
-                className="p-2 hover:bg-muted rounded-lg flex flex-col items-center gap-0.5"
+                className="p-1.5 hover:bg-muted rounded-lg flex flex-col items-center gap-0.5"
                 title="Más contraste"
               >
                 <Contrast className="w-4 h-4" />
-                <span className="text-[9px]">Contraste+</span>
+                <span className="text-[8px]">Contraste</span>
               </button>
               <button
                 onClick={handleProcessOCR}
                 disabled={isProcessingOCR || currentPage?.ocrResult !== undefined}
-                className="p-2 hover:bg-muted rounded-lg flex flex-col items-center gap-0.5 disabled:opacity-50"
+                className="p-1.5 hover:bg-muted rounded-lg flex flex-col items-center gap-0.5 disabled:opacity-50"
                 title="Extraer texto"
               >
                 <ScanLine className="w-4 h-4" />
-                <span className="text-[9px]">OCR</span>
+                <span className="text-[8px]">OCR</span>
               </button>
             </div>
             
@@ -584,6 +767,150 @@ export function OCRScanner({ onClose, onComplete, initialImages }: OCRScannerPro
             onChange={handleCameraCapture}
             className="hidden"
           />
+        </div>
+      )}
+
+      {/* ===== RECORTE INTELIGENTE ===== */}
+      {step === 'crop' && currentPage && documentBounds && (
+        <div className="flex flex-col h-full">
+          {/* Header */}
+          <div className="flex items-center justify-between p-2 border-b bg-purple-50">
+            <button onClick={() => { setStep('scan'); setDocumentBounds(null) }} className="p-1.5 hover:bg-purple-100 rounded-lg">
+              <CornerUpLeft className="w-4 h-4 text-purple-600" />
+            </button>
+            <div className="text-center">
+              <span className="text-xs font-medium text-purple-700">Ajusta las esquinas</span>
+              <p className="text-[9px] text-purple-500">Arrastra los puntos para recortar</p>
+            </div>
+            <button onClick={onClose} className="p-1.5 hover:bg-purple-100 rounded-lg">
+              <X className="w-4 h-4 text-purple-600" />
+            </button>
+          </div>
+          
+          {/* Área de recorte */}
+          <div className="flex-1 relative bg-gray-900 flex items-center justify-center overflow-hidden p-2">
+            <div 
+              ref={cropContainerRef}
+              className="relative max-w-full max-h-full"
+              style={{ touchAction: 'none' }}
+            >
+              <img 
+                src={currentPage.imageUrl || "/placeholder.svg"} 
+                alt="Documento"
+                className="max-w-full max-h-[50vh] object-contain"
+                onLoad={(e) => {
+                  const img = e.target as HTMLImageElement
+                  setImageSize({ width: img.naturalWidth, height: img.naturalHeight })
+                }}
+              />
+              
+              {/* Overlay con área de recorte */}
+              <svg 
+                className="absolute inset-0 w-full h-full pointer-events-none"
+                style={{ overflow: 'visible' }}
+              >
+                {/* Polígono de recorte */}
+                {cropContainerRef.current && (
+                  <>
+                    {/* Máscara oscura fuera del área */}
+                    <defs>
+                      <mask id="cropMask">
+                        <rect width="100%" height="100%" fill="white" />
+                        <polygon
+                          points={`
+                            ${getScreenCoords(documentBounds.topLeft).x},${getScreenCoords(documentBounds.topLeft).y}
+                            ${getScreenCoords(documentBounds.topRight).x},${getScreenCoords(documentBounds.topRight).y}
+                            ${getScreenCoords(documentBounds.bottomRight).x},${getScreenCoords(documentBounds.bottomRight).y}
+                            ${getScreenCoords(documentBounds.bottomLeft).x},${getScreenCoords(documentBounds.bottomLeft).y}
+                          `}
+                          fill="black"
+                        />
+                      </mask>
+                    </defs>
+                    <rect width="100%" height="100%" fill="rgba(0,0,0,0.5)" mask="url(#cropMask)" />
+                    
+                    {/* Líneas del borde */}
+                    <polygon
+                      points={`
+                        ${getScreenCoords(documentBounds.topLeft).x},${getScreenCoords(documentBounds.topLeft).y}
+                        ${getScreenCoords(documentBounds.topRight).x},${getScreenCoords(documentBounds.topRight).y}
+                        ${getScreenCoords(documentBounds.bottomRight).x},${getScreenCoords(documentBounds.bottomRight).y}
+                        ${getScreenCoords(documentBounds.bottomLeft).x},${getScreenCoords(documentBounds.bottomLeft).y}
+                      `}
+                      fill="none"
+                      stroke="#a855f7"
+                      strokeWidth="2"
+                      strokeDasharray="5,5"
+                    />
+                  </>
+                )}
+              </svg>
+              
+              {/* Puntos de esquina arrastrables */}
+              {cropContainerRef.current && (
+                <>
+                  {(['topLeft', 'topRight', 'bottomRight', 'bottomLeft'] as const).map((corner) => {
+                    const coords = getScreenCoords(documentBounds[corner])
+                    return (
+                      <div
+                        key={corner}
+                        onMouseDown={handleDragStart(corner)}
+                        onTouchStart={handleDragStart(corner)}
+                        className={`absolute w-6 h-6 -ml-3 -mt-3 rounded-full border-3 cursor-move transition-transform ${
+                          draggedCorner === corner ? 'scale-125 bg-purple-500' : 'bg-white'
+                        } border-purple-500 shadow-lg flex items-center justify-center pointer-events-auto`}
+                        style={{ 
+                          left: coords.x, 
+                          top: coords.y,
+                          touchAction: 'none'
+                        }}
+                      >
+                        <Move className="w-3 h-3 text-purple-600" />
+                      </div>
+                    )
+                  })}
+                </>
+              )}
+            </div>
+          </div>
+          
+          {/* Info de detección */}
+          <div className="p-2 bg-muted/50 border-t">
+            <div className="flex items-center justify-center gap-2 mb-2">
+              <div className={`w-2 h-2 rounded-full ${documentBounds.detected ? 'bg-green-500' : 'bg-amber-500'}`} />
+              <span className="text-[10px] text-muted-foreground">
+                {documentBounds.detected 
+                  ? `Documento detectado (${Math.round(documentBounds.confidence * 100)}% confianza)`
+                  : 'Ajusta manualmente las esquinas'
+                }
+              </span>
+            </div>
+          </div>
+          
+          {/* Botones de acción */}
+          <div className="p-3 border-t flex gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => { setStep('scan'); setDocumentBounds(null) }}
+              className="flex-1"
+            >
+              Cancelar
+            </Button>
+            <Button
+              size="sm"
+              onClick={handleApplyCrop}
+              disabled={isDetecting}
+              className="flex-1 bg-gradient-to-r from-purple-500 to-pink-500 text-white"
+            >
+              {isDetecting ? (
+                <Loader2 className="w-4 h-4 animate-spin mr-1" />
+              ) : (
+                <Crop className="w-4 h-4 mr-1" />
+              )}
+              Aplicar recorte
+            </Button>
+          </div>
         </div>
       )}
 
