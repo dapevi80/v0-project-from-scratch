@@ -14,7 +14,12 @@ import {
   HelpCircle,
   RefreshCw,
 } from "lucide-react"
-import { useChat } from "@ai-sdk/react"
+
+interface Message {
+  id: string
+  role: "user" | "assistant"
+  content: string
+}
 
 interface AIAssistantProps {
   isOpen: boolean
@@ -40,9 +45,10 @@ const ASSISTANTS = {
     gradient: "from-green-600 to-emerald-600",
     borderColor: "border-green-300",
     buttonColor: "bg-green-600 hover:bg-green-700",
+    api: "/api/legal-assistant",
     welcomeMessage: (docName?: string) => docName 
-      ? `¡Hola! Soy **Lía**, tu asistente legal de **Me Corrieron**. Mi nombre viene de "Ley" + "IA" - soy tu aliada en derecho laboral mexicano.\n\nVeo que tienes el documento "${docName}". Puedo ayudarte a entenderlo y explicarte cómo te afecta.\n\nPregúntame lo que necesites - estoy al día con las reformas laborales.`
-      : `¡Hola! Soy **Lía**, tu asistente legal de **Me Corrieron**. Mi nombre viene de "Ley" + "IA" - soy tu aliada en derecho laboral mexicano.\n\nPuedo ayudarte con:\n• **Calcular tu liquidación** - Te guío paso a paso\n• **Entender documentos** - Contratos, cartas de despido\n• **Conocer tus derechos** - Ley Federal del Trabajo\n• **El proceso legal** - Conciliación, demandas\n\n¿En qué te ayudo hoy?`,
+      ? `¡Hola! Soy **Lía**, tu asistente legal de **Me Corrieron**. Mi nombre viene de "Ley" + "IA" - soy tu aliada en derecho laboral mexicano.\n\nVeo que tienes el documento "${docName}". Puedo ayudarte a entenderlo.\n\n¿Qué quieres saber?`
+      : `¡Hola! Soy **Lía**, tu asistente legal de **Me Corrieron**. Mi nombre viene de "Ley" + "IA" - soy tu aliada en derecho laboral mexicano.\n\nPuedo ayudarte con:\n• **Calcular tu liquidación**\n• **Entender documentos**\n• **Conocer tus derechos**\n• **El proceso legal**\n\n¿En qué te ayudo hoy?`,
     loadingText: "Lía está escribiendo...",
   },
   mandu: {
@@ -52,14 +58,13 @@ const ASSISTANTS = {
     gradient: "from-slate-600 to-slate-700",
     borderColor: "border-slate-300",
     buttonColor: "bg-slate-600 hover:bg-slate-700",
-    welcomeMessage: (docName?: string) => docName
-      ? `*bosteza* Miau... Soy **Mandu**, el gato legal de Me Corrieron. Estaba tomando una siesta pero bueno, aquí estoy...\n\nVeo que tienes "${docName}". Déjame revisarlo mientras me estiro un poco...\n\n*se rasca la oreja* ¿Qué quieres saber?`
-      : `*bosteza* Miau... Soy **Mandu**, el gato legal de Me Corrieron. Preferiría estar durmiendo, pero está bien... te ayudo.\n\nPuedo ayudarte con:\n• **Liquidaciones** - *ronronea* Son mis favoritas\n• **Documentos** - Los analizo mientras dormito\n• **Tus derechos** - Conozco la ley de memoria\n• **Procesos legales** - *se lame la pata*\n\n¿Qué necesitas? Hazlo rápido que tengo sueño...`,
-    loadingText: "Mandu está pensando... *bosteza*",
+    api: "/api/mandu-assistant",
+    welcomeMessage: () => `*bosteza* Miau... Soy **Mandu**, el gato legal. Preferiría dormir, pero te ayudo... 😺\n\nPuedo ayudarte con:\n• **Liquidaciones** - *ronronea*\n• **Documentos legales**\n• **Tus derechos laborales**\n\n¿Qué necesitas? *se lame la pata* 💤`,
+    loadingText: "Mandu piensa... *bosteza*",
   }
 }
 
-type AssistantType = 'lia' | 'mandu'
+type AssistantType = keyof typeof ASSISTANTS
 
 export function AIAssistant({
   isOpen,
@@ -67,26 +72,21 @@ export function AIAssistant({
   documentText,
   documentName,
 }: AIAssistantProps) {
+  const [currentAssistant, setCurrentAssistant] = useState<AssistantType>('lia')
+  const [messages, setMessages] = useState<Message[]>([])
+  const [inputValue, setInputValue] = useState("")
+  const [isLoading, setIsLoading] = useState(false)
+  const [streamingContent, setStreamingContent] = useState("")
+  
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const inputRef = useRef<HTMLInputElement>(null)
-  const [currentAssistant, setCurrentAssistant] = useState<AssistantType>('lia')
-  const [manduAwake, setManduAwake] = useState(false)
-  const [inputValue, setInputValue] = useState("")
 
   const assistant = ASSISTANTS[currentAssistant]
   const welcomeMessage = assistant.welcomeMessage(documentName)
 
-  const { messages, append, isLoading, setMessages } = useChat({
-    api: currentAssistant === 'mandu' ? "/api/mandu-assistant" : "/api/legal-assistant",
-    body: {
-      documentContext: documentText,
-      documentName: documentName,
-    },
-  })
-
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" })
-  }, [messages])
+  }, [messages, streamingContent])
 
   useEffect(() => {
     if (isOpen) {
@@ -94,24 +94,75 @@ export function AIAssistant({
     }
   }, [isOpen])
 
-  // Despertar a Mandu cuando hay mensajes del usuario
+  // Limpiar mensajes al cambiar de asistente
   useEffect(() => {
-    if (currentAssistant === 'mandu' && messages.some(m => m.role === 'user')) {
-      setManduAwake(true)
-    }
-  }, [messages, currentAssistant])
-
-  const switchAssistant = () => {
-    const newAssistant = currentAssistant === 'lia' ? 'mandu' : 'lia'
-    setCurrentAssistant(newAssistant)
-    setMessages([]) // Limpiar mensajes al cambiar
-    setManduAwake(false) // Mandu vuelve a dormir
-  }
+    setMessages([])
+    setStreamingContent("")
+  }, [currentAssistant])
 
   const sendMessage = async (text: string) => {
     if (!text.trim() || isLoading) return
+
+    const userMessage: Message = {
+      id: `user-${Date.now()}`,
+      role: "user",
+      content: text,
+    }
+
+    setMessages(prev => [...prev, userMessage])
     setInputValue("")
-    await append({ role: "user", content: text })
+    setIsLoading(true)
+    setStreamingContent("")
+
+    try {
+      const response = await fetch(assistant.api, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          messages: [...messages, userMessage].map(m => ({
+            role: m.role,
+            content: m.content,
+          })),
+          documentContext: documentText,
+          documentName: documentName,
+        }),
+      })
+
+      if (!response.ok) throw new Error("Error en la respuesta")
+
+      const reader = response.body?.getReader()
+      const decoder = new TextDecoder()
+      let fullContent = ""
+
+      if (reader) {
+        while (true) {
+          const { done, value } = await reader.read()
+          if (done) break
+          const chunk = decoder.decode(value, { stream: true })
+          fullContent += chunk
+          setStreamingContent(fullContent)
+        }
+      }
+
+      const assistantMessage: Message = {
+        id: `assistant-${Date.now()}`,
+        role: "assistant",
+        content: fullContent || "Lo siento, no pude procesar tu mensaje.",
+      }
+
+      setMessages(prev => [...prev, assistantMessage])
+      setStreamingContent("")
+    } catch (error) {
+      console.error("Error:", error)
+      const errorMessage: Message = {
+        id: `error-${Date.now()}`,
+        role: "assistant",
+        content: "Hubo un error. Por favor intenta de nuevo.",
+      }
+      setMessages(prev => [...prev, errorMessage])
+    } finally {
+      setIsLoading(false)
+    }
   }
 
   const handleQuickQuestion = (question: string) => {
@@ -123,11 +174,16 @@ export function AIAssistant({
     sendMessage(inputValue)
   }
 
-  // Mostrar mensaje de bienvenida + mensajes del chat
-  const allMessages = [
-    { id: "welcome", role: "assistant" as const, content: welcomeMessage },
-    ...messages,
-  ]
+  const switchAssistant = () => {
+    setCurrentAssistant(prev => prev === 'lia' ? 'mandu' : 'lia')
+  }
+
+  const formatContent = (content: string) => {
+    return content
+      .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
+      .replace(/\*(.*?)\*/g, '<em>$1</em>')
+      .replace(/\n/g, '<br/>')
+  }
 
   if (!isOpen) return null
 
@@ -142,69 +198,75 @@ export function AIAssistant({
       {/* Dialog */}
       <div className="relative w-full max-w-md h-[85vh] sm:h-[80vh] bg-white rounded-t-3xl sm:rounded-2xl shadow-2xl flex flex-col overflow-hidden animate-in slide-in-from-bottom-4 duration-300">
         {/* Header */}
-        <div className={`p-4 border-b bg-gradient-to-r ${assistant.gradient} flex items-center justify-between`}>
-          <div className="flex items-center gap-3">
-            {/* Avatar con animación para Mandu */}
-            <div className={`relative w-12 h-12 rounded-full overflow-hidden border-2 border-white/40 shadow-lg bg-white ${
-              currentAssistant === 'mandu' && !manduAwake ? 'mandu-sleeping' : ''
-            } ${currentAssistant === 'mandu' && manduAwake ? 'mandu-awake' : ''}`}>
-              <img 
-                src={assistant.avatar || "/placeholder.svg"}
-                alt={assistant.name}
-                className="w-full h-full object-cover"
-              />
-              {/* Zzzs para Mandu dormido */}
-              {currentAssistant === 'mandu' && !manduAwake && (
-                <div className="absolute -top-1 -right-1 text-xs animate-bounce">
-                  <span className="text-white font-bold drop-shadow-lg">z</span>
-                  <span className="text-white/80 text-[10px] font-bold drop-shadow-lg">z</span>
-                  <span className="text-white/60 text-[8px] font-bold drop-shadow-lg">z</span>
-                </div>
-              )}
+        <div className={`p-4 border-b bg-gradient-to-r ${assistant.gradient}`}>
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <div className="w-12 h-12 rounded-full overflow-hidden border-2 border-white/40 shadow-lg bg-white">
+                <img 
+                  src={assistant.avatar || "/placeholder.svg"}
+                  alt={assistant.name}
+                  className="w-full h-full object-cover"
+                />
+              </div>
+              <div>
+                <h2 className="text-white text-base font-semibold flex items-center gap-2">
+                  {assistant.name}
+                  <Sparkles className="w-4 h-4 text-yellow-300" />
+                </h2>
+                <p className="text-white/80 text-xs">
+                  {assistant.subtitle}
+                </p>
+              </div>
             </div>
-            <div>
-              <h2 className="text-white text-base font-semibold flex items-center gap-2">
-                {assistant.name}
-                <Sparkles className="w-4 h-4 text-yellow-300" />
-              </h2>
-              <p className="text-white/80 text-xs">
-                {assistant.subtitle}
-              </p>
-              {/* Botón cambiar asistente */}
-              <button
-                onClick={switchAssistant}
-                className="mt-1 flex items-center gap-1 text-[10px] text-white/70 hover:text-white transition-colors"
-              >
-                <RefreshCw className="w-3 h-3" />
-                Cambiar a {currentAssistant === 'lia' ? 'Mandu' : 'Lía'}
-              </button>
-            </div>
+            <button
+              onClick={onClose}
+              className="w-8 h-8 rounded-full bg-white/20 hover:bg-white/30 flex items-center justify-center transition-colors"
+            >
+              <X className="w-5 h-5 text-white" />
+            </button>
           </div>
+          
+          {/* Botón cambiar asistente */}
           <button
-            onClick={onClose}
-            className="w-8 h-8 rounded-full bg-white/20 hover:bg-white/30 flex items-center justify-center transition-colors"
+            onClick={switchAssistant}
+            className="mt-3 w-full flex items-center justify-center gap-2 py-2 px-3 rounded-xl bg-white/20 hover:bg-white/30 transition-colors text-white text-xs font-medium"
           >
-            <X className="w-5 h-5 text-white" />
+            <RefreshCw className="w-3.5 h-3.5" />
+            Cambiar a {currentAssistant === 'lia' ? 'Mandu (gato perezoso)' : 'Lía (asistente legal)'}
           </button>
         </div>
 
         {/* Mensajes */}
         <div className="flex-1 overflow-y-auto p-4 space-y-4 bg-slate-50">
-          {allMessages.map((message) => (
+          {/* Mensaje de bienvenida */}
+          <div className="flex gap-3">
+            <div className={`w-8 h-8 rounded-full overflow-hidden shrink-0 border-2 ${assistant.borderColor} bg-white`}>
+              <img 
+                src={assistant.avatar || "/placeholder.svg"}
+                alt={assistant.name}
+                className="w-full h-full object-cover"
+              />
+            </div>
+            <div className="max-w-[80%] rounded-2xl px-4 py-3 bg-white border shadow-sm">
+              <div
+                className="text-sm leading-relaxed prose prose-sm max-w-none"
+                dangerouslySetInnerHTML={{ __html: formatContent(welcomeMessage) }}
+              />
+            </div>
+          </div>
+
+          {/* Mensajes del chat */}
+          {messages.map((message) => (
             <div
               key={message.id}
-              className={`flex gap-3 ${
-                message.role === "user" ? "flex-row-reverse" : ""
-              }`}
+              className={`flex gap-3 ${message.role === "user" ? "flex-row-reverse" : ""}`}
             >
               {message.role === "user" ? (
                 <div className="w-8 h-8 rounded-full bg-blue-600 flex items-center justify-center shrink-0">
                   <User className="w-4 h-4 text-white" />
                 </div>
               ) : (
-                <div className={`relative w-8 h-8 rounded-full overflow-hidden shrink-0 border-2 ${assistant.borderColor} bg-white ${
-                  currentAssistant === 'mandu' && !manduAwake ? 'mandu-sleeping-small' : ''
-                }`}>
+                <div className={`w-8 h-8 rounded-full overflow-hidden shrink-0 border-2 ${assistant.borderColor} bg-white`}>
                   <img 
                     src={assistant.avatar || "/placeholder.svg"}
                     alt={assistant.name}
@@ -220,24 +282,36 @@ export function AIAssistant({
                 }`}
               >
                 <div
-                  className={`text-sm leading-relaxed whitespace-pre-wrap ${
-                    message.role === "user" ? "" : "prose prose-sm max-w-none"
-                  }`}
+                  className={`text-sm leading-relaxed ${message.role === "assistant" ? "prose prose-sm max-w-none" : ""}`}
                   dangerouslySetInnerHTML={{
-                    __html: message.role === "assistant" 
-                      ? message.content
-                          .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
-                          .replace(/\*(.*?)\*/g, '<em class="text-slate-500">$1</em>')
-                          .replace(/\n/g, '<br/>')
-                      : message.content
+                    __html: message.role === "assistant" ? formatContent(message.content) : message.content
                   }}
                 />
               </div>
             </div>
           ))}
 
-          {/* Preguntas rápidas - solo si no hay mensajes del usuario */}
-          {messages.length === 0 && (
+          {/* Streaming content */}
+          {streamingContent && (
+            <div className="flex gap-3">
+              <div className={`w-8 h-8 rounded-full overflow-hidden shrink-0 border-2 ${assistant.borderColor} bg-white`}>
+                <img 
+                  src={assistant.avatar || "/placeholder.svg"}
+                  alt={assistant.name}
+                  className="w-full h-full object-cover"
+                />
+              </div>
+              <div className="max-w-[80%] rounded-2xl px-4 py-3 bg-white border shadow-sm">
+                <div
+                  className="text-sm leading-relaxed prose prose-sm max-w-none"
+                  dangerouslySetInnerHTML={{ __html: formatContent(streamingContent) }}
+                />
+              </div>
+            </div>
+          )}
+
+          {/* Preguntas rápidas */}
+          {messages.length === 0 && !streamingContent && (
             <div className="space-y-2 pt-2">
               <p className="text-xs text-muted-foreground text-center mb-3">Preguntas frecuentes:</p>
               <div className="grid grid-cols-2 gap-2">
@@ -245,7 +319,8 @@ export function AIAssistant({
                   <button
                     key={i}
                     onClick={() => handleQuickQuestion(q.text)}
-                    className={`flex items-center gap-2 p-3 rounded-xl text-left text-xs font-medium transition-all hover:scale-[1.02] ${q.color}`}
+                    disabled={isLoading}
+                    className={`flex items-center gap-2 p-3 rounded-xl text-left text-xs font-medium transition-all hover:scale-[1.02] disabled:opacity-50 ${q.color}`}
                   >
                     <q.icon className="w-4 h-4 shrink-0" />
                     <span className="line-clamp-2">{q.text}</span>
@@ -255,7 +330,8 @@ export function AIAssistant({
             </div>
           )}
 
-          {isLoading && (
+          {/* Loading indicator */}
+          {isLoading && !streamingContent && (
             <div className="flex gap-3">
               <div className={`w-8 h-8 rounded-full overflow-hidden shrink-0 border-2 ${assistant.borderColor} bg-white`}>
                 <img 
@@ -278,7 +354,6 @@ export function AIAssistant({
 
         {/* Input */}
         <form
-          id="chat-form"
           onSubmit={onFormSubmit}
           className="p-4 border-t bg-white flex gap-2"
         >
@@ -287,10 +362,8 @@ export function AIAssistant({
             type="text"
             value={inputValue}
             onChange={(e) => setInputValue(e.target.value)}
-            placeholder={currentAssistant === 'mandu' ? "Escribe... *bosteza*" : "Escribe tu pregunta..."}
-            className={`flex-1 px-4 py-2.5 rounded-full border-2 bg-slate-50 focus:bg-white outline-none text-sm ${
-              currentAssistant === 'lia' ? 'focus:border-green-400' : 'focus:border-slate-400'
-            }`}
+            placeholder="Escribe tu pregunta..."
+            className="flex-1 px-4 py-2.5 rounded-full border-2 bg-slate-50 focus:bg-white focus:border-green-400 outline-none text-sm"
             disabled={isLoading}
           />
           <Button
@@ -307,34 +380,6 @@ export function AIAssistant({
           </Button>
         </form>
       </div>
-
-      {/* CSS para animaciones de Mandu */}
-      <style jsx global>{`
-        @keyframes mandu-sleep {
-          0%, 100% { transform: rotate(-3deg) translateY(0); }
-          50% { transform: rotate(3deg) translateY(2px); }
-        }
-        
-        @keyframes mandu-wake {
-          0% { transform: scale(1) rotate(0deg); }
-          25% { transform: scale(1.1) rotate(-5deg); }
-          50% { transform: scale(1.15) rotate(5deg); }
-          75% { transform: scale(1.1) rotate(-3deg); }
-          100% { transform: scale(1) rotate(0deg); }
-        }
-        
-        .mandu-sleeping {
-          animation: mandu-sleep 2s ease-in-out infinite;
-        }
-        
-        .mandu-sleeping-small {
-          animation: mandu-sleep 3s ease-in-out infinite;
-        }
-        
-        .mandu-awake {
-          animation: mandu-wake 0.6s ease-out forwards;
-        }
-      `}</style>
     </div>
   )
 }
@@ -349,7 +394,7 @@ export function AIAssistantButton({ onClick }: { onClick: () => void }) {
     >
       <img 
         src="/lia-avatar.jpg" 
-        alt="Asistente Legal" 
+        alt="Lía - Asistente Legal" 
         className="w-full h-full object-cover"
       />
       
