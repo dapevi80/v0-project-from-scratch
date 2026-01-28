@@ -22,103 +22,146 @@ import Link from "next/link"
 
 // Temas disponibles para white-label
 const THEMES = {
-  ppAbogados: {
+  // TEMA DEFAULT - mecorrieron.mx (look and feel real de la app)
+  mecorrieron: {
+    id: "mecorrieron",
+    name: "mecorrieron.mx",
+    description: "Look and feel original de la plataforma",
+    primary: "#2563EB",      // Azul confianza
+    primaryLight: "#3B82F6",
+    primaryDark: "#1D4ED8",
+    secondary: "#DC2626",    // Rojo urgencia
+    accent: "#EFF6FF",       // Azul muy claro
+    background: "#FAFAFA",
+    cardBg: "#FFFFFF",
+    textPrimary: "#1a1a2e",
+    textSecondary: "#64748b",
+    gradient: "from-blue-600 via-blue-500 to-blue-700",
+    style: "original",
+    isDefault: true
+  },
+  // TEMAS PARA CLIENTES (version simplificada)
+  clienteClasico: {
     id: "clasico",
-    name: "Clasico Dorado",
-    description: "Elegante y tradicional",
+    name: "Clasico Profesional",
+    description: "Elegante y tradicional para despachos",
     primary: "#B8860B",
     primaryLight: "#D4A84B",
     primaryDark: "#8B6914",
     secondary: "#1a1a2e",
-    accent: "#C9A227",
+    accent: "#FEF3C7",
     background: "#FAFAF8",
     cardBg: "#FFFFFF",
     textPrimary: "#1a1a2e",
     textSecondary: "#64748b",
     gradient: "from-amber-600 via-yellow-600 to-amber-700",
-    style: "elegant"
+    style: "client"
   },
-  ppModerno: {
+  clienteModerno: {
     id: "navy",
-    name: "Moderno Navy",
+    name: "Moderno Corporativo",
     description: "Profesional y contemporaneo",
     primary: "#1e3a5f",
     primaryLight: "#2d4a6f",
     primaryDark: "#0f2a4f",
     secondary: "#C9A227",
-    accent: "#B8860B",
+    accent: "#F1F5F9",
     background: "#F8FAFC",
     cardBg: "#FFFFFF",
     textPrimary: "#1e3a5f",
     textSecondary: "#64748b",
     gradient: "from-slate-800 via-slate-700 to-slate-900",
-    style: "modern"
+    style: "client"
   },
-  ppMinimalista: {
+  clienteMinimal: {
     id: "minimal",
     name: "Minimalista",
     description: "Limpio y enfocado",
     primary: "#2C3E50",
     primaryLight: "#34495E",
     primaryDark: "#1a252f",
-    secondary: "#D4AF37",
-    accent: "#E8D5B7",
+    secondary: "#10B981",
+    accent: "#F0FDF4",
     background: "#FFFFFF",
     cardBg: "#F9FAFB",
     textPrimary: "#2C3E50",
     textSecondary: "#7f8c8d",
     gradient: "from-gray-800 via-gray-700 to-gray-900",
-    style: "minimal"
+    style: "client"
   },
-  ppLujo: {
-    id: "luxury",
-    name: "Lujo Premium",
+  clientePremium: {
+    id: "premium",
+    name: "Premium Oscuro",
     description: "Exclusivo y sofisticado",
-    primary: "#0D0D0D",
-    primaryLight: "#1a1a1a",
-    primaryDark: "#000000",
-    secondary: "#D4AF37",
-    accent: "#C9A227",
-    background: "#0D0D0D",
-    cardBg: "#1a1a1a",
+    primary: "#D4AF37",
+    primaryLight: "#E5C158",
+    primaryDark: "#B8960B",
+    secondary: "#FFFFFF",
+    accent: "#1F2937",
+    background: "#0F0F0F",
+    cardBg: "#1A1A1A",
     textPrimary: "#FFFFFF",
     textSecondary: "#9CA3AF",
-    gradient: "from-black via-gray-900 to-black",
-    style: "luxury"
+    gradient: "from-amber-500 via-yellow-500 to-amber-600",
+    style: "dark"
   }
 }
 
 type ThemeKey = keyof typeof THEMES
-type LogoVariant = "original" | "balanza" | "escudo" | "geometrico" | "elegante"
+type LogoVariant = "mecorrieron" | "original" | "balanza" | "escudo" | "geometrico"
 
 const LOGO_VARIANTS = {
-  original: { name: "Logo Original", description: "Tu logo actual sin modificaciones" },
-  balanza: { name: "Balanza Central", description: "Balanza de justicia integrada entre las P" },
-  escudo: { name: "Escudo Protector", description: "Ampersand dentro de un escudo de proteccion" },
-  geometrico: { name: "Geometrico Moderno", description: "Formas geometricas limpias y contemporaneas" },
-  elegante: { name: "Elegante Clasico", description: "Tipografia italica con lineas decorativas" }
+  mecorrieron: { name: "!M! mecorrieron", description: "Logo oficial de mecorrieron.mx" },
+  original: { name: "Logo Personalizado", description: "Sube el logo de tu despacho" },
+  balanza: { name: "Balanza Justicia", description: "Icono de balanza profesional" },
+  escudo: { name: "Escudo Legal", description: "Escudo con simbolo de proteccion" },
+  geometrico: { name: "Geometrico", description: "Formas modernas y limpias" }
 }
 
 // Componente SVG del Logo segun variante
-function LogoSVG({ variant, color, size = "md", customLogoUrl }: { variant: LogoVariant; color: string; size?: "sm" | "md" | "lg" | "xl"; customLogoUrl?: string | null }) {
+function LogoSVG({ variant, color, size = "md", customLogoUrl, isMecorrieron }: { variant: LogoVariant; color: string; size?: "sm" | "md" | "lg" | "xl"; customLogoUrl?: string | null; isMecorrieron?: boolean }) {
   const sizes = {
-    sm: { height: "h-8", viewBox: "0 0 140 45" },
-    md: { height: "h-12", viewBox: "0 0 140 45" },
-    lg: { height: "h-16", viewBox: "0 0 160 50" },
-    xl: { height: "h-24", viewBox: "0 0 180 60" }
+    sm: { height: "h-8", w: 32, textSize: "text-sm" },
+    md: { height: "h-10", w: 40, textSize: "text-base" },
+    lg: { height: "h-12", w: 48, textSize: "text-lg" },
+    xl: { height: "h-16", w: 64, textSize: "text-xl" }
   }
   
   const s = sizes[size]
   
-  // Usar logo custom si esta disponible y es variante original
-  if (variant === "original") {
+  // Logo de mecorrieron.mx
+  if (variant === "mecorrieron" || isMecorrieron) {
+    return (
+      <div className={`${s.height} flex items-center gap-2`}>
+        <div className="w-9 h-9 rounded-full bg-primary flex items-center justify-center shadow-md">
+          <span className="text-white font-black text-sm">!M!</span>
+        </div>
+        <span className={`font-bold text-foreground ${s.textSize}`}>mecorrieron<span className="text-destructive">.mx</span></span>
+      </div>
+    )
+  }
+  
+  // Usar logo custom si esta disponible
+  if (variant === "original" && customLogoUrl) {
     return (
       <div className={`${s.height} flex items-center`}>
         <img 
-          src={customLogoUrl || "/images/pp-abogados-logo.png"} 
+          src={customLogoUrl || "/placeholder.svg"} 
           alt="Logo"
-          className={`${s.height} object-contain max-w-[100px]`}
+          className={`${s.height} object-contain max-w-[120px]`}
         />
+      </div>
+    )
+  }
+  
+  // Logo placeholder para clientes sin logo
+  if (variant === "original") {
+    return (
+      <div className={`${s.height} flex items-center gap-2`}>
+        <div className="w-9 h-9 rounded-lg flex items-center justify-center" style={{ backgroundColor: color }}>
+          <Building2 className="w-5 h-5 text-white" />
+        </div>
+        <span className={`font-semibold ${s.textSize}`} style={{ color }}>Tu Despacho</span>
       </div>
     )
   }
@@ -193,15 +236,15 @@ function LogoSVG({ variant, color, size = "md", customLogoUrl }: { variant: Logo
 }
 
 // Componente del Logo completo con texto
-function PPLogo({ theme, variant, size = "md", customLogoUrl, firmName }: { theme: typeof THEMES.ppAbogados; variant: LogoVariant; size?: "sm" | "md" | "lg"; customLogoUrl?: string | null; firmName?: string }) {
-  const isDark = theme.style === "luxury"
-  const goldColor = isDark ? "#D4AF37" : theme.primary
-  
-  const showAbogadosText = variant !== "elegante" && variant !== "original"
+function PPLogo({ theme, variant, size = "md", customLogoUrl, firmName, isMecorrieron }: { theme: typeof THEMES.mecorrieron; variant: LogoVariant; size?: "sm" | "md" | "lg"; customLogoUrl?: string | null; firmName?: string; isMecorrieron?: boolean }) {
+  const isDark = theme.style === "dark"
+  const primaryColor = theme.primary
+  const showAbogadosText = true // Declare showAbogadosText variable
+  const goldColor = isDark ? "#D4AF37" : theme.primary // Declare goldColor variable
   
   return (
-  <div className="flex items-center gap-2">
-  <LogoSVG variant={variant} color={goldColor} size={size} customLogoUrl={customLogoUrl} />
+    <div className="flex items-center gap-2">
+      <LogoSVG variant={variant} color={primaryColor} size={size} customLogoUrl={customLogoUrl} isMecorrieron={isMecorrieron} />
       {showAbogadosText && (
         <span 
           className="font-serif tracking-widest text-[10px] md:text-xs"
@@ -215,7 +258,7 @@ function PPLogo({ theme, variant, size = "md", customLogoUrl, firmName }: { them
 }
 
 // Header Mockup mejorado
-function HeaderMockup({ theme, logoVariant, customLogoUrl, firmName }: { theme: typeof THEMES.ppAbogados; logoVariant: LogoVariant; customLogoUrl?: string | null; firmName?: string }) {
+function HeaderMockup({ theme, logoVariant, customLogoUrl, firmName, isMecorrieron }: { theme: typeof THEMES.mecorrieron; logoVariant: LogoVariant; customLogoUrl?: string | null; firmName?: string; isMecorrieron?: boolean }) {
   const isDark = theme.style === "luxury"
   
   return (
@@ -230,7 +273,7 @@ function HeaderMockup({ theme, logoVariant, customLogoUrl, firmName }: { theme: 
         <Button variant="ghost" size="icon" className="md:hidden h-8 w-8">
           <Menu className="h-4 w-4" style={{ color: theme.textPrimary }} />
         </Button>
-        <PPLogo theme={theme} variant={logoVariant} size="sm" customLogoUrl={customLogoUrl} firmName={firmName} />
+        <PPLogo theme={theme} variant={logoVariant} size="sm" customLogoUrl={customLogoUrl} firmName={firmName} isMecorrieron={isMecorrieron} />
       </div>
       
       <div className="flex items-center gap-1 md:gap-2">
@@ -249,12 +292,12 @@ function HeaderMockup({ theme, logoVariant, customLogoUrl, firmName }: { theme: 
 }
 
 // Dashboard Mockup
-function DashboardMockup({ theme, logoVariant, customLogoUrl, firmName }: { theme: typeof THEMES.ppAbogados; logoVariant: LogoVariant; customLogoUrl?: string | null; firmName?: string }) {
+function DashboardMockup({ theme, logoVariant, customLogoUrl, firmName, isMecorrieron }: { theme: typeof THEMES.mecorrieron; logoVariant: LogoVariant; customLogoUrl?: string | null; firmName?: string; isMecorrieron?: boolean }) {
   const isDark = theme.style === "luxury"
   
   return (
     <div className="min-h-[520px]" style={{ backgroundColor: theme.background }}>
-      <HeaderMockup theme={theme} logoVariant={logoVariant} customLogoUrl={customLogoUrl} firmName={firmName} />
+      <HeaderMockup theme={theme} logoVariant={logoVariant} customLogoUrl={customLogoUrl} firmName={firmName} isMecorrieron={isMecorrieron} />
       
       <div className={`p-4 md:p-6 bg-gradient-to-br ${theme.gradient}`}>
         <div className="text-white">
@@ -329,7 +372,7 @@ function DashboardMockup({ theme, logoVariant, customLogoUrl, firmName }: { them
 }
 
 // Calculadora Mockup
-function CalculadoraMockup({ theme, logoVariant, customLogoUrl, firmName }: { theme: typeof THEMES.ppAbogados; logoVariant: LogoVariant; customLogoUrl?: string | null; firmName?: string }) {
+function CalculadoraMockup({ theme, logoVariant, customLogoUrl, firmName, isMecorrieron }: { theme: typeof THEMES.mecorrieron; logoVariant: LogoVariant; customLogoUrl?: string | null; firmName?: string; isMecorrieron?: boolean }) {
   const isDark = theme.style === "luxury"
   
   return (
@@ -401,7 +444,7 @@ function CalculadoraMockup({ theme, logoVariant, customLogoUrl, firmName }: { th
 }
 
 // Boveda Mockup
-function BovedaMockup({ theme, logoVariant, customLogoUrl, firmName }: { theme: typeof THEMES.ppAbogados; logoVariant: LogoVariant; customLogoUrl?: string | null; firmName?: string }) {
+function BovedaMockup({ theme, logoVariant, customLogoUrl, firmName, isMecorrieron }: { theme: typeof THEMES.mecorrieron; logoVariant: LogoVariant; customLogoUrl?: string | null; firmName?: string; isMecorrieron?: boolean }) {
   const isDark = theme.style === "luxury"
   
   const documentos = [
@@ -478,7 +521,7 @@ function BovedaMockup({ theme, logoVariant, customLogoUrl, firmName }: { theme: 
 }
 
 // Casos Mockup
-function CasosMockup({ theme, logoVariant, customLogoUrl, firmName }: { theme: typeof THEMES.ppAbogados; logoVariant: LogoVariant; customLogoUrl?: string | null; firmName?: string }) {
+function CasosMockup({ theme, logoVariant, customLogoUrl, firmName, isMecorrieron }: { theme: typeof THEMES.mecorrieron; logoVariant: LogoVariant; customLogoUrl?: string | null; firmName?: string; isMecorrieron?: boolean }) {
   const isDark = theme.style === "luxury"
   
   return (
@@ -638,16 +681,17 @@ function BenefitsSection() {
 
 // Componente Principal
 export default function WhiteLabelPreview() {
-  const [selectedTheme, setSelectedTheme] = useState<ThemeKey>("ppAbogados")
-  const [selectedLogo, setSelectedLogo] = useState<LogoVariant>("balanza")
+  const [selectedTheme, setSelectedTheme] = useState<ThemeKey>("mecorrieron")
+  const [selectedLogo, setSelectedLogo] = useState<LogoVariant>("mecorrieron")
   const [selectedScreen, setSelectedScreen] = useState("dashboard")
   const [customLogoUrl, setCustomLogoUrl] = useState<string | null>(null)
-  const [firmName, setFirmName] = useState("P&P Abogados")
+  const [firmName, setFirmName] = useState("")
+  const [isClientMode, setIsClientMode] = useState(false)
   const fileInputRef = useRef<HTMLInputElement>(null)
   
   const theme = THEMES[selectedTheme]
-  const isDark = theme.style === "luxury"
-  
+  const isDark = theme.style === "dark"
+  const isMecorrieron = selectedTheme === "mecorrieron"
   const goldColor = isDark ? "#D4AF37" : theme.primary
   
   // Manejo de subida de logo
@@ -663,7 +707,12 @@ export default function WhiteLabelPreview() {
     // Crear nueva URL temporal
     const url = URL.createObjectURL(file)
     setCustomLogoUrl(url)
-    setSelectedLogo("original") // Cambiar a logo original para mostrar el subido
+    setSelectedLogo("original")
+    setIsClientMode(true)
+    // Cambiar a tema cliente si esta en mecorrieron
+    if (selectedTheme === "mecorrieron") {
+      setSelectedTheme("clienteClasico")
+    }
   }
   
   const handleRemoveLogo = () => {
@@ -674,6 +723,22 @@ export default function WhiteLabelPreview() {
     if (fileInputRef.current) {
       fileInputRef.current.value = ''
     }
+  }
+  
+  // Cambiar a modo cliente
+  const switchToClientMode = () => {
+    setIsClientMode(true)
+    setSelectedTheme("clienteClasico")
+    setSelectedLogo("original")
+  }
+  
+  // Volver a modo mecorrieron
+  const switchToMecorrieron = () => {
+    setIsClientMode(false)
+    setSelectedTheme("mecorrieron")
+    setSelectedLogo("mecorrieron")
+    setFirmName("")
+    handleRemoveLogo()
   }
   
   return (
@@ -714,150 +779,163 @@ export default function WhiteLabelPreview() {
         
         {/* Ejemplo interactivo */}
         <Card className="mb-8 overflow-hidden">
-          <CardHeader className="bg-gray-50 border-b">
+          <CardHeader className={`border-b ${isMecorrieron ? 'bg-blue-50' : 'bg-gray-50'}`}>
             <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
               <div>
-                <CardTitle className="text-lg md:text-xl">Vista previa: {firmName}</CardTitle>
-                <p className="text-sm text-gray-600 mt-1">Personaliza y visualiza como se veria tu app</p>
+                <CardTitle className="text-lg md:text-xl flex items-center gap-2">
+                  {isMecorrieron ? (
+                    <>
+                      <span className="w-8 h-8 rounded-full bg-primary flex items-center justify-center">
+                        <span className="text-white font-black text-xs">!M!</span>
+                      </span>
+                      mecorrieron.mx
+                    </>
+                  ) : (
+                    <>Vista previa: {firmName || 'Tu Despacho'}</>
+                  )}
+                </CardTitle>
+                <p className="text-sm text-gray-600 mt-1">
+                  {isMecorrieron ? 'Look and feel original de la plataforma' : 'Asi se veria tu app personalizada'}
+                </p>
               </div>
               <div className="flex items-center gap-2">
-                {customLogoUrl ? (
-                  <img 
-                    src={customLogoUrl || "/placeholder.svg"} 
-                    alt={firmName}
-                    className="h-10 md:h-12 object-contain max-w-[120px]"
-                  />
+                {isMecorrieron ? (
+                  <Button size="sm" onClick={switchToClientMode} className="bg-primary hover:bg-primary/90">
+                    <Upload className="w-4 h-4 mr-2" />
+                    Personalizar para mi despacho
+                  </Button>
                 ) : (
-                  <img 
-                    src="/images/pp-abogados-logo.png" 
-                    alt="P&P Abogados"
-                    className="h-10 md:h-12 object-contain"
-                  />
+                  <Button size="sm" variant="outline" onClick={switchToMecorrieron} className="bg-transparent">
+                    Ver version original
+                  </Button>
                 )}
               </div>
             </div>
           </CardHeader>
           <CardContent className="p-4 md:p-6">
-            {/* Subir logo y nombre */}
-            <div className="mb-6 p-4 bg-amber-50 border border-amber-200 rounded-xl">
-              <h3 className="font-semibold mb-4 text-sm md:text-base flex items-center gap-2">
-                <Upload className="h-4 w-4 text-amber-600" />
-                Personaliza con tu marca
-              </h3>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                {/* Nombre del despacho */}
-                <div>
-                  <Label htmlFor="firmName" className="text-sm text-gray-700">Nombre del despacho</Label>
-                  <Input
-                    id="firmName"
-                    value={firmName}
-                    onChange={(e) => setFirmName(e.target.value)}
-                    placeholder="Ej: Lopez & Asociados"
-                    className="mt-1"
-                  />
-                </div>
-                
-                {/* Subir logo */}
-                <div>
-                  <Label className="text-sm text-gray-700">Logo del despacho</Label>
-                  <div className="mt-1 flex items-center gap-2">
-                    <input
-                      ref={fileInputRef}
-                      type="file"
-                      accept="image/*"
-                      onChange={handleLogoUpload}
-                      className="hidden"
-                      id="logo-upload"
+            {/* Subir logo y nombre - Solo en modo cliente */}
+            {isClientMode && (
+              <div className="mb-6 p-4 bg-amber-50 border border-amber-200 rounded-xl">
+                <h3 className="font-semibold mb-4 text-sm md:text-base flex items-center gap-2">
+                  <Upload className="h-4 w-4 text-amber-600" />
+                  Personaliza con tu marca
+                </h3>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  {/* Nombre del despacho */}
+                  <div>
+                    <Label htmlFor="firmName" className="text-sm text-gray-700">Nombre del despacho</Label>
+                    <Input
+                      id="firmName"
+                      value={firmName}
+                      onChange={(e) => setFirmName(e.target.value)}
+                      placeholder="Ej: Lopez & Asociados"
+                      className="mt-1"
                     />
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => fileInputRef.current?.click()}
-                      className="flex-1 bg-transparent"
-                    >
-                      <Upload className="h-4 w-4 mr-2" />
-                      {customLogoUrl ? 'Cambiar logo' : 'Subir logo'}
-                    </Button>
-                    {customLogoUrl && (
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={handleRemoveLogo}
-                        className="text-red-600 hover:text-red-700 hover:bg-red-50"
-                      >
-                        <X className="h-4 w-4" />
-                      </Button>
-                    )}
                   </div>
-                  <p className="text-[10px] text-gray-500 mt-1">PNG, JPG o SVG. Solo para preview.</p>
+                  
+                  {/* Subir logo */}
+                  <div>
+                    <Label className="text-sm text-gray-700">Logo del despacho</Label>
+                    <div className="mt-1 flex items-center gap-2">
+                      <input
+                        ref={fileInputRef}
+                        type="file"
+                        accept="image/*"
+                        onChange={handleLogoUpload}
+                        className="hidden"
+                        id="logo-upload"
+                      />
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => fileInputRef.current?.click()}
+                        className="flex-1 bg-transparent"
+                      >
+                        <Upload className="h-4 w-4 mr-2" />
+                        {customLogoUrl ? 'Cambiar logo' : 'Subir logo'}
+                      </Button>
+                      {customLogoUrl && (
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={handleRemoveLogo}
+                          className="text-red-600 hover:text-red-700 hover:bg-red-50"
+                        >
+                          <X className="h-4 w-4" />
+                        </Button>
+                      )}
+                    </div>
+                    <p className="text-[10px] text-gray-500 mt-1">PNG, JPG o SVG. Solo para preview.</p>
+                  </div>
                 </div>
               </div>
-            </div>
-            
-            {/* Selector de Logo */}
-            <div className="mb-6">
-              <h3 className="font-semibold mb-3 text-sm md:text-base">1. Selecciona estilo de logo {customLogoUrl && <Badge variant="outline" className="ml-2 text-[10px]">Usando tu logo</Badge>}</h3>
-              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-2 md:gap-3">
-                {(Object.keys(LOGO_VARIANTS) as LogoVariant[]).map((key) => {
-                  const v = LOGO_VARIANTS[key]
-                  return (
-                    <button
-                      key={key}
-                      onClick={() => setSelectedLogo(key)}
-                      className={`p-3 md:p-4 rounded-xl border-2 transition-all flex flex-col items-center gap-2 ${
-                        selectedLogo === key ? 'ring-2 ring-amber-400 ring-offset-2 border-amber-400' : 'border-gray-200 hover:border-gray-300'
-                      }`}
-                    >
-                      <div className="h-10 md:h-12 flex items-center justify-center">
-                        <LogoSVG variant={key} color={goldColor} size="sm" />
-                      </div>
-                      <div className="text-center">
-                        <p className="text-[10px] md:text-xs font-medium">{v.name}</p>
-                      </div>
-                      {selectedLogo === key && (
-                        <Check className="h-4 w-4 text-amber-500 absolute top-2 right-2" />
-                      )}
-                    </button>
-                  )
-                })}
+            )}
+            {/* Selector de Logo - Solo en modo cliente */}
+            {isClientMode && (
+              <div className="mb-6">
+                <h3 className="font-semibold mb-3 text-sm md:text-base">1. Estilo de logo {customLogoUrl && <Badge variant="outline" className="ml-2 text-[10px]">Usando tu logo</Badge>}</h3>
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 md:gap-3">
+                  {(Object.keys(LOGO_VARIANTS) as LogoVariant[]).filter(k => k !== 'mecorrieron').map((key) => {
+                    const v = LOGO_VARIANTS[key]
+                    return (
+                      <button
+                        key={key}
+                        onClick={() => setSelectedLogo(key)}
+                        className={`p-3 md:p-4 rounded-xl border-2 transition-all flex flex-col items-center gap-2 ${
+                          selectedLogo === key ? 'ring-2 ring-amber-400 ring-offset-2 border-amber-400' : 'border-gray-200 hover:border-gray-300'
+                        }`}
+                      >
+                        <div className="h-10 md:h-12 flex items-center justify-center">
+                          <LogoSVG variant={key} color={goldColor} size="sm" />
+                        </div>
+                        <div className="text-center">
+                          <p className="text-[10px] md:text-xs font-medium">{v.name}</p>
+                        </div>
+                        {selectedLogo === key && (
+                          <Check className="h-4 w-4 text-amber-500 absolute top-2 right-2" />
+                        )}
+                      </button>
+                    )
+                  })}
+                </div>
               </div>
-            </div>
-            
-            {/* Selector de Tema */}
-            <div className="mb-6">
-              <h3 className="font-semibold mb-3 text-sm md:text-base">2. Selecciona paleta de colores</h3>
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-2 md:gap-3">
-                {(Object.keys(THEMES) as ThemeKey[]).map((key) => {
-                  const t = THEMES[key]
-                  return (
-                    <button
-                      key={key}
-                      onClick={() => setSelectedTheme(key)}
-                      className={`p-3 md:p-4 rounded-xl border-2 transition-all ${
-                        selectedTheme === key ? 'ring-2 ring-amber-400 ring-offset-2 border-amber-400' : 'border-gray-200 hover:border-gray-300'
-                      }`}
-                      style={{ backgroundColor: t.background }}
-                    >
-                      <div className="flex gap-1.5 mb-2 justify-center">
-                        <div className="h-5 w-5 md:h-6 md:w-6 rounded-full shadow-sm" style={{ backgroundColor: t.primary }} />
-                        <div className="h-5 w-5 md:h-6 md:w-6 rounded-full shadow-sm" style={{ backgroundColor: t.secondary }} />
-                        <div className="h-5 w-5 md:h-6 md:w-6 rounded-full shadow-sm" style={{ backgroundColor: t.accent }} />
-                      </div>
-                      <p className="text-xs md:text-sm font-medium text-center" style={{ color: t.textPrimary }}>
-                        {t.name}
-                      </p>
-                      <p className="text-[10px] md:text-xs text-center" style={{ color: t.textSecondary }}>
-                        {t.description}
-                      </p>
-                    </button>
-                  )
-                })}
+            )}
+            {/* Selector de Tema - Solo en modo cliente */}
+            {isClientMode && (
+              <div className="mb-6">
+                <h3 className="font-semibold mb-3 text-sm md:text-base">2. Paleta de colores</h3>
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-2 md:gap-3">
+                  {(Object.keys(THEMES) as ThemeKey[]).filter(k => k !== 'mecorrieron').map((key) => {
+                    const t = THEMES[key]
+                    return (
+                      <button
+                        key={key}
+                        onClick={() => setSelectedTheme(key)}
+                        className={`p-3 md:p-4 rounded-xl border-2 transition-all ${
+                          selectedTheme === key ? 'ring-2 ring-amber-400 ring-offset-2 border-amber-400' : 'border-gray-200 hover:border-gray-300'
+                        }`}
+                        style={{ backgroundColor: t.background }}
+                      >
+                        <div className="flex gap-1.5 mb-2 justify-center">
+                          <div className="h-5 w-5 md:h-6 md:w-6 rounded-full shadow-sm" style={{ backgroundColor: t.primary }} />
+                          <div className="h-5 w-5 md:h-6 md:w-6 rounded-full shadow-sm" style={{ backgroundColor: t.secondary }} />
+                          <div className="h-5 w-5 md:h-6 md:w-6 rounded-full shadow-sm" style={{ backgroundColor: t.accent }} />
+                        </div>
+                        <p className="text-xs md:text-sm font-medium text-center" style={{ color: t.textPrimary }}>
+                          {t.name}
+                        </p>
+                        <p className="text-[10px] md:text-xs text-center" style={{ color: t.textSecondary }}>
+                          {t.description}
+                        </p>
+                      </button>
+                    )
+                  })}
+                </div>
               </div>
-            </div>
-            
+            )}
             {/* Selector de Pantalla */}
             <div className="mb-6">
-              <h3 className="font-semibold mb-3 text-sm md:text-base">3. Explora las pantallas</h3>
+              <h3 className="font-semibold mb-3 text-sm md:text-base">{isClientMode ? '3.' : ''} Explora las pantallas</h3>
               <Tabs value={selectedScreen} onValueChange={setSelectedScreen}>
                 <TabsList className="grid grid-cols-4 w-full">
                   <TabsTrigger value="dashboard" className="text-xs md:text-sm">Dashboard</TabsTrigger>
@@ -885,10 +963,10 @@ export default function WhiteLabelPreview() {
                     <div className="h-6 flex justify-center items-end pb-1" style={{ backgroundColor: isDark ? theme.cardBg : theme.background }}>
                       <div className="w-20 h-4 bg-black rounded-full" />
                     </div>
-{selectedScreen === "dashboard" && <DashboardMockup theme={theme} logoVariant={selectedLogo} customLogoUrl={customLogoUrl} firmName={firmName} />}
-                {selectedScreen === "calculadora" && <CalculadoraMockup theme={theme} logoVariant={selectedLogo} customLogoUrl={customLogoUrl} firmName={firmName} />}
-                {selectedScreen === "boveda" && <BovedaMockup theme={theme} logoVariant={selectedLogo} customLogoUrl={customLogoUrl} firmName={firmName} />}
-                {selectedScreen === "casos" && <CasosMockup theme={theme} logoVariant={selectedLogo} customLogoUrl={customLogoUrl} firmName={firmName} />}
+{selectedScreen === "dashboard" && <DashboardMockup theme={theme} logoVariant={selectedLogo} customLogoUrl={customLogoUrl} firmName={firmName} isMecorrieron={isMecorrieron} />}
+  {selectedScreen === "calculadora" && <CalculadoraMockup theme={theme} logoVariant={selectedLogo} customLogoUrl={customLogoUrl} firmName={firmName} isMecorrieron={isMecorrieron} />}
+  {selectedScreen === "boveda" && <BovedaMockup theme={theme} logoVariant={selectedLogo} customLogoUrl={customLogoUrl} firmName={firmName} isMecorrieron={isMecorrieron} />}
+  {selectedScreen === "casos" && <CasosMockup theme={theme} logoVariant={selectedLogo} customLogoUrl={customLogoUrl} firmName={firmName} isMecorrieron={isMecorrieron} />}
                   </div>
                 </div>
               </div>
