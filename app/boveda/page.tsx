@@ -31,14 +31,16 @@ import {
   Building2,
   Calendar,
   Camera,
-  Trash2, // Declare Trash2 here
-  CheckCircle, // Declare CheckCircle here
-  ExternalLink // Declare ExternalLink here
+  Trash2,
+  CheckCircle,
+  ExternalLink,
+  ScanLine
 } from 'lucide-react'
 import { AudioRecorder } from '@/components/boveda/audio-recorder'
 import { DocumentUploader } from '@/components/boveda/document-uploader'
-import { CalculoPDFViewer } from '@/components/boveda/calculo-pdf-viewer' // Import CalculoPDFViewer here
-import { DocumentoCard } from '@/components/boveda/documento-card' // Import DocumentoCard here
+import { CalculoPDFViewer } from '@/components/boveda/calculo-pdf-viewer'
+import { DocumentoCard } from '@/components/boveda/documento-card'
+import { OCRScanner } from '@/components/boveda/ocr-scanner'
 import {
   obtenerDocumentos,
   obtenerCalculos,
@@ -115,6 +117,8 @@ const CATEGORIAS_CONFIG: Record<CategoriaDocumento, { label: string; icon: typeo
   // Domicilio y testigos
   comprobante_domicilio: { label: 'Comprobante Domicilio', icon: MapPin, color: 'text-teal-600' },
   testigos: { label: 'Datos de Testigos', icon: FileText, color: 'text-blue-700' },
+  // Documentos escaneados
+  documento_escaneado: { label: 'Documentos Escaneados', icon: ScanLine, color: 'text-purple-600' },
   // Otro
   otro: { label: 'Otros', icon: FileText, color: 'text-muted-foreground' },
 }
@@ -153,6 +157,7 @@ export default function BovedaPage() {
   // Estados para modales
   const [showRecorder, setShowRecorder] = useState(false)
   const [showUploader, setShowUploader] = useState(false)
+  const [showScanner, setShowScanner] = useState(false)
   const [uploaderCategoria, setUploaderCategoria] = useState<string | undefined>(undefined)
   const [loadingDocUrl, setLoadingDocUrl] = useState<string | null>(null)
   
@@ -334,14 +339,22 @@ export default function BovedaPage() {
         </div>
         
         {/* Acciones rápidas - PRIMERO */}
-        <div className="grid grid-cols-3 gap-2 sm:gap-3 mb-4">
+        <div className="grid grid-cols-4 gap-1.5 sm:gap-2 mb-4">
           <Button
             onClick={() => setShowRecorder(true)}
             variant="outline"
-            className="h-auto py-3 sm:py-4 flex-col gap-1 sm:gap-2 bg-destructive/5 border-destructive/20 hover:bg-destructive/10"
+            className="h-auto py-2.5 sm:py-3 flex-col gap-1 bg-destructive/5 border-destructive/20 hover:bg-destructive/10"
           >
-            <Mic className="w-5 h-5 sm:w-6 sm:h-6 text-destructive" />
-            <span className="text-xs sm:text-sm font-medium">Grabar</span>
+            <Mic className="w-4 h-4 sm:w-5 sm:h-5 text-destructive" />
+            <span className="text-[10px] sm:text-xs font-medium">Grabar</span>
+          </Button>
+          <Button
+            onClick={() => setShowScanner(true)}
+            variant="outline"
+            className="h-auto py-2.5 sm:py-3 flex-col gap-1 bg-purple-50 border-purple-200 hover:bg-purple-100"
+          >
+            <ScanLine className="w-4 h-4 sm:w-5 sm:h-5 text-purple-600" />
+            <span className="text-[10px] sm:text-xs font-medium">Escanear</span>
           </Button>
           <Button
             onClick={() => {
@@ -358,18 +371,18 @@ export default function BovedaPage() {
               input.click()
             }}
             variant="outline"
-            className="h-auto py-3 sm:py-4 flex-col gap-1 sm:gap-2 bg-green-50 border-green-200 hover:bg-green-100"
+            className="h-auto py-2.5 sm:py-3 flex-col gap-1 bg-green-50 border-green-200 hover:bg-green-100"
           >
-            <Camera className="w-5 h-5 sm:w-6 sm:h-6 text-green-600" />
-            <span className="text-xs sm:text-sm font-medium">Foto</span>
+            <Camera className="w-4 h-4 sm:w-5 sm:h-5 text-green-600" />
+            <span className="text-[10px] sm:text-xs font-medium">Foto</span>
           </Button>
           <Button
             onClick={() => setShowUploader(true)}
             variant="outline"
-            className="h-auto py-3 sm:py-4 flex-col gap-1 sm:gap-2 bg-primary/5 border-primary/20 hover:bg-primary/10"
+            className="h-auto py-2.5 sm:py-3 flex-col gap-1 bg-primary/5 border-primary/20 hover:bg-primary/10"
           >
-            <Upload className="w-5 h-5 sm:w-6 sm:h-6 text-primary" />
-            <span className="text-xs sm:text-sm font-medium">Subir</span>
+            <Upload className="w-4 h-4 sm:w-5 sm:h-5 text-primary" />
+            <span className="text-[10px] sm:text-xs font-medium">Subir</span>
           </Button>
         </div>
         
@@ -995,6 +1008,19 @@ export default function BovedaPage() {
                 loadData() // Refrescar boveda al cerrar tambien
               }}
               defaultCategoria={uploaderCategoria}
+            />
+          </DialogContent>
+        </Dialog>
+        
+        {/* Modal: Escáner OCR */}
+        <Dialog open={showScanner} onOpenChange={setShowScanner}>
+          <DialogContent className="w-[95vw] max-w-[400px] p-0 gap-0 overflow-hidden max-h-[85vh] [&>button]:hidden">
+            <OCRScanner 
+              onClose={() => setShowScanner(false)}
+              onComplete={() => {
+                setShowScanner(false)
+                loadData() // Refrescar bóveda automáticamente
+              }}
             />
           </DialogContent>
         </Dialog>

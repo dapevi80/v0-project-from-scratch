@@ -44,6 +44,8 @@ export type CategoriaDocumento =
   | 'comprobante_domicilio'
   // Testigos
   | 'testigos'
+  // Documentos escaneados
+  | 'documento_escaneado'
   // Otro
   | 'otro'
 
