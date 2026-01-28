@@ -8,6 +8,7 @@ import { Badge } from '@/components/ui/badge'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Separator } from '@/components/ui/separator'
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog'
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog'
 import { 
   Vault, 
   Calculator, 
@@ -131,6 +132,10 @@ export default function BovedaPage() {
   const [uploaderCategoria, setUploaderCategoria] = useState<string | undefined>(undefined)
   const [loadingDocUrl, setLoadingDocUrl] = useState<string | null>(null)
   
+  // Estado para confirmacion de eliminacion
+  const [deleteConfirm, setDeleteConfirm] = useState<{ open: boolean; docId: string | null; docName?: string }>({ open: false, docId: null })
+  const [deleting, setDeleting] = useState(false)
+  
   // Función para ver documento (obtiene URL firmada)
   const verDocumento = async (documentoId: string) => {
     setLoadingDocUrl(documentoId)
@@ -197,14 +202,23 @@ export default function BovedaPage() {
     }
   }
   
-  // Eliminar documento
-  const handleEliminar = async (docId: string) => {
-    if (!confirm('¿Estás seguro de eliminar este documento?')) return
+  // Eliminar documento - mostrar dialogo de confirmacion
+  const handleEliminar = (docId: string, docName?: string) => {
+    setDeleteConfirm({ open: true, docId, docName })
+  }
+  
+  // Confirmar eliminacion
+  const confirmarEliminacion = async () => {
+    if (!deleteConfirm.docId) return
     
-    const result = await eliminarDocumento(docId)
+    setDeleting(true)
+    const result = await eliminarDocumento(deleteConfirm.docId)
+    setDeleting(false)
+    
     if (result.success) {
       loadData()
     }
+    setDeleteConfirm({ open: false, docId: null })
   }
   
   // Agrupar documentos por categoría
@@ -638,16 +652,7 @@ export default function BovedaPage() {
                             variant="outline"
                             size="sm"
                             className="gap-2 bg-transparent text-destructive hover:text-destructive hover:bg-destructive/10"
-                            onClick={async () => {
-                              if (confirm('¿Eliminar este cálculo de tu bóveda?')) {
-                                const result = await eliminarDocumento(calc.id)
-                                if (result.success) {
-                                  loadData()
-                                } else {
-                                  alert(result.error || 'Error al eliminar')
-                                }
-                              }
-                            }}
+                            onClick={() => handleEliminar(calc.id, calc.nombre_empresa || 'Calculo')}
                           >
                             <Trash2 className="w-4 h-4" />
                           </Button>
@@ -1046,6 +1051,48 @@ export default function BovedaPage() {
             </div>
           </DialogContent>
         </Dialog>
+        
+        {/* AlertDialog: Confirmar eliminacion */}
+        <AlertDialog open={deleteConfirm.open} onOpenChange={(open) => !open && setDeleteConfirm({ open: false, docId: null })}>
+          <AlertDialogContent className="max-w-md">
+            <AlertDialogHeader>
+              <AlertDialogTitle className="flex items-center gap-2">
+                <Trash2 className="w-5 h-5 text-destructive" />
+                Eliminar documento
+              </AlertDialogTitle>
+              <AlertDialogDescription className="text-muted-foreground">
+                {deleteConfirm.docName 
+                  ? `¿Estas seguro de eliminar "${deleteConfirm.docName}"?`
+                  : '¿Estas seguro de eliminar este documento?'
+                }
+                <br />
+                <span className="text-destructive/80 text-sm">Esta accion no se puede deshacer.</span>
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter className="gap-2 sm:gap-0">
+              <AlertDialogCancel 
+                disabled={deleting}
+                className="bg-muted hover:bg-muted/80"
+              >
+                Cancelar
+              </AlertDialogCancel>
+              <AlertDialogAction
+                onClick={confirmarEliminacion}
+                disabled={deleting}
+                className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              >
+                {deleting ? (
+                  <>
+                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                    Eliminando...
+                  </>
+                ) : (
+                  'Eliminar'
+                )}
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
       </div>
     </div>
   )

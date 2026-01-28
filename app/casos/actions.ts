@@ -816,7 +816,7 @@ export async function crearCasoDesdeVerificacion(userId: string, calculoId: stri
     .eq('worker_id', userId)
     .in('status', ['open', 'assigned', 'in_progress', 'pending_review'])
     .limit(1)
-    .single()
+    .maybeSingle()
   
   if (casoExistente) {
     return { error: null, casoId: casoExistente.id, yaExistia: true }
