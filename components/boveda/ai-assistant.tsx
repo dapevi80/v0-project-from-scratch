@@ -31,10 +31,184 @@ interface AIAssistantProps {
 // Preguntas prediseñadas
 const QUICK_QUESTIONS = [
   { icon: Calculator, text: "¿Cómo calculo mi liquidación?", color: "bg-blue-100 text-blue-700" },
-  { icon: FileText, text: "¿Qué es un finiquito?", color: "bg-green-100 text-green-700" },
+  { icon: FileText, text: "¿Cómo inicio un reclamo en conciliación?", color: "bg-green-100 text-green-700" },
   { icon: Scale, text: "¿Me pueden despedir sin causa?", color: "bg-amber-100 text-amber-700" },
   { icon: HelpCircle, text: "¿Cuánto tiempo tengo para demandar?", color: "bg-purple-100 text-purple-700" },
 ]
+
+// FAQ - Respuestas predefinidas que se muestran inmediatamente sin llamar a la IA
+const FAQ_RESPONSES: Record<string, string> = {
+  "¿Cómo calculo mi liquidación?": `**Cómo calcular tu liquidación paso a paso:**
+
+**Paso 1: Reúne tu información básica**
+• Tu salario mensual (lo que ganas antes de descuentos)
+• Fecha de inicio de tu trabajo
+• Fecha de despido o terminación
+• Tipo de despido (justificado o injustificado)
+
+**Paso 2: Usa nuestra Calculadora**
+En Me Corrieron tenemos una calculadora automática que hace todo por ti:
+1. Ve al menú principal de la app
+2. Selecciona "Calculadora de Liquidación"
+3. Ingresa tus datos básicos
+4. La app calculará automáticamente:
+   - **3 meses de salario** (indemnización constitucional)
+   - **20 días por año trabajado** (indemnización)
+   - **Prima de antigüedad** (12 días por año)
+   - **Vacaciones y prima vacacional** proporcionales
+   - **Aguinaldo** proporcional
+   - **Salarios pendientes**
+
+**Paso 3: Guarda tu cálculo en la Bóveda**
+Como usuario invitado puedes:
+1. Hacer el cálculo en la calculadora
+2. Al terminar, presiona "Guardar en Bóveda"
+3. Crea una cuenta gratuita con tu correo
+4. Tu cálculo quedará guardado y podrás acceder desde cualquier dispositivo
+5. También puedes descargar el PDF del cálculo
+
+**Paso 4: Solicita ayuda de un abogado**
+Si el monto es mayor a $50,000 MXN, te conviene que un abogado te ayude. En la app puedes:
+1. Presionar "Quiero un abogado"
+2. Un abogado especializado revisará tu caso
+3. Solo pagas si ganas (cobro por éxito)
+
+¿Quieres que te ayude a usar la calculadora ahora?`,
+
+  "¿Cómo inicio un reclamo en conciliación?": `**Guía para iniciar un reclamo en el Centro de Conciliación:**
+
+**¿Qué es la Conciliación?**
+Desde 2019, antes de demandar a tu patrón, DEBES pasar por el Centro Federal de Conciliación y Registro Laboral (CFCRL). Es un paso obligatorio donde un conciliador intenta que tú y tu patrón lleguen a un acuerdo.
+
+**Paso 1: Prepara tus documentos**
+Necesitarás:
+• INE o identificación oficial
+• Comprobante de domicilio
+• Contrato de trabajo (si lo tienes)
+• Recibos de nómina (los últimos que tengas)
+• Carta de despido (si te la dieron)
+• Cualquier prueba de tu relación laboral
+
+**Tip:** Usa la Bóveda de Me Corrieron para escanear y guardar todos estos documentos. Así los tendrás organizados y seguros.
+
+**Paso 2: Solicita tu cita**
+Tienes 3 opciones:
+1. **En línea:** centrolaboral.gob.mx
+2. **Por teléfono:** 800 012 0066 (lunes a viernes, 9am-6pm)
+3. **Presencial:** Acude a tu Centro de Conciliación más cercano
+
+**Paso 3: Asiste a la audiencia de conciliación**
+• Llega 15 minutos antes con todos tus documentos
+• El conciliador te explicará el proceso
+• Podrás exponer tu caso
+• Tu patrón (o su representante) expondrá su versión
+• El conciliador propondrá soluciones
+
+**Paso 4: Posibles resultados**
+1. **Convenio:** Si hay acuerdo, se firma y es obligatorio para ambos
+2. **No convenio:** Si no hay acuerdo, te dan una Constancia de No Conciliación para poder demandar
+3. **Patrón no asiste:** También te dan constancia para demandar
+
+**Plazos importantes:**
+• Tienes **45 días hábiles** desde que te notifican para asistir
+• La audiencia debe resolverse en **máximo 45 días**
+• Para demandar, tienes **1 año** desde el despido
+
+**¿Necesitas ayuda?**
+1. Usa nuestra Calculadora para saber cuánto te corresponde
+2. Guarda tus documentos en la Bóveda
+3. Solicita un abogado si necesitas representación
+
+¿Te ayudo a preparar tus documentos para la conciliación?`,
+
+  "¿Me pueden despedir sin causa?": `**Despido sin causa justificada:**
+
+**La respuesta corta:** Sí, tu patrón puede despedirte, pero si no tiene una causa justificada, **DEBE pagarte una indemnización completa**.
+
+**¿Qué es una causa justificada?**
+La Ley Federal del Trabajo (Art. 47) lista las causas válidas:
+• Engaño con documentos falsos
+• Violencia o amenazas en el trabajo
+• Daños intencionales a la empresa
+• Faltas de asistencia (más de 3 en 30 días sin permiso)
+• Desobedecer sin justificación
+• Acoso sexual
+• Revelar secretos de la empresa
+
+**Si NO hay causa justificada, te corresponde:**
+• **3 meses de salario** (indemnización constitucional)
+• **20 días de salario por año trabajado**
+• **Prima de antigüedad** (12 días por año, tope de 2 salarios mínimos)
+• **Vacaciones y prima vacacional** proporcionales
+• **Aguinaldo** proporcional
+• **Salarios pendientes**
+
+**Usa la Calculadora** de Me Corrieron para saber exactamente cuánto te corresponde.
+
+¿Quieres calcular tu liquidación ahora?`,
+
+  "¿Cuánto tiempo tengo para demandar?": `**Plazos para reclamar tus derechos laborales:**
+
+**Plazo general: 1 AÑO**
+Desde la fecha de tu despido, tienes **1 año** para:
+• Solicitar conciliación
+• Presentar demanda laboral
+• Reclamar tu liquidación
+
+**Importante:** El reloj empieza a correr desde:
+• La fecha del despido, O
+• La fecha del último día que trabajaste, O
+• La fecha en que dejaron de pagarte
+
+**Casos especiales:**
+• **Salarios caídos:** Se pueden reclamar hasta por 12 meses
+• **IMSS/INFONAVIT:** Las semanas cotizadas no prescriben
+• **Accidentes de trabajo:** 2 años para reclamar
+
+**Mi recomendación:**
+¡No esperes! Entre más pronto actúes:
+1. Es más fácil reunir pruebas
+2. Los testigos recuerdan mejor
+3. Tienes más opciones de negociación
+
+**Próximos pasos:**
+1. Calcula tu liquidación en la app
+2. Guarda tus documentos en la Bóveda
+3. Solicita conciliación lo antes posible
+
+¿Te ayudo a calcular lo que te corresponde?`
+}
+
+// Función para detectar si una pregunta coincide con alguna FAQ
+function findFAQResponse(question: string): string | null {
+  const normalizedQuestion = question.toLowerCase().trim()
+  
+  for (const [faqQuestion, response] of Object.entries(FAQ_RESPONSES)) {
+    const normalizedFAQ = faqQuestion.toLowerCase()
+    // Coincidencia exacta o muy similar
+    if (normalizedQuestion === normalizedFAQ || 
+        normalizedQuestion.includes(normalizedFAQ.replace("¿", "").replace("?", "")) ||
+        normalizedFAQ.includes(normalizedQuestion.replace("¿", "").replace("?", ""))) {
+      return response
+    }
+  }
+  
+  // Detección por palabras clave
+  if (normalizedQuestion.includes("calcul") && normalizedQuestion.includes("liquidaci")) {
+    return FAQ_RESPONSES["¿Cómo calculo mi liquidación?"]
+  }
+  if (normalizedQuestion.includes("conciliaci") && (normalizedQuestion.includes("inicio") || normalizedQuestion.includes("reclamo") || normalizedQuestion.includes("cómo"))) {
+    return FAQ_RESPONSES["¿Cómo inicio un reclamo en conciliación?"]
+  }
+  if (normalizedQuestion.includes("despedir") && normalizedQuestion.includes("sin causa")) {
+    return FAQ_RESPONSES["¿Me pueden despedir sin causa?"]
+  }
+  if (normalizedQuestion.includes("tiempo") && normalizedQuestion.includes("demandar")) {
+    return FAQ_RESPONSES["¿Cuánto tiempo tengo para demandar?"]
+  }
+  
+  return null
+}
 
 // Configuración por asistente
 const ASSISTANTS = {
@@ -111,6 +285,26 @@ export function AIAssistant({
 
     setMessages(prev => [...prev, userMessage])
     setInputValue("")
+    
+    // Primero verificar si hay una respuesta FAQ predefinida
+    const faqResponse = findFAQResponse(text)
+    
+    if (faqResponse) {
+      // Simular un pequeño delay para que se sienta natural
+      setIsLoading(true)
+      await new Promise(resolve => setTimeout(resolve, 500))
+      
+      const assistantMessage: Message = {
+        id: `assistant-${Date.now()}`,
+        role: "assistant",
+        content: faqResponse,
+      }
+      setMessages(prev => [...prev, assistantMessage])
+      setIsLoading(false)
+      return
+    }
+    
+    // Si no hay FAQ, llamar a la IA
     setIsLoading(true)
     setStreamingContent("")
 
