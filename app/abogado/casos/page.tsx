@@ -150,12 +150,14 @@ export default function AbogadoCasosPage() {
       return
     }
 
+    // Obtener casos que tienen calculo de liquidacion (datos reales)
     const { data, error } = await supabase
       .from('casos')
       .select(`
         *,
         case_messages(id, read_by_lawyer_at, created_at),
-        case_events(id, title, starts_at, event_type)
+        case_events(id, title, starts_at, event_type),
+        calculos_liquidacion!inner(id, antiguedad_anos, salario_diario, fecha_despido)
       `)
       .eq('lawyer_id', user.id)
       .neq('status', 'closed')
@@ -244,34 +246,40 @@ export default function AbogadoCasosPage() {
       return
     }
 
-    // Buscar caso disponible en el estado del abogado
+    // Buscar caso disponible en el estado del abogado (solo con datos reales de calculo)
     const { data: lead } = await supabase
       .from('casos')
       .select(`
         id, folio, empresa_nombre, tipo_caso, monto_estimado,
-        ciudad, estado, creditos_cobrados
+        ciudad, estado, creditos_cobrados,
+        calculos_liquidacion!inner(id, antiguedad_anos, fecha_despido, salario_diario)
       `)
       .eq('disponible_para_leads', true)
       .eq('estado_lead', 'disponible')
       .eq('estado', profile.estado)
       .is('lawyer_id', null)
+      .not('monto_estimado', 'is', null)
+      .gt('monto_estimado', 0)
       .limit(1)
       .single()
 
     if (lead) {
-      // Obtener datos adicionales del calculo
-      const { data: calculo } = await supabase
-        .from('calculos_liquidacion')
-        .select('antiguedad_anos, fecha_despido')
-        .eq('caso_id', lead.id)
-        .single()
+      const calculo = Array.isArray(lead.calculos_liquidacion) 
+        ? lead.calculos_liquidacion[0] 
+        : lead.calculos_liquidacion
 
       setLeadDisponible({
-        ...lead,
+        id: lead.id,
+        folio: lead.folio,
+        empresa_nombre: lead.empresa_nombre,
+        tipo_caso: lead.tipo_caso,
+        monto_estimado: lead.monto_estimado,
+        ciudad: lead.ciudad,
+        estado: lead.estado,
         antiguedad_anos: calculo?.antiguedad_anos || 0,
         fecha_despido: calculo?.fecha_despido || '',
         costo_creditos: lead.creditos_cobrados || 10
-      } as LeadDisponible)
+      })
     } else {
       setLeadDisponible(null)
     }
@@ -351,24 +359,24 @@ export default function AbogadoCasosPage() {
         <div className="max-w-4xl mx-auto px-4 py-3">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
-              <Link href="/abogado/dashboard" className="p-2 hover:bg-muted rounded-lg">
+              <Link href="/abogado/dashboard" className="p-2 hover:bg-muted rounded-lg transition-colors">
                 <ArrowLeft className="w-5 h-5" />
               </Link>
-              <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-emerald-500 to-teal-600 flex items-center justify-center">
-                <Scale className="w-5 h-5 text-white" />
-              </div>
-              <div>
-                <h1 className="font-bold text-lg">Mis Casos</h1>
-                <p className="text-xs text-muted-foreground">Gestiona y toma nuevos casos</p>
+              <div className="flex items-center gap-3">
+                <span className="text-3xl">⚖️</span>
+                <div>
+                  <h1 className="font-bold text-lg">Mis Casos</h1>
+                  <p className="text-xs text-muted-foreground">Gestiona y toma nuevos casos</p>
+                </div>
               </div>
             </div>
             
             {/* Creditos Badge */}
-            <div className="flex items-center gap-1.5 px-3 py-1.5 bg-gradient-to-r from-amber-50 to-yellow-50 border border-amber-200 rounded-full">
+            <Link href="/abogado/creditos" className="flex items-center gap-1.5 px-3 py-1.5 bg-gradient-to-r from-amber-50 to-yellow-50 border border-amber-200 rounded-full hover:border-amber-400 transition-colors">
               <Coins className="w-4 h-4 text-amber-600" />
               <span className="font-bold text-amber-700">{creditos.saldo_actual}</span>
               <span className="text-xs text-amber-600 hidden sm:inline">creditos</span>
-            </div>
+            </Link>
           </div>
         </div>
       </header>

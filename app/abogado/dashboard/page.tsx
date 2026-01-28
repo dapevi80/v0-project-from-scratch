@@ -15,11 +15,7 @@ import { AyudaUrgenteButton } from '@/components/ayuda-urgente-button'
 import { CryptoWallet } from '@/components/wallet/crypto-wallet'
 import { DashboardSkeleton } from '@/components/ui/dashboard-skeleton'
 import { LogoutButton } from '@/app/dashboard/logout-button'
-import { 
-  Calculator, Folder, BookOpen, FileCheck, ShoppingBag, Briefcase, 
-  Users, Shield, ChevronRight, CheckCircle2, AlertCircle, Clock,
-  Award, Coins
-} from 'lucide-react'
+import { AlertCircle, Award } from 'lucide-react'
 
 export default function AbogadoDashboardPage() {
   const router = useRouter()
@@ -95,18 +91,18 @@ export default function AbogadoDashboardPage() {
   const isGuestLawyer = role === 'guestlawyer'
   const displayName = lawyerProfile?.display_name || profile?.full_name || 'Abogado'
 
-  // Herramientas
+  // Herramientas con emojis
   const freeTools = [
-    { name: 'Calculadora', href: '/calculadora', icon: Calculator, description: 'Calcula liquidaciones', available: true },
-    { name: 'Boveda', href: '/boveda', icon: Folder, description: 'Guarda documentos', available: true },
-    { name: 'Guia LFT', href: '/guia-lft', icon: BookOpen, description: 'Ley Federal del Trabajo', available: true }
+    { name: 'Calculadora', href: '/calculadora', emoji: '🧮', description: 'Calcula liquidaciones', available: true },
+    { name: 'Boveda', href: '/boveda', emoji: '🔐', description: 'Guarda documentos', available: true },
+    { name: 'Guia LFT', href: '/guia-lft', emoji: '📖', description: 'Ley Federal del Trabajo', available: true }
   ]
 
   const lawyerTools = [
-    { name: 'AutoCCL', href: '/oficina-virtual/ccl', icon: FileCheck, description: 'Genera solicitudes CCL', available: isVerified, badge: isGuestLawyer ? 'Verificate' : undefined },
-    { name: 'Marketplace', href: '/oficina-virtual/casos', icon: ShoppingBag, description: 'Casos disponibles', available: isVerified, badge: isGuestLawyer ? 'Verificate' : undefined },
-    { name: 'Mis Casos', href: '/abogado/casos', icon: Briefcase, description: 'Gestiona tus casos', available: true },
-    { name: 'Leads', href: '/oficina-virtual/leads', icon: Users, description: 'Clientes potenciales', available: isVerified, badge: isGuestLawyer ? 'Verificate' : undefined }
+    { name: 'Mis Casos', href: '/abogado/casos', emoji: '⚖️', description: 'Gestiona y toma casos', available: true, highlight: true },
+    { name: 'AutoCCL', href: '/oficina-virtual/ccl', emoji: '📝', description: 'Genera solicitudes CCL', available: isVerified, badge: isGuestLawyer ? 'Verificate' : undefined },
+    { name: 'Marketplace', href: '/oficina-virtual/casos', emoji: '🛒', description: 'Casos disponibles', available: isVerified, badge: isGuestLawyer ? 'Verificate' : undefined },
+    { name: 'Leads', href: '/oficina-virtual/leads', emoji: '👥', description: 'Clientes potenciales', available: isVerified, badge: isGuestLawyer ? 'Verificate' : undefined }
   ]
 
   return (
@@ -183,52 +179,50 @@ export default function AbogadoDashboardPage() {
 
         {/* Estadisticas */}
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-          <Card>
+          <Card className="bg-gradient-to-br from-blue-50 to-indigo-50 border-blue-200">
             <CardContent className="p-4 text-center">
-              <Briefcase className="w-6 h-6 mx-auto text-blue-500" />
-              <p className="text-2xl font-bold mt-2">{stats.casos}</p>
-              <p className="text-xs text-muted-foreground">Casos Activos</p>
+              <span className="text-2xl">⚖️</span>
+              <p className="text-2xl font-bold mt-1 text-blue-700">{stats.casos}</p>
+              <p className="text-xs text-blue-600">Casos Activos</p>
             </CardContent>
           </Card>
-          <Card>
+          <Card className="bg-gradient-to-br from-green-50 to-emerald-50 border-green-200">
             <CardContent className="p-4 text-center">
-              <CheckCircle2 className="w-6 h-6 mx-auto text-green-500" />
-              <p className="text-2xl font-bold mt-2">{stats.completados}</p>
-              <p className="text-xs text-muted-foreground">Completados</p>
+              <span className="text-2xl">✅</span>
+              <p className="text-2xl font-bold mt-1 text-green-700">{stats.completados}</p>
+              <p className="text-xs text-green-600">Completados</p>
             </CardContent>
           </Card>
-          <Card>
+          <Card className="bg-gradient-to-br from-purple-50 to-violet-50 border-purple-200">
             <CardContent className="p-4 text-center">
-              <Calculator className="w-6 h-6 mx-auto text-purple-500" />
-              <p className="text-2xl font-bold mt-2">{stats.calculos}</p>
-              <p className="text-xs text-muted-foreground">Calculos</p>
+              <span className="text-2xl">🧮</span>
+              <p className="text-2xl font-bold mt-1 text-purple-700">{stats.calculos}</p>
+              <p className="text-xs text-purple-600">Calculos</p>
             </CardContent>
           </Card>
-          <Card>
+          <Card className="bg-gradient-to-br from-amber-50 to-yellow-50 border-amber-200">
             <CardContent className="p-4 text-center">
-              <Coins className="w-6 h-6 mx-auto text-yellow-500" />
-              <p className="text-2xl font-bold mt-2">{isVerified ? '10' : '0'}</p>
-              <p className="text-xs text-muted-foreground">Creditos CCL</p>
+              <span className="text-2xl">🪙</span>
+              <p className="text-2xl font-bold mt-1 text-amber-700">{isVerified ? '250' : '0'}</p>
+              <p className="text-xs text-amber-600">Creditos</p>
             </CardContent>
           </Card>
         </div>
 
         {/* Herramientas Gratuitas */}
         <div>
-          <h2 className="text-lg font-semibold mb-3">Herramientas Gratuitas</h2>
+          <div className="flex items-center gap-2 mb-3">
+            <h2 className="text-lg font-semibold">Herramientas Gratuitas</h2>
+            <Badge variant="secondary" className="text-xs">Sin costo</Badge>
+          </div>
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
             {freeTools.map((tool) => (
               <Link key={tool.name} href={tool.href}>
-                <Card className="hover:shadow-md transition-shadow cursor-pointer h-full">
-                  <CardContent className="p-4 flex items-center gap-3">
-                    <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center">
-                      <tool.icon className="w-5 h-5 text-primary" />
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <p className="font-medium">{tool.name}</p>
-                      <p className="text-xs text-muted-foreground truncate">{tool.description}</p>
-                    </div>
-                    <ChevronRight className="w-4 h-4 text-muted-foreground" />
+                <Card className="hover:border-primary hover:shadow-md transition-all cursor-pointer h-full">
+                  <CardContent className="p-4 sm:p-5 flex flex-col items-center text-center gap-2">
+                    <span className="text-3xl sm:text-4xl">{tool.emoji}</span>
+                    <p className="font-semibold text-foreground text-sm sm:text-base">{tool.name}</p>
+                    <p className="text-xs text-muted-foreground">{tool.description}</p>
                   </CardContent>
                 </Card>
               </Link>
@@ -238,25 +232,35 @@ export default function AbogadoDashboardPage() {
 
         {/* Herramientas de Abogado */}
         <div>
-          <h2 className="text-lg font-semibold mb-3">Herramientas para Abogados</h2>
+          <div className="flex items-center gap-2 mb-3">
+            <h2 className="text-lg font-semibold">Herramientas para Abogados</h2>
+            {isVerified ? (
+              <Badge className="bg-blue-600 text-white text-xs">PRO</Badge>
+            ) : (
+              <Badge variant="secondary" className="text-xs">Verifica tu cuenta</Badge>
+            )}
+          </div>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             {lawyerTools.map((tool) => (
               <Link key={tool.name} href={tool.available ? tool.href : '#'} className={!tool.available ? 'pointer-events-none' : ''}>
-                <Card className={`transition-shadow h-full ${tool.available ? 'hover:shadow-md cursor-pointer' : 'opacity-60'}`}>
-                  <CardContent className="p-4 flex items-center gap-3">
-                    <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${tool.available ? 'bg-blue-500/10' : 'bg-muted'}`}>
-                      <tool.icon className={`w-5 h-5 ${tool.available ? 'text-blue-500' : 'text-muted-foreground'}`} />
+                <Card className={`transition-all h-full ${
+                  tool.available 
+                    ? tool.highlight 
+                      ? 'hover:shadow-lg cursor-pointer border-emerald-200 bg-gradient-to-br from-emerald-50 to-teal-50 hover:border-emerald-400' 
+                      : 'hover:shadow-md cursor-pointer hover:border-blue-400'
+                    : 'opacity-50 bg-muted/30 border-dashed'
+                }`}>
+                  <CardContent className="p-4 sm:p-5 flex flex-col items-center text-center gap-2">
+                    <span className={`text-3xl sm:text-4xl ${!tool.available ? 'grayscale' : ''}`}>{tool.emoji}</span>
+                    <div className="flex items-center gap-1.5">
+                      <p className={`font-semibold text-sm sm:text-base ${tool.available ? 'text-foreground' : 'text-muted-foreground'}`}>
+                        {tool.name}
+                      </p>
+                      {tool.badge && (
+                        <Badge variant="outline" className="text-[10px] px-1.5 py-0">{tool.badge}</Badge>
+                      )}
                     </div>
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-2">
-                        <p className="font-medium">{tool.name}</p>
-                        {tool.badge && (
-                          <Badge variant="outline" className="text-xs">{tool.badge}</Badge>
-                        )}
-                      </div>
-                      <p className="text-xs text-muted-foreground truncate">{tool.description}</p>
-                    </div>
-                    <ChevronRight className="w-4 h-4 text-muted-foreground" />
+                    <p className="text-xs text-muted-foreground">{tool.description}</p>
                   </CardContent>
                 </Card>
               </Link>
@@ -267,33 +271,26 @@ export default function AbogadoDashboardPage() {
         {/* Admin Tools */}
         {(role === 'admin' || role === 'superadmin') && (
           <div>
-            <h2 className="text-lg font-semibold mb-3">Administracion</h2>
+            <div className="flex items-center gap-2 mb-3">
+              <h2 className="text-lg font-semibold">Administracion</h2>
+              <Badge className="bg-red-600 text-white text-xs">ADMIN</Badge>
+            </div>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <Link href="/admin/solicitudes-abogados">
-                <Card className="hover:shadow-md transition-shadow cursor-pointer">
-                  <CardContent className="p-4 flex items-center gap-3">
-                    <div className="w-10 h-10 rounded-lg bg-indigo-500/10 flex items-center justify-center">
-                      <Shield className="w-5 h-5 text-indigo-500" />
-                    </div>
-                    <div className="flex-1">
-                      <p className="font-medium">Verificar Abogados</p>
-                      <p className="text-xs text-muted-foreground">Aprobar solicitudes</p>
-                    </div>
-                    <ChevronRight className="w-4 h-4 text-muted-foreground" />
+                <Card className="hover:shadow-md transition-all cursor-pointer hover:border-indigo-400 bg-gradient-to-br from-indigo-50 to-purple-50 border-indigo-200">
+                  <CardContent className="p-4 sm:p-5 flex flex-col items-center text-center gap-2">
+                    <span className="text-3xl">🛡️</span>
+                    <p className="font-semibold">Verificar Abogados</p>
+                    <p className="text-xs text-muted-foreground">Aprobar solicitudes</p>
                   </CardContent>
                 </Card>
               </Link>
               <Link href="/admin">
-                <Card className="hover:shadow-md transition-shadow cursor-pointer">
-                  <CardContent className="p-4 flex items-center gap-3">
-                    <div className="w-10 h-10 rounded-lg bg-indigo-500/10 flex items-center justify-center">
-                      <Users className="w-5 h-5 text-indigo-500" />
-                    </div>
-                    <div className="flex-1">
-                      <p className="font-medium">Panel Admin</p>
-                      <p className="text-xs text-muted-foreground">Gestionar plataforma</p>
-                    </div>
-                    <ChevronRight className="w-4 h-4 text-muted-foreground" />
+                <Card className="hover:shadow-md transition-all cursor-pointer hover:border-indigo-400 bg-gradient-to-br from-indigo-50 to-purple-50 border-indigo-200">
+                  <CardContent className="p-4 sm:p-5 flex flex-col items-center text-center gap-2">
+                    <span className="text-3xl">📊</span>
+                    <p className="font-semibold">Panel Admin</p>
+                    <p className="text-xs text-muted-foreground">Gestionar plataforma</p>
                   </CardContent>
                 </Card>
               </Link>
