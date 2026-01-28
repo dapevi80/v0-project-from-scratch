@@ -210,7 +210,7 @@ export function GlobalAIAssistant() {
           ${isDragging ? 'shadow-2xl scale-110 border-green-500' : 'hover:shadow-xl'}
           ${isIdle ? 'border-green-300 opacity-70' : 'border-green-400 opacity-100'}
         `}
-        aria-label="Abrir asistente IA - arrastra para mover"
+        aria-label="Abrir Lía - arrastra para mover"
       >
         {/* Avatar */}
         <img 
@@ -252,7 +252,7 @@ export function GlobalAIAssistant() {
           }}
           className="z-[59] bg-slate-900 text-white text-xs px-3 py-2 rounded-lg shadow-xl whitespace-nowrap pointer-events-none animate-in fade-in duration-200"
         >
-          <span className="font-medium">Asistente Legal IA</span>
+          <span className="font-medium">Lía - Asistente Legal</span>
           <p className="text-slate-400 text-[10px]">Toca para abrir - Arrastra para mover</p>
         </div>
       )}

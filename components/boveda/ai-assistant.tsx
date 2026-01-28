@@ -43,20 +43,20 @@ export function AIAssistant({
   const [localInput, setLocalInput] = useState("")
 
   const welcomeMessage = documentText
-    ? `¡Hola! Soy tu asistente legal de **Me Corrieron**, especializado en **derecho laboral mexicano**.
+    ? `¡Hola! Soy **Lía**, tu asistente legal de **Me Corrieron**. Mi nombre viene de "Ley" + "IA" - soy tu aliada en derecho laboral mexicano.
 
-${documentName ? `Veo que estás consultando "${documentName}". ` : ""}Puedo ayudarte a entender este documento y cómo afecta tu caso laboral.
+${documentName ? `Veo que tienes el documento "${documentName}". ` : ""}Puedo ayudarte a entenderlo y explicarte cómo te afecta.
 
-Pregúntame lo que necesites - estoy actualizado con las reformas laborales más recientes y conozco los procedimientos de los Centros de Conciliación.`
-    : `¡Hola! Soy tu asistente legal de **Me Corrieron**, especializado en derecho laboral mexicano.
+Pregúntame lo que necesites - estoy al día con las reformas laborales y los procedimientos de los Centros de Conciliación.`
+    : `¡Hola! Soy **Lía**, tu asistente legal de **Me Corrieron**. Mi nombre viene de "Ley" + "IA" - soy tu aliada en derecho laboral mexicano.
 
-Estoy aquí para ayudarte con:
-• **Calcular tu liquidación** - Te explico cómo usar la calculadora
-• **Entender tus documentos** - Analizo contratos, cartas de despido
-• **Conocer tus derechos** - Despidos, vacaciones, aguinaldo
-• **El proceso legal** - Centros de Conciliación, demandas
+Puedo ayudarte con:
+• **Calcular tu liquidación** - Te guío paso a paso
+• **Entender documentos** - Contratos, cartas de despido, finiquitos
+• **Conocer tus derechos** - Todo sobre la Ley Federal del Trabajo
+• **El proceso legal** - Conciliación, demandas, plazos
 
-¿En qué puedo ayudarte hoy?`
+¿En qué te ayudo hoy?`
 
   const { messages, input, handleInputChange, handleSubmit, isLoading, append } =
     useChat({
@@ -120,11 +120,11 @@ Estoy aquí para ayudarte con:
             </div>
             <div>
               <h2 className="text-white text-base font-semibold flex items-center gap-2">
-                Asistente Legal IA
+                Lía
                 <Sparkles className="w-4 h-4 text-yellow-300" />
               </h2>
               <p className="text-green-100 text-xs">
-                Derecho laboral mexicano
+                Tu asistente legal IA
               </p>
             </div>
           </div>
@@ -212,7 +212,7 @@ Estoy aquí para ayudarte con:
               <div className="bg-white border shadow-sm rounded-2xl px-4 py-3">
                 <div className="flex items-center gap-2 text-muted-foreground">
                   <Loader2 className="w-4 h-4 animate-spin" />
-                  <span className="text-sm">Escribiendo...</span>
+                  <span className="text-sm">Lía está escribiendo...</span>
                 </div>
               </div>
             </div>
@@ -259,7 +259,7 @@ export function AIAssistantButton({ onClick }: { onClick: () => void }) {
     <button
       onClick={onClick}
       className="fixed bottom-20 right-4 z-40 w-14 h-14 rounded-full shadow-lg hover:shadow-xl transition-all flex items-center justify-center group overflow-hidden border-3 border-green-400 bg-white"
-      aria-label="Abrir asistente legal IA"
+      aria-label="Abrir Lía, tu asistente legal IA"
     >
       <img 
         src="/ai-assistant-avatar.jpg" 
