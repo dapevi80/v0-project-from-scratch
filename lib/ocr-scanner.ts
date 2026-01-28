@@ -126,16 +126,17 @@ export function applyVisualEnhancement(
   return canvas
 }
 
-// Rotar imagen
+// Rotar imagen (corregido para no distorsionar)
 export function rotateImage(canvas: HTMLCanvasElement, degrees: number): HTMLCanvasElement {
   const rotatedCanvas = document.createElement('canvas')
   const ctx = rotatedCanvas.getContext('2d')
   if (!ctx) return canvas
   
-  const radians = (degrees * Math.PI) / 180
+  // Normalizar grados
+  const normalizedDegrees = ((degrees % 360) + 360) % 360
   
   // Calcular nuevo tamaño
-  if (degrees === 90 || degrees === 270) {
+  if (normalizedDegrees === 90 || normalizedDegrees === 270) {
     rotatedCanvas.width = canvas.height
     rotatedCanvas.height = canvas.width
   } else {
@@ -143,10 +144,18 @@ export function rotateImage(canvas: HTMLCanvasElement, degrees: number): HTMLCan
     rotatedCanvas.height = canvas.height
   }
   
+  ctx.save()
   ctx.translate(rotatedCanvas.width / 2, rotatedCanvas.height / 2)
-  ctx.rotate(radians)
-  ctx.drawImage(canvas, -canvas.width / 2, -canvas.height / 2)
+  ctx.rotate((normalizedDegrees * Math.PI) / 180)
   
+  // Dibujar centrado correctamente según la rotación
+  if (normalizedDegrees === 90 || normalizedDegrees === 270) {
+    ctx.drawImage(canvas, -canvas.width / 2, -canvas.height / 2)
+  } else {
+    ctx.drawImage(canvas, -canvas.width / 2, -canvas.height / 2)
+  }
+  
+  ctx.restore()
   return rotatedCanvas
 }
 

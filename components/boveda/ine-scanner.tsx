@@ -74,6 +74,14 @@ export function INEScanner({ onClose, onComplete, lado, datosExistentes }: INESc
   const [draggedCorner, setDraggedCorner] = useState<string | null>(null)
   const [enhancement, setEnhancement] = useState({ brightness: 0, contrast: 0 })
   
+  // Datos editables manualmente
+  const [editableData, setEditableData] = useState({
+    curp: '',
+    nombre: '',
+    fechaNacimiento: '',
+    codigoPostal: ''
+  })
+  
   const fileInputRef = useRef<HTMLInputElement>(null)
   const cameraInputRef = useRef<HTMLInputElement>(null)
   const cropContainerRef = useRef<HTMLDivElement>(null)
@@ -134,16 +142,17 @@ export function INEScanner({ onClose, onComplete, lado, datosExistentes }: INESc
         } else {
           setIneData(parsedData)
         }
-        
-        setStep('review')
       } else {
-        setError('No se pudo extraer texto de la imagen')
-        setStep('capture')
+        // No se detectó texto, pero igual permitir entrada manual
+        setIneData({ confianza: 0, errores: ['No se detectó texto. Puedes escribir tus datos manualmente.'] })
       }
+      // Siempre ir a review para permitir entrada manual
+      setStep('review')
     } catch (err) {
       console.error('Error en OCR:', err)
-      setError('Error al analizar la imagen')
-      setStep('capture')
+      // Aún en error, permitir entrada manual
+      setIneData({ confianza: 0, errores: ['Error al leer. Puedes escribir tus datos manualmente.'] })
+      setStep('review')
     }
   }
 
@@ -247,12 +256,25 @@ export function INEScanner({ onClose, onComplete, lado, datosExistentes }: INESc
 
   // Guardar y continuar
   const handleSave = async () => {
-    if (!processedUrl || !ineData) return
+    if (!processedUrl) return
     
     setStep('saving')
     
     try {
-      // Subir imagen a la bóveda
+      // Combinar datos OCR con datos editados manualmente
+      const finalData: INEData = {
+        confianza: ineData?.confianza || 0,
+        errores: ineData?.errores || [],
+        curp: editableData.curp || ineData?.curp,
+        nombreCompleto: editableData.nombre || ineData?.nombreCompleto,
+        nombre: editableData.nombre || ineData?.nombre,
+        fechaNacimiento: editableData.fechaNacimiento || ineData?.fechaNacimiento,
+        domicilio: {
+          ...ineData?.domicilio,
+          codigoPostal: editableData.codigoPostal || ineData?.domicilio?.codigoPostal
+        }
+      }
+      
       await subirDocumento({
         archivo: processedUrl,
         nombre: `INE ${lado === 'frente' ? 'Frente' : 'Reverso'}`,
@@ -261,7 +283,7 @@ export function INEScanner({ onClose, onComplete, lado, datosExistentes }: INESc
         mimeType: 'image/jpeg',
         tamanioBytes: Math.round(processedUrl.length * 0.75),
         metadata: {
-          ineData,
+          ineData: finalData,
           lado,
           fechaEscaneo: new Date().toISOString()
         }
@@ -271,7 +293,7 @@ export function INEScanner({ onClose, onComplete, lado, datosExistentes }: INESc
       
       setTimeout(() => {
         onComplete({
-          ineData,
+          ineData: finalData,
           frenteUrl: lado === 'frente' ? processedUrl : '',
           reversoUrl: lado === 'reverso' ? processedUrl : undefined
         })
@@ -542,171 +564,143 @@ export function INEScanner({ onClose, onComplete, lado, datosExistentes }: INESc
         )}
 
         {/* === REVISIÓN DE DATOS === */}
-        {step === 'review' && ineData && (
-          <div className="p-4 space-y-3">
-            {/* Imagen procesada */}
-            <div className="relative aspect-[1.586/1] rounded-lg overflow-hidden border bg-slate-100">
-              {processedUrl && (
-                <img src={processedUrl || "/placeholder.svg"} alt="INE procesada" className="w-full h-full object-contain" />
-              )}
+        {step === 'review' && processedUrl && (
+          <div className="flex flex-col h-full max-h-[70vh] overflow-hidden">
+            {/* Imagen pequeña arriba */}
+            <div className="p-3 border-b bg-slate-50">
+              <div className="flex gap-3 items-start">
+                <div className="relative w-24 h-16 rounded-lg overflow-hidden border bg-white shrink-0">
+                  {processedUrl && (
+                    <img src={processedUrl || "/placeholder.svg"} alt="INE" className="w-full h-full object-contain" />
+                  )}
+                </div>
+                {/* Mini herramientas */}
+                <div className="flex gap-1 flex-wrap">
+                  <button 
+                    onClick={handleDetectCorners}
+                    disabled={isProcessing}
+                    className="p-1.5 hover:bg-purple-100 bg-purple-50 rounded text-purple-600"
+                    title="Recortar"
+                  >
+                    <Crop className="w-4 h-4" />
+                  </button>
+                  <button 
+                    onClick={handleRotate}
+                    disabled={isProcessing}
+                    className="p-1.5 hover:bg-muted rounded"
+                    title="Rotar"
+                  >
+                    <RotateCw className="w-4 h-4" />
+                  </button>
+                  <button 
+                    onClick={handleAutoEnhance}
+                    disabled={isProcessing}
+                    className="p-1.5 hover:bg-amber-100 bg-amber-50 rounded text-amber-600"
+                    title="Mejorar"
+                  >
+                    <Wand2 className="w-4 h-4" />
+                  </button>
+                  <button 
+                    onClick={() => { if (processedUrl) { setStep('processing'); processOCR(processedUrl) }}}
+                    disabled={isProcessing}
+                    className="p-1.5 hover:bg-blue-100 bg-blue-50 rounded text-blue-600"
+                    title="Re-escanear"
+                  >
+                    <ScanLine className="w-4 h-4" />
+                  </button>
+                </div>
+              </div>
             </div>
             
-            {/* Barra de herramientas */}
-            <div className="flex items-center justify-center gap-1 p-2 bg-muted/50 rounded-lg">
-              <button 
-                onClick={handleDetectCorners}
-                disabled={isProcessing}
-                className="p-2 hover:bg-purple-100 bg-purple-50 rounded-lg flex flex-col items-center gap-0.5 text-purple-600"
-                title="Recortar documento"
-              >
-                {isProcessing ? <Loader2 className="w-4 h-4 animate-spin" /> : <Crop className="w-4 h-4" />}
-                <span className="text-[8px] font-medium">Recortar</span>
-              </button>
-              <button 
-                onClick={handleAutoEnhance}
-                disabled={isProcessing}
-                className="p-2 hover:bg-amber-100 bg-amber-50 rounded-lg flex flex-col items-center gap-0.5 text-amber-600"
-                title="Mejorar imagen"
-              >
-                <Wand2 className="w-4 h-4" />
-                <span className="text-[8px]">Mejorar</span>
-              </button>
-              <button 
-                onClick={handleRotate}
-                disabled={isProcessing}
-                className="p-2 hover:bg-muted rounded-lg flex flex-col items-center gap-0.5"
-                title="Rotar 90°"
-              >
-                <RotateCw className="w-4 h-4" />
-                <span className="text-[8px]">Rotar</span>
-              </button>
-              <button 
-                onClick={() => {
-                  if (!processedUrl) return
-                  setStep('processing')
-                  processOCR(processedUrl)
-                }}
-                disabled={isProcessing}
-                className="p-2 hover:bg-blue-100 bg-blue-50 rounded-lg flex flex-col items-center gap-0.5 text-blue-600"
-                title="Re-escanear OCR"
-              >
-                <ScanLine className="w-4 h-4" />
-                <span className="text-[8px]">Re-OCR</span>
-              </button>
-            </div>
-
-            {/* Datos extraídos */}
-            <div className="space-y-3">
+            {/* Formulario de datos - scrollable */}
+            <div className="flex-1 overflow-y-auto p-3 space-y-3">
               <div className="flex items-center justify-between">
-                <h4 className="font-semibold text-sm">Datos detectados</h4>
-                <Badge variant={ineData.confianza >= 60 ? 'default' : 'secondary'}>
-                  {ineData.confianza}% confianza
-                </Badge>
+                <p className="text-xs text-muted-foreground">Verifica o completa tus datos</p>
+                {ineData && (
+                  <Badge variant={ineData.confianza >= 60 ? 'default' : 'secondary'} className="text-[10px]">
+                    {ineData.confianza}%
+                  </Badge>
+                )}
               </div>
 
-              <div className="grid gap-2">
+              {/* Campos editables */}
+              <div className="space-y-2">
                 {/* CURP */}
-                <div className={`p-2.5 rounded-lg border ${ineData.curp ? 'bg-green-50 border-green-200' : 'bg-slate-50 border-slate-200'}`}>
-                  <div className="flex items-center gap-2">
-                    <FileText className={`w-4 h-4 ${ineData.curp ? 'text-green-600' : 'text-slate-400'}`} />
-                    <div className="flex-1 min-w-0">
-                      <p className="text-[10px] text-muted-foreground">CURP</p>
-                      <p className={`font-mono text-sm truncate ${ineData.curp ? 'text-green-700 font-medium' : 'text-slate-400'}`}>
-                        {ineData.curp || 'No detectado'}
-                      </p>
-                    </div>
-                    {ineData.curp && validarCURP(ineData.curp) && (
-                      <CheckCircle className="w-4 h-4 text-green-600 shrink-0" />
-                    )}
-                  </div>
+                <div>
+                  <label className="text-[10px] text-muted-foreground flex items-center gap-1 mb-1">
+                    <CreditCard className="w-3 h-3" />
+                    CURP
+                  </label>
+                  <input
+                    type="text"
+                    value={editableData.curp || ineData?.curp || ''}
+                    onChange={(e) => setEditableData(prev => ({ ...prev, curp: e.target.value.toUpperCase() }))}
+                    placeholder="18 caracteres"
+                    maxLength={18}
+                    className="w-full px-3 py-2 text-sm font-mono rounded-lg border bg-white focus:ring-2 focus:ring-blue-200 focus:border-blue-400 outline-none uppercase"
+                  />
                 </div>
 
                 {/* Nombre */}
-                {(ineData.nombreCompleto || ineData.nombre) && (
-                  <div className="p-2.5 rounded-lg border bg-blue-50 border-blue-200">
-                    <div className="flex items-center gap-2">
-                      <User className="w-4 h-4 text-blue-600" />
-                      <div className="flex-1 min-w-0">
-                        <p className="text-[10px] text-muted-foreground">Nombre</p>
-                        <p className="text-sm font-medium text-blue-700 truncate">
-                          {ineData.nombreCompleto || ineData.nombre}
-                        </p>
-                      </div>
-                    </div>
-                  </div>
-                )}
+                <div>
+                  <label className="text-[10px] text-muted-foreground flex items-center gap-1 mb-1">
+                    <User className="w-3 h-3" />
+                    Nombre completo
+                  </label>
+                  <input
+                    type="text"
+                    value={editableData.nombre || ineData?.nombreCompleto || ineData?.nombre || ''}
+                    onChange={(e) => setEditableData(prev => ({ ...prev, nombre: e.target.value }))}
+                    placeholder="Como aparece en tu INE"
+                    className="w-full px-3 py-2 text-sm rounded-lg border bg-white focus:ring-2 focus:ring-blue-200 focus:border-blue-400 outline-none"
+                  />
+                </div>
 
                 {/* Fecha nacimiento */}
-                {ineData.fechaNacimiento && (
-                  <div className="p-2.5 rounded-lg border bg-purple-50 border-purple-200">
-                    <div className="flex items-center gap-2">
-                      <Calendar className="w-4 h-4 text-purple-600" />
-                      <div className="flex-1">
-                        <p className="text-[10px] text-muted-foreground">Fecha de nacimiento</p>
-                        <p className="text-sm font-medium text-purple-700">
-                          {new Date(ineData.fechaNacimiento).toLocaleDateString('es-MX', {
-                            day: 'numeric',
-                            month: 'long',
-                            year: 'numeric'
-                          })}
-                        </p>
-                      </div>
-                    </div>
-                  </div>
-                )}
+                <div>
+                  <label className="text-[10px] text-muted-foreground flex items-center gap-1 mb-1">
+                    <Calendar className="w-3 h-3" />
+                    Fecha de nacimiento
+                  </label>
+                  <input
+                    type="date"
+                    value={editableData.fechaNacimiento || ineData?.fechaNacimiento || ''}
+                    onChange={(e) => setEditableData(prev => ({ ...prev, fechaNacimiento: e.target.value }))}
+                    className="w-full px-3 py-2 text-sm rounded-lg border bg-white focus:ring-2 focus:ring-blue-200 focus:border-blue-400 outline-none"
+                  />
+                </div>
 
-                {/* Domicilio */}
-                {ineData.domicilio?.domicilioCompleto && (
-                  <div className="p-2.5 rounded-lg border bg-amber-50 border-amber-200">
-                    <div className="flex items-start gap-2">
-                      <MapPin className="w-4 h-4 text-amber-600 mt-0.5" />
-                      <div className="flex-1">
-                        <p className="text-[10px] text-muted-foreground">Domicilio</p>
-                        <p className="text-xs text-amber-700">
-                          {ineData.domicilio.domicilioCompleto}
-                        </p>
-                      </div>
-                    </div>
-                  </div>
-                )}
-
-                {/* Otros datos */}
-                <div className="grid grid-cols-2 gap-2">
-                  {ineData.claveElector && (
-                    <div className="p-2 rounded border bg-slate-50">
-                      <p className="text-[9px] text-muted-foreground">Clave Elector</p>
-                      <p className="text-[10px] font-mono truncate">{ineData.claveElector}</p>
-                    </div>
-                  )}
-                  {ineData.seccion && (
-                    <div className="p-2 rounded border bg-slate-50">
-                      <p className="text-[9px] text-muted-foreground">Sección</p>
-                      <p className="text-[10px] font-mono">{ineData.seccion}</p>
-                    </div>
-                  )}
-                  {ineData.vigencia && (
-                    <div className="p-2 rounded border bg-slate-50">
-                      <p className="text-[9px] text-muted-foreground">Vigencia</p>
-                      <p className="text-[10px] font-mono">{ineData.vigencia}</p>
-                    </div>
-                  )}
-                  {ineData.sexo && (
-                    <div className="p-2 rounded border bg-slate-50">
-                      <p className="text-[9px] text-muted-foreground">Sexo</p>
-                      <p className="text-[10px]">{ineData.sexo === 'H' ? 'Hombre' : 'Mujer'}</p>
-                    </div>
-                  )}
+                {/* Código Postal */}
+                <div>
+                  <label className="text-[10px] text-muted-foreground flex items-center gap-1 mb-1">
+                    <MapPin className="w-3 h-3" />
+                    Código postal (opcional)
+                  </label>
+                  <input
+                    type="text"
+                    value={editableData.codigoPostal || ineData?.domicilio?.codigoPostal || ''}
+                    onChange={(e) => setEditableData(prev => ({ ...prev, codigoPostal: e.target.value.replace(/\D/g, '') }))}
+                    placeholder="5 dígitos"
+                    maxLength={5}
+                    className="w-full px-3 py-2 text-sm rounded-lg border bg-white focus:ring-2 focus:ring-blue-200 focus:border-blue-400 outline-none"
+                  />
                 </div>
               </div>
 
-              {/* Errores/advertencias */}
-              {ineData.errores.length > 0 && (
-                <div className="p-2 bg-amber-50 border border-amber-200 rounded-lg">
-                  <p className="text-[10px] text-amber-700">
-                    {ineData.errores.join('. ')}
-                  </p>
+              {/* Info del CURP detectado */}
+              {(editableData.curp || ineData?.curp) && validarCURP(editableData.curp || ineData?.curp || '') && (
+                <div className="p-2 bg-green-50 border border-green-200 rounded-lg">
+                  <div className="flex items-center gap-2">
+                    <CheckCircle className="w-4 h-4 text-green-600 shrink-0" />
+                    <p className="text-[10px] text-green-700">CURP válido</p>
+                  </div>
                 </div>
               )}
+
+              {/* Tip */}
+              <p className="text-[9px] text-muted-foreground text-center">
+                Los campos son opcionales. Puedes completarlos después.
+              </p>
             </div>
           </div>
         )}

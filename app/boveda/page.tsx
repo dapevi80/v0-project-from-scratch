@@ -163,6 +163,7 @@ export default function BovedaPage() {
   const [showScanner, setShowScanner] = useState(false)
   const [showINEScanner, setShowINEScanner] = useState<'frente' | 'reverso' | null>(null)
   const [ineDataExtraido, setIneDataExtraido] = useState<DatosINEExtraidos | null>(null)
+  const [confirmDialog, setConfirmDialog] = useState<{ open: boolean; casoId: string | null }>({ open: false, casoId: null })
   const [uploaderCategoria, setUploaderCategoria] = useState<string | undefined>(undefined)
   const [loadingDocUrl, setLoadingDocUrl] = useState<string | null>(null)
   
@@ -639,11 +640,7 @@ export default function BovedaPage() {
                             variant="default"
                             size="sm"
                             className="flex-1 gap-2"
-                            onClick={() => {
-                              if (confirm('Vas a salir de la Bóveda para ver el detalle de tu caso. ¿Continuar?')) {
-                                window.location.href = `/casos/${calc.id}`
-                              }
-                            }}
+                            onClick={() => setConfirmDialog({ open: true, casoId: calc.id })}
                           >
                             <ExternalLink className="w-4 h-4" />
                             Ver Caso
@@ -1209,6 +1206,36 @@ export default function BovedaPage() {
                 ) : (
                   'Eliminar'
                 )}
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
+        
+        {/* Diálogo personalizado para salir a ver caso */}
+        <AlertDialog open={confirmDialog.open} onOpenChange={(open) => setConfirmDialog({ open, casoId: null })}>
+          <AlertDialogContent className="max-w-[340px]">
+            <AlertDialogHeader>
+              <AlertDialogTitle className="flex items-center gap-2 text-base">
+                <ExternalLink className="w-5 h-5 text-blue-600" />
+                Ir a tu caso
+              </AlertDialogTitle>
+              <AlertDialogDescription className="text-sm">
+                Vas a salir de la Bóveda para ver los detalles de tu caso.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter className="flex-row gap-2 sm:gap-2">
+              <AlertDialogCancel className="flex-1 mt-0 bg-muted hover:bg-muted/80">
+                Cancelar
+              </AlertDialogCancel>
+              <AlertDialogAction
+                onClick={() => {
+                  if (confirmDialog.casoId) {
+                    window.location.href = `/casos/${confirmDialog.casoId}`
+                  }
+                }}
+                className="flex-1 bg-blue-600 hover:bg-blue-700"
+              >
+                Ver caso
               </AlertDialogAction>
             </AlertDialogFooter>
           </AlertDialogContent>
