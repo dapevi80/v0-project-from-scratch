@@ -68,12 +68,11 @@ export function AIAssistant({
 }: AIAssistantProps) {
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const inputRef = useRef<HTMLInputElement>(null)
-  const [inputValue, setInputValue] = useState("")
 
   const assistant = ASSISTANTS[assistantType]
   const welcomeMessage = assistant.welcomeMessage(documentName)
 
-  const { messages, append, isLoading } = useChat({
+  const { messages, input, handleInputChange, handleSubmit, isLoading } = useChat({
     api: assistantType === 'mandu' ? "/api/mandu-assistant" : "/api/legal-assistant",
     body: {
       documentContext: documentText,
@@ -91,23 +90,24 @@ export function AIAssistant({
     }
   }, [isOpen])
 
-  const sendMessage = async (text: string) => {
-    if (!text.trim() || isLoading) return
-    setInputValue("")
-    await append({ role: "user", content: text })
-  }
-
   const handleQuickQuestion = (question: string) => {
-    sendMessage(question)
+    // Crear un evento sintético para enviar la pregunta
+    const syntheticEvent = {
+      target: { value: question }
+    } as React.ChangeEvent<HTMLInputElement>
+    handleInputChange(syntheticEvent)
+    
+    // Enviar después de actualizar el input
+    setTimeout(() => {
+      const form = document.getElementById('chat-form') as HTMLFormElement
+      if (form) form.requestSubmit()
+    }, 100)
   }
 
   const onFormSubmit = (e: React.FormEvent) => {
     e.preventDefault()
-    sendMessage(inputValue)
-  }
-
-  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setInputValue(e.target.value)
+    if (!input?.trim()) return
+    handleSubmit(e)
   }
 
   // Mostrar mensaje de bienvenida + mensajes del chat
@@ -250,7 +250,7 @@ export function AIAssistant({
           <input
             ref={inputRef}
             type="text"
-            value={inputValue}
+            value={input || ""}
             onChange={handleInputChange}
             placeholder="Escribe tu pregunta..."
             className="flex-1 px-4 py-2.5 rounded-full border-2 bg-slate-50 focus:bg-white focus:border-green-400 outline-none text-sm"
@@ -259,7 +259,7 @@ export function AIAssistant({
           <Button
             type="submit"
             size="icon"
-            disabled={isLoading || !inputValue.trim()}
+            disabled={isLoading || !input?.trim()}
             className={`rounded-full ${assistant.buttonColor} w-10 h-10`}
           >
             {isLoading ? (
