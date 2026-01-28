@@ -14,6 +14,7 @@ import { AyudaUrgenteButton } from '@/components/ayuda-urgente-button'
 import { Lock } from 'lucide-react'
 import { CryptoWallet } from '@/components/wallet/crypto-wallet'
 import { VerificacionCelebration } from '@/components/verificacion-celebration'
+import { DowngradeAlert } from '@/components/downgrade-alert'
 import type { User } from '@supabase/supabase-js'
 
 export default function DashboardPage() {
@@ -197,6 +198,11 @@ export default function DashboardPage() {
       {/* Main content */}
       <main className="container mx-auto px-3 sm:px-4 py-4 sm:py-8">
         <div className="space-y-6 sm:space-y-8">
+          {/* Alerta de downgrade si aplica */}
+          {profile?.verification_status === 'documents_missing' && (
+            <DowngradeAlert userId={user?.id} />
+          )}
+
           {/* Perfil de usuario */}
           <UserProfileCard
             userId={user?.id}

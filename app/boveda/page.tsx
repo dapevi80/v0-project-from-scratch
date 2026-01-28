@@ -63,6 +63,7 @@ import {
 } from './actions'
 import { AyudaUrgenteButton } from '@/components/ayuda-urgente-button'
 import { CedulaDigital } from '@/components/cedula-digital'
+import { DowngradeAlert } from '@/components/downgrade-alert'
 import { AyudaUrgenteFlow } from '@/components/ayuda-urgente-flow'
 import { LogoutButton } from '@/app/dashboard/logout-button'
 import { openAIChatWithDocument } from '@/components/global-ai-assistant'
@@ -166,6 +167,8 @@ export default function BovedaPage() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [requiresAuth, setRequiresAuth] = useState(false)
+  const [userId, setUserId] = useState<string | null>(null)
+  const [verificationStatus, setVerificationStatus] = useState<string | null>(null)
   
   // Estados para modales
   const [showRecorder, setShowRecorder] = useState(false)
@@ -217,6 +220,21 @@ export default function BovedaPage() {
     setError(null)
     
     try {
+      // Obtener usuario y perfil
+      const { createClient } = await import('@/lib/supabase/client')
+      const supabase = createClient()
+      const { data: { user } } = await supabase.auth.getUser()
+      
+      if (user) {
+        setUserId(user.id)
+        const { data: profile } = await supabase
+          .from('profiles')
+          .select('verification_status')
+          .eq('id', user.id)
+          .single()
+        if (profile) setVerificationStatus(profile.verification_status)
+      }
+      
       const [docsResult, calcsResult, statsResult] = await Promise.all([
         obtenerDocumentos(),
         obtenerCalculos(),
@@ -485,6 +503,13 @@ export default function BovedaPage() {
           </div>
         )}
         
+        {/* Alerta de downgrade si aplica */}
+        {verificationStatus === 'documents_missing' && userId && (
+          <div className="mb-4">
+            <DowngradeAlert userId={userId} />
+          </div>
+        )}
+
         {/* Banner: Ir a Mis Casos */}
         <Link href="/casos" className="block mb-4">
           <Card className="border-primary/20 bg-gradient-to-r from-primary/5 to-primary/10 hover:from-primary/10 hover:to-primary/15 transition-colors cursor-pointer">

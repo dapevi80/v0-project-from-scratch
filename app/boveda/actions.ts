@@ -603,6 +603,11 @@ export async function obtenerUrlDocumento(documentoId: string) {
       .update({ estado: 'archivo_perdido' })
       .eq('id', documentoId)
     
+    // Verificar si es un archivo de verificacion INE y hacer downgrade si aplica
+    if (doc.archivo_path.includes('ine_frente') || doc.archivo_path.includes('ine_reverso')) {
+      await verificarArchivosVerificacion()
+    }
+    
     return { success: false, error: 'El archivo ya no existe en storage', notFound: true }
   }
   

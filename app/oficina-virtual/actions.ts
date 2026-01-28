@@ -670,6 +670,7 @@ export async function verifyUserAccount(userId: string, datos: {
   
   if (datos.aprobado) {
     // Aprobar verificación y actualizar rol a worker
+    // Resetear celebration_shown para mostrar celebracion (especialmente importante para re-verificaciones)
     const { error } = await supabase
       .from('profiles')
       .update({
@@ -680,7 +681,11 @@ export async function verifyUserAccount(userId: string, datos: {
         identificacion_verificada: true,
         identificacion_verificada_por: user.id,
         identificacion_verificada_at: new Date().toISOString(),
-        verification_status: 'verified'
+        verification_status: 'verified',
+        celebration_shown: false, // Resetear para mostrar celebracion
+        downgrade_reason: null, // Limpiar razon de downgrade anterior
+        downgrade_at: null,
+        previous_role: null
       })
       .eq('id', userId)
     
