@@ -76,22 +76,46 @@ type CalculoLiquidacion = {
   created_at: string
 }
 
-// Configuración de categorías
+// Configuración de categorías - incluye todas las categorías de documentos
 const CATEGORIAS_CONFIG: Record<CategoriaDocumento, { label: string; icon: typeof FileText; color: string }> = {
+  // Documentos principales
   calculo_liquidacion: { label: 'Cálculos de Liquidación', icon: Calculator, color: 'text-primary' },
   propuesta_empresa: { label: 'Propuestas para Empresa', icon: FileText, color: 'text-blue-600' },
-  evidencia_foto: { label: 'Fotos / Capturas', icon: ImageIcon, color: 'text-green-600' },
-  evidencia_video: { label: 'Videos', icon: Video, color: 'text-purple-600' },
-  evidencia_audio: { label: 'Audios', icon: Music2, color: 'text-orange-600' },
-  grabacion_audio: { label: 'Grabaciones', icon: Mic, color: 'text-destructive' },
   contrato_laboral: { label: 'Contrato Laboral', icon: FileText, color: 'text-blue-600' },
   hoja_renuncia: { label: 'Hoja de Renuncia', icon: FileText, color: 'text-amber-600' },
+  hojas_firmadas: { label: 'Hojas en blanco firmadas', icon: FileText, color: 'text-amber-600' },
+  recibo_nomina: { label: 'Recibos de Nómina', icon: FileText, color: 'text-green-600' },
+  recibo_dinero: { label: 'Recibos de Dinero', icon: FileText, color: 'text-emerald-600' },
+  // Evidencias multimedia
+  evidencia_foto: { label: 'Fotos / Capturas', icon: ImageIcon, color: 'text-green-600' },
+  evidencia_video: { label: 'Videos', icon: Video, color: 'text-purple-600' },
+  video_despido: { label: 'Video del Despido', icon: Video, color: 'text-red-600' },
+  evidencia_audio: { label: 'Audios', icon: Music2, color: 'text-orange-600' },
+  grabacion_audio: { label: 'Grabaciones', icon: Mic, color: 'text-destructive' },
+  grabacion_llamada: { label: 'Grabación de Llamada', icon: Mic, color: 'text-cyan-600' },
+  // Identificaciones
   ine_frente: { label: 'INE Frente', icon: CreditCard, color: 'text-slate-600' },
   ine_reverso: { label: 'INE Reverso', icon: CreditCard, color: 'text-slate-600' },
   pasaporte: { label: 'Pasaporte', icon: CreditCard, color: 'text-slate-600' },
   credencial_elector: { label: 'Credencial de Elector', icon: CreditCard, color: 'text-slate-600' },
-  cedula_profesional: { label: 'Cedula Profesional', icon: CreditCard, color: 'text-blue-600' },
+  cedula_profesional: { label: 'Cédula Profesional', icon: CreditCard, color: 'text-blue-600' },
+  // Proceso legal
+  solicitud_conciliacion: { label: 'Solicitud de Conciliación', icon: FileText, color: 'text-sky-600' },
+  notificacion: { label: 'Notificación Oficial', icon: FileText, color: 'text-violet-600' },
+  acuse: { label: 'Acuse de Recibo', icon: FileText, color: 'text-teal-600' },
+  expediente: { label: 'Expediente del Caso', icon: FileText, color: 'text-gray-600' },
+  // Audiencia y conciliación
+  foto_lugar: { label: 'Ubicación del Trabajo', icon: MapPin, color: 'text-orange-600' },
+  acta_audiencia: { label: 'Acta de Audiencia', icon: FileText, color: 'text-amber-700' },
+  acta_conciliacion: { label: 'Acta de Conciliación', icon: FileText, color: 'text-green-700' },
+  constancia_no_conciliacion: { label: 'Constancia No Conciliación', icon: FileText, color: 'text-red-700' },
+  // Resolución
+  convenio: { label: 'Convenio', icon: FileText, color: 'text-emerald-700' },
+  sentencia: { label: 'Sentencia', icon: FileText, color: 'text-purple-700' },
+  // Domicilio y testigos
   comprobante_domicilio: { label: 'Comprobante Domicilio', icon: MapPin, color: 'text-teal-600' },
+  testigos: { label: 'Datos de Testigos', icon: FileText, color: 'text-blue-700' },
+  // Otro
   otro: { label: 'Otros', icon: FileText, color: 'text-muted-foreground' },
 }
 
@@ -159,9 +183,9 @@ export default function BovedaPage() {
   const [calculoSeleccionado, setCalculoSeleccionado] = useState<CalculoLiquidacion | null>(null) // Declare setCalculoSeleccionado
   const [visorCalculoOpen, setVisorCalculoOpen] = useState(false) // Declare setVisorCalculoOpen
   
-  // Cargar datos
-  const loadData = useCallback(async () => {
-    setLoading(true)
+  // Cargar datos optimizado
+  const loadData = useCallback(async (isMounted = true) => {
+    if (isMounted) setLoading(true)
     setError(null)
     
     try {
@@ -170,6 +194,8 @@ export default function BovedaPage() {
         obtenerCalculos(),
         obtenerEstadisticas()
       ])
+      
+      if (!isMounted) return
       
       if (docsResult.requiresAuth || calcsResult.requiresAuth || statsResult.requiresAuth) {
         setRequiresAuth(true)
@@ -181,15 +207,17 @@ export default function BovedaPage() {
       if (statsResult.success) setEstadisticas(statsResult.estadisticas || null)
       
     } catch (err) {
-      setError('Error al cargar los datos')
+      if (isMounted) setError('Error al cargar los datos')
       console.error(err)
     } finally {
-      setLoading(false)
+      if (isMounted) setLoading(false)
     }
   }, [])
   
   useEffect(() => {
-    loadData()
+    let isMounted = true
+    loadData(isMounted)
+    return () => { isMounted = false }
   }, [loadData])
   
   // Ver documento
@@ -954,7 +982,7 @@ export default function BovedaPage() {
           setShowUploader(open)
           if (!open) setUploaderCategoria(undefined)
         }}>
-          <DialogContent className="w-[92vw] max-w-[360px] p-0 gap-0 overflow-hidden max-h-[85vh] [&>button]:hidden mx-auto">
+          <DialogContent className="w-[90vw] max-w-[340px] p-0 gap-0 overflow-hidden max-h-[85vh] [&>button]:hidden [&>div]:w-full">
             <DocumentUploader 
               onUploaded={() => {
                 setShowUploader(false)

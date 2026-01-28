@@ -124,7 +124,7 @@ export function LocationPicker({ onSave, onClose, casoId }: LocationPickerProps)
   }, [])
 
   return (
-    <div className="bg-background rounded-xl shadow-xl overflow-hidden w-full max-w-[92vw] sm:max-w-sm">
+    <div className="bg-background overflow-hidden w-full">
       
       {/* ===== INTRO - Tutorial visual ===== */}
       {step === 'intro' && (
@@ -204,8 +204,8 @@ export function LocationPicker({ onSave, onClose, casoId }: LocationPickerProps)
                 </>
               ) : (
                 <>
-                  <Navigation className="w-5 h-5" />
-                  Comenzar
+                  <MapPin className="w-5 h-5" />
+                  Abrir mapa
                   <ChevronRight className="w-4 h-4" />
                 </>
               )}

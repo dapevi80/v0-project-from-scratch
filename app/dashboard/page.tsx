@@ -25,10 +25,14 @@ export default function DashboardPage() {
   const [showVerifiedEffect, setShowVerifiedEffect] = useState(false)
 
   useEffect(() => {
+    let isMounted = true
+    
     async function loadUser() {
       try {
         const supabase = createClient()
         const { data: { user: currentUser }, error: authError } = await supabase.auth.getUser()
+        
+        if (!isMounted) return
         
         if (authError || !currentUser) {
           setLoading(false)
@@ -42,6 +46,8 @@ export default function DashboardPage() {
           supabase.from('profiles').select('role, full_name, codigo_usuario, is_verified, celebration_shown').eq('id', currentUser.id).single(),
           supabase.from('calculos_liquidacion').select('*', { count: 'exact', head: true }).eq('user_id', currentUser.id)
         ])
+        
+        if (!isMounted) return
         
         const profileData = profileResult.data
         
@@ -77,11 +83,13 @@ export default function DashboardPage() {
       } catch {
         // Error de conexion - continuar como invitado
       } finally {
-        setLoading(false)
+        if (isMounted) setLoading(false)
       }
     }
 
     loadUser()
+    
+    return () => { isMounted = false }
   }, [router])
 
   const isGuest = !user
