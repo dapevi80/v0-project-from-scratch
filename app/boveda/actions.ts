@@ -4,6 +4,121 @@ import { createClient } from '@/lib/supabase/server'
 import { revalidatePath } from 'next/cache'
 import { Buffer } from 'buffer'
 
+// Jerarquia de roles para downgrade
+const ROLE_HIERARCHY = {
+  superadmin: 'admin',
+  admin: 'lawyer', 
+  lawyer: 'guestlawyer',
+  worker: 'guestworker',
+  guestworker: 'guest',
+  guestlawyer: 'guest',
+  guest: 'guest'
+} as const
+
+// Verificar y hacer downgrade si faltan archivos de verificacion
+export async function verificarArchivosVerificacion() {
+  const supabase = await createClient()
+  
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return { needsDowngrade: false, error: 'No autenticado' }
+  
+  const { data: profile } = await supabase
+    .from('profiles')
+    .select('role, verification_status, ine_frente_path, ine_reverso_path')
+    .eq('id', user.id)
+    .single()
+  
+  if (!profile) return { needsDowngrade: false, error: 'Perfil no encontrado' }
+  
+  // Solo verificar usuarios que estan verificados o en proceso
+  if (profile.role === 'guest' || profile.verification_status === 'none') {
+    return { needsDowngrade: false }
+  }
+  
+  // Verificar si los archivos INE existen
+  const archivosRequeridos = []
+  if (profile.ine_frente_path) archivosRequeridos.push(profile.ine_frente_path)
+  if (profile.ine_reverso_path) archivosRequeridos.push(profile.ine_reverso_path)
+  
+  let archivosFaltantes = []
+  
+  for (const path of archivosRequeridos) {
+    const pathParts = path.split('/')
+    const folderPath = pathParts.slice(0, -1).join('/')
+    const fileName = pathParts[pathParts.length - 1]
+    
+    const { data: files } = await supabase.storage
+      .from('boveda')
+      .list(folderPath, { search: fileName })
+    
+    if (!files || files.length === 0) {
+      archivosFaltantes.push(path)
+    }
+  }
+  
+  // Si faltan archivos, hacer downgrade
+  if (archivosFaltantes.length > 0) {
+    const currentRole = profile.role as keyof typeof ROLE_HIERARCHY
+    const newRole = ROLE_HIERARCHY[currentRole] || 'guest'
+    
+    // Actualizar perfil con downgrade
+    await supabase
+      .from('profiles')
+      .update({
+        role: newRole,
+        verification_status: 'documents_missing',
+        downgrade_reason: 'Archivos de verificacion eliminados o no encontrados',
+        downgrade_at: new Date().toISOString(),
+        previous_role: profile.role,
+        celebration_shown: false // Resetear para mostrar celebracion al re-verificar
+      })
+      .eq('id', user.id)
+    
+    revalidatePath('/dashboard')
+    revalidatePath('/perfil')
+    revalidatePath('/boveda')
+    
+    return { 
+      needsDowngrade: true, 
+      previousRole: profile.role,
+      newRole,
+      archivosFaltantes,
+      message: 'Tu cuenta ha sido degradada porque faltan documentos de verificacion'
+    }
+  }
+  
+  return { needsDowngrade: false }
+}
+
+// Funcion para detectar si un usuario necesita re-verificacion
+export async function obtenerEstadoVerificacion() {
+  const supabase = await createClient()
+  
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return { error: 'No autenticado', data: null }
+  
+  const { data: profile } = await supabase
+    .from('profiles')
+    .select('role, verification_status, downgrade_reason, downgrade_at, previous_role, full_name')
+    .eq('id', user.id)
+    .single()
+  
+  if (!profile) return { error: 'Perfil no encontrado', data: null }
+  
+  return {
+    error: null,
+    data: {
+      role: profile.role,
+      verificationStatus: profile.verification_status,
+      wasDowngraded: profile.verification_status === 'documents_missing',
+      downgradeReason: profile.downgrade_reason,
+      downgradeAt: profile.downgrade_at,
+      previousRole: profile.previous_role,
+      fullName: profile.full_name
+    }
+  }
+}
+
 // Tipos para la boveda - Categorias expandidas para evidencias laborales
 export type CategoriaDocumento = 
   // Documentos principales
