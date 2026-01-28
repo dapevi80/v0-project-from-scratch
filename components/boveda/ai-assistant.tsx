@@ -12,9 +12,9 @@ import {
   FileText,
   Scale,
   HelpCircle,
-  RefreshCw,
   ArrowRight,
   UserPlus,
+  ChevronDown,
 } from "lucide-react"
 import Link from "next/link"
 
@@ -32,180 +32,214 @@ interface AIAssistantProps {
   documentName?: string
 }
 
-// Preguntas prediseñadas
+// Preguntas prediseñadas (compactas)
 const QUICK_QUESTIONS = [
-  { icon: Calculator, text: "¿Cómo calculo mi liquidación?", color: "bg-blue-100 text-blue-700" },
-  { icon: FileText, text: "¿Cómo inicio un reclamo en conciliación?", color: "bg-green-100 text-green-700" },
-  { icon: Scale, text: "¿Me pueden despedir sin causa?", color: "bg-amber-100 text-amber-700" },
-  { icon: HelpCircle, text: "¿Cuánto tiempo tengo para demandar?", color: "bg-purple-100 text-purple-700" },
+  { icon: Calculator, text: "Calcular liquidacion", color: "bg-blue-50 text-blue-600 border-blue-200" },
+  { icon: FileText, text: "Iniciar conciliacion", color: "bg-emerald-50 text-emerald-600 border-emerald-200" },
+  { icon: Scale, text: "Despido sin causa", color: "bg-amber-50 text-amber-600 border-amber-200" },
+  { icon: HelpCircle, text: "Plazo para demandar", color: "bg-purple-50 text-purple-600 border-purple-200" },
 ]
 
-// FAQ - Respuestas CORTAS y PERSUASIVAS
-const FAQ_RESPONSES_LIA: Record<string, string> = {
-  "¿Cómo calculo mi liquidación?": `**Es muy fácil calcular tu liquidación:**
+// FAQ - Respuestas por asistente (cortas y persuasivas)
+const FAQ_RESPONSES: Record<string, Record<string, string>> = {
+  lia: {
+    "Calcular liquidacion": `**Para calcular tu liquidacion:**
 
-Con nuestra **Calculadora** solo necesitas:
-• Tu salario mensual
-• Fecha de inicio y fin de tu trabajo
+Solo necesitas tu **salario** y **fechas de trabajo**.
 
-La app calcula automáticamente: **3 meses de indemnización + 20 días por año + aguinaldo + vacaciones**.
+La app calcula: 3 meses + 20 dias/año + aguinaldo + vacaciones.
 
-**Puedes guardar tu cálculo en la Bóveda** para tenerlo siempre disponible y mostrárselo a un abogado cuando lo necesites.
+**Guardalo en tu Boveda** y muestraselo a un abogado.
 
-**¿Listo para saber cuánto te deben?** Crea tu cuenta de invitado y empieza ahora.`,
+Crea tu cuenta y empieza ahora.`,
 
-  "¿Cómo inicio un reclamo en conciliación?": `**Para iniciar tu reclamo necesitas:**
+    "Iniciar conciliacion": `**Para iniciar conciliacion:**
 
-1. **Junta tus documentos**: INE, comprobante de domicilio, recibos de nómina
-2. **Solicita cita** en el Centro de Conciliación (te ayudo a hacerlo)
-3. **Asiste a la audiencia** y expón tu caso
+1. Junta tus documentos (INE, nomina)
+2. Pide cita en el Centro de Conciliacion
+3. Asiste y expón tu caso
 
-**Tip importante:** Guarda todos tus documentos en la **Bóveda** antes de ir. Así los tendrás organizados y listos.
+Tienes **1 año** desde tu despido. No pierdas tiempo.
 
-**Tienes 1 año desde tu despido** para reclamar. No pierdas tiempo.
+Guarda todo en la Boveda primero.`,
 
-**¿Empezamos?** Crea tu cuenta y organiza tus documentos.`,
+    "Despido sin causa": `**Si te despiden sin causa, te deben:**
 
-  "¿Me pueden despedir sin causa?": `**Sí pueden despedirte, PERO deben pagarte:**
+- 3 meses de salario
+- 20 dias por año trabajado
+- Prima de antiguedad
 
-Sin causa justificada te corresponde:
-• **3 meses de salario**
-• **20 días por año trabajado**
-• **Prima de antigüedad**
-• Vacaciones y aguinaldo proporcionales
+No quieren pagar? Un abogado te ayuda y solo cobra si ganas.
 
-**¿Tu patrón no quiere pagar?** Podemos ayudarte con un abogado que solo cobra si ganas.
+Calcula cuanto te deben ahora.`,
 
-**Calcula cuánto te deben** con nuestra herramienta gratuita.`,
+    "Plazo para demandar": `**Tienes 1 AÑO desde tu despido.**
 
-  "¿Cuánto tiempo tengo para demandar?": `**Tienes 1 AÑO desde tu despido.**
+Despues pierdes el derecho.
 
-Después de ese plazo, pierdes el derecho a reclamar.
+Actua rapido: mas pruebas, mejor negociacion.
 
-**Mi consejo:** No esperes. Entre más rápido actúes:
-• Más fácil reunir pruebas
-• Mejor posición para negociar
-• Mayor probabilidad de éxito
+Calcula tu liquidacion ahora.`
+  },
+  mandu: {
+    "Calcular liquidacion": `*bosteza* Solo pon tu salario y fechas...
 
-**¿Cuándo te despidieron?** Calcula tu liquidación ahora y guarda tus documentos.`
-}
+La app hace la matematica. Yo duermo. 😺
 
-// FAQ con personalidad de Mandu (gato perezoso)
-const FAQ_RESPONSES_MANDU: Record<string, string> = {
-  "¿Cómo calculo mi liquidación?": `*se estira lentamente*
+Te deben: indemnizacion + aguinaldo + vacaciones...
 
-Mira, calcular tu liquidación es más fácil que atrapar una bola de estambre...
+Guardalo en la Boveda para mañana. Como mis siestas.
 
-Solo necesitas tu **salario** y **fechas de trabajo**. La app hace la matemática mientras yo duermo. 😺
+Entramos? *se estira*`,
 
-Te corresponde: indemnización + aguinaldo + vacaciones... *ronronea*
+    "Iniciar conciliacion": `*abre un ojo*
 
-**Guarda tu cálculo en la Bóveda** para cuando despiertes mañana y no recuerdes nada. Como yo con mis siestas.
+Junta papeles, pide cita, ve a la audiencia.
 
-¿Entramos a la app? Prometo no dormirme... *bosteza* ...mucho.`,
+Tienes 1 año. Son 365 siestas. *se lame la pata*
 
-  "¿Cómo inicio un reclamo en conciliación?": `*abre un ojo*
+Guarda todo en la Boveda. No seas como yo que pierdo mis juguetes. 🐱`,
 
-Conciliación, dices... Es como cuando dos gatos pelean por territorio y llega el humano a separarnos.
+    "Despido sin causa": `*levanta las orejas*
 
-**Paso 1:** Junta tus papeles (INE, nómina, etc.)
-**Paso 2:** Pide cita en el Centro de Conciliación
-**Paso 3:** Ve y expón tu caso
+Te deben 3 meses + 20 dias/año + prima.
 
-*se lame la pata*
+Como cuando me quitan el sillon pero me dan croquetas.
 
-Guarda todo en la **Bóveda** antes de ir. No seas como yo que olvido dónde escondí mis juguetes.
+Calcula tu lana mientras tomo siesta #47. 💰`,
 
-Tienes **1 año** para reclamar. Eso son como... 365 siestas. ¿Entramos? 🐱`,
+    "Plazo para demandar": `*bosteza* Un año. 365 siestas.
 
-  "¿Me pueden despedir sin causa?": `*levanta las orejas*
+No lo dejes para despues como yo con todo...
 
-Técnicamente sí pueden correrte... igual que un humano puede quitarte tu lugar favorito en el sillón.
+Actua rapido. Como atrapar raton. *ronronea*
 
-PERO si no hay causa justificada, te deben:
-• 3 meses de lana 💰
-• 20 días por año
-• Prima de antigüedad
+Calculamos? Solo 2 minutos. 😸`
+  },
+  bora: {
+    "Calcular liquidacion": `*suspira pesadamente*
 
-*se acurruca*
+Ay mijo... otra vez esto. Pon tu salario y fechas. Ya.
 
-¿Quieres saber cuánto? Usa la calculadora mientras yo tomo mi siesta #47 del día.`,
+La app hace todo. Yo estoy muy vieja para matematicas.
 
-  "¿Cuánto tiempo tengo para demandar?": `*bosteza enormemente*
+Te deben lana. Guardala en la Boveda antes de que la pierdas como pierdes todo.
 
-Un año. 365 días. 8,760 horas de siestas... digo, de plazo.
+Anda pues, entra a la app. No tengo todo el dia... *se acuesta*`,
 
-Pero no seas como yo que dejo todo para después de dormir...
+    "Iniciar conciliacion": `*te mira con ojos entrecerrados*
 
-**Actúa rápido.** Entre más pronto, mejor. Como atrapar un ratón antes de que escape.
+Escucha bien porque no lo repito:
 
-*ronronea*
+Papeles. Cita. Audiencia. Listo.
 
-¿Calculamos tu liquidación ahora? Solo toma 2 minutos... tiempo suficiente para una microsiesta. 😸`
-}
+Tienes un año. Yo tengo como 90 en años gato y sigo aqui.
 
-// Función para detectar FAQ
-function findFAQResponse(question: string, isManduActive: boolean): string | null {
-  const normalizedQuestion = question.toLowerCase().trim()
-  const responses = isManduActive ? FAQ_RESPONSES_MANDU : FAQ_RESPONSES_LIA
-  
-  for (const [faqQuestion] of Object.entries(responses)) {
-    const normalizedFAQ = faqQuestion.toLowerCase()
-    if (normalizedQuestion === normalizedFAQ || 
-        normalizedQuestion.includes(normalizedFAQ.replace("¿", "").replace("?", "")) ||
-        normalizedFAQ.includes(normalizedQuestion.replace("¿", "").replace("?", ""))) {
-      return responses[faqQuestion]
-    }
+Guarda tus cosas en la Boveda. Los jovenes todo lo pierden... *mueve la cola molesta*`,
+
+    "Despido sin causa": `*ronquido interrumpido*
+
+Que? Te corrieron? Bienvenido al club.
+
+Te deben 3 meses, 20 dias por año, prima... lo de siempre.
+
+En mis tiempos los patrones eran peores. Ahora dejen de quejarse y calculen.
+
+*se da la vuelta para seguir durmiendo*`,
+
+    "Plazo para demandar": `*te observa con desdén*
+
+Un año. Tictac. El tiempo pasa, mijo.
+
+Yo he visto a muchos dejar todo para "mañana". Luego lloran.
+
+Hazlo ahora o calla para siempre. Estoy tratando de dormir aqui.
+
+*cierra los ojos*`
   }
-  
-  // Detección por palabras clave
-  if (normalizedQuestion.includes("calcul") && normalizedQuestion.includes("liquidaci")) {
-    return responses["¿Cómo calculo mi liquidación?"]
-  }
-  if (normalizedQuestion.includes("conciliaci")) {
-    return responses["¿Cómo inicio un reclamo en conciliación?"]
-  }
-  if (normalizedQuestion.includes("despedir") && normalizedQuestion.includes("sin causa")) {
-    return responses["¿Me pueden despedir sin causa?"]
-  }
-  if (normalizedQuestion.includes("tiempo") && normalizedQuestion.includes("demandar")) {
-    return responses["¿Cuánto tiempo tengo para demandar?"]
-  }
-  
-  return null
 }
 
 // Configuración por asistente
 const ASSISTANTS = {
   lia: {
-    name: "Lía",
-    subtitle: "Tu asistente legal IA",
+    name: "Lia",
+    emoji: "✨",
     avatar: "/lia-avatar.jpg",
-    gradient: "from-green-600 to-emerald-600",
-    borderColor: "border-green-300",
-    buttonColor: "bg-green-600 hover:bg-green-700",
+    color: "bg-emerald-500",
+    textColor: "text-emerald-600",
     api: "/api/legal-assistant",
-    welcomeMessage: (docName?: string) => docName 
-      ? `¡Hola! Soy **Lía**, tu aliada legal. Veo que tienes "${docName}". ¿Qué quieres saber?`
-      : `¡Hola! Soy **Lía**, tu asistente legal de Me Corrieron.\n\nPuedo ayudarte a **calcular tu liquidación**, entender tus derechos y guiarte en el proceso legal.\n\n¿En qué te ayudo?`,
-    loadingText: "Lía está escribiendo...",
-    ctaMessage: `**¡Ya tienes la información que necesitas!**\n\nPara calcular exactamente cuánto te deben y guardar tus documentos seguros, crea tu cuenta de invitado. Es gratis y toma 30 segundos.`
+    welcomeMessage: `Hola! Soy **Lia**, tu asistente legal.
+
+Que necesitas saber?`,
+    loadingText: "Escribiendo...",
+    ctaMessage: `**Ya tienes la info!**
+
+Crea tu cuenta gratis para calcular y guardar tus documentos.`
   },
   mandu: {
     name: "Mandu",
-    subtitle: "El gato legal perezoso",
+    emoji: "😺",
     avatar: "/mandu-avatar.jpg",
-    gradient: "from-slate-600 to-slate-700",
-    borderColor: "border-slate-300",
-    buttonColor: "bg-slate-600 hover:bg-slate-700",
+    color: "bg-slate-500",
+    textColor: "text-slate-600",
     api: "/api/mandu-assistant",
-    welcomeMessage: () => `*bosteza* Soy **Mandu**, el gato legal... preferiría dormir pero te ayudo. 😺\n\n¿Qué necesitas? *se lame la pata*`,
-    loadingText: "Mandu piensa... *bosteza*",
-    ctaMessage: `*se estira*\n\n**Miau, ya sabes lo básico.**\n\nAhora entra a la app para calcular tu lana y guardar tus papeles. Yo seguiré aquí... durmiendo... 😸💤`
+    welcomeMessage: `*bosteza* Soy **Mandu**... 😺
+
+Que quieres? *se estira*`,
+    loadingText: "Pensando... zzz",
+    ctaMessage: `*se estira*
+
+Ya sabes lo basico. Entra a la app, yo sigo durmiendo... 💤`
+  },
+  bora: {
+    name: "Bora",
+    emoji: "😾",
+    avatar: "/bora-avatar.jpg",
+    color: "bg-orange-500",
+    textColor: "text-orange-600",
+    api: "/api/legal-assistant",
+    welcomeMessage: `*te mira desde su cojin*
+
+Soy **Bora**. Vieja, sabia, y con poca paciencia. 😾
+
+Que quieres, mijo?`,
+    loadingText: "Pensando... *suspira*",
+    ctaMessage: `*bostezo largo*
+
+Bueno ya. Entra a la app y deja de molestar. Necesito mi siesta de las 3... y las 4... y las 5...`
   }
 }
 
 type AssistantType = keyof typeof ASSISTANTS
+const ASSISTANT_ORDER: AssistantType[] = ['lia', 'mandu', 'bora']
+
+// Función para detectar FAQ
+function findFAQResponse(question: string, assistant: AssistantType): string | null {
+  const normalizedQ = question.toLowerCase()
+  const responses = FAQ_RESPONSES[assistant]
+  
+  if (normalizedQ.includes("calcul") || normalizedQ.includes("liquidaci")) {
+    return responses["Calcular liquidacion"]
+  }
+  if (normalizedQ.includes("concilia") || normalizedQ.includes("reclamo")) {
+    return responses["Iniciar conciliacion"]
+  }
+  if (normalizedQ.includes("despid") && normalizedQ.includes("causa")) {
+    return responses["Despido sin causa"]
+  }
+  if (normalizedQ.includes("tiempo") || normalizedQ.includes("plazo") || normalizedQ.includes("demandar")) {
+    return responses["Plazo para demandar"]
+  }
+  
+  // Match directo
+  for (const key of Object.keys(responses)) {
+    if (normalizedQ.includes(key.toLowerCase())) {
+      return responses[key]
+    }
+  }
+  
+  return null
+}
 
 export function AIAssistant({
   isOpen,
@@ -220,32 +254,27 @@ export function AIAssistant({
   const [streamingContent, setStreamingContent] = useState("")
   const [faqCount, setFaqCount] = useState(0)
   const [showCTA, setShowCTA] = useState(false)
+  const [showAssistantPicker, setShowAssistantPicker] = useState(false)
   
-  const messagesContainerRef = useRef<HTMLDivElement>(null)
+  const messagesEndRef = useRef<HTMLDivElement>(null)
   const inputRef = useRef<HTMLInputElement>(null)
 
   const assistant = ASSISTANTS[currentAssistant]
-  const welcomeMessage = assistant.welcomeMessage(documentName)
 
-  // Scroll suave solo al nuevo mensaje, no al final
+  // Scroll al final solo cuando hay nuevo mensaje
   useEffect(() => {
-    if (messagesContainerRef.current && messages.length > 0) {
-      const container = messagesContainerRef.current
-      // Scroll solo un poco para mostrar el inicio del nuevo mensaje
-      const scrollAmount = Math.min(150, container.scrollHeight - container.scrollTop - container.clientHeight)
-      if (scrollAmount > 0) {
-        container.scrollBy({ top: scrollAmount, behavior: 'smooth' })
-      }
+    if (messages.length > 0) {
+      setTimeout(() => {
+        messagesEndRef.current?.scrollIntoView({ behavior: 'smooth', block: 'nearest' })
+      }, 100)
     }
-  }, [messages])
+  }, [messages, streamingContent])
 
   useEffect(() => {
-    if (isOpen) {
-      setTimeout(() => inputRef.current?.focus(), 100)
-    }
+    if (isOpen) setTimeout(() => inputRef.current?.focus(), 100)
   }, [isOpen])
 
-  // Limpiar mensajes al cambiar de asistente
+  // Reset al cambiar asistente
   useEffect(() => {
     setMessages([])
     setStreamingContent("")
@@ -253,19 +282,17 @@ export function AIAssistant({
     setShowCTA(false)
   }, [currentAssistant])
 
-  // Mostrar CTA después de 2 FAQs respondidas
+  // CTA después de 2 FAQs
   useEffect(() => {
     if (faqCount >= 2 && !showCTA) {
       setShowCTA(true)
-      // Agregar mensaje CTA
       setTimeout(() => {
-        const ctaMessage: Message = {
+        setMessages(prev => [...prev, {
           id: `cta-${Date.now()}`,
           role: "assistant",
           content: assistant.ctaMessage,
-        }
-        setMessages(prev => [...prev, ctaMessage])
-      }, 1000)
+        }])
+      }, 800)
     }
   }, [faqCount, showCTA, assistant.ctaMessage])
 
@@ -281,26 +308,25 @@ export function AIAssistant({
     setMessages(prev => [...prev, userMessage])
     setInputValue("")
     
-    // Verificar FAQ
-    const faqResponse = findFAQResponse(text, currentAssistant === 'mandu')
+    // Check FAQ
+    const faqResponse = findFAQResponse(text, currentAssistant)
     
     if (faqResponse) {
       setIsLoading(true)
-      await new Promise(resolve => setTimeout(resolve, 400))
+      await new Promise(resolve => setTimeout(resolve, 300))
       
-      const assistantMessage: Message = {
+      setMessages(prev => [...prev, {
         id: `assistant-${Date.now()}`,
         role: "assistant",
         content: faqResponse,
         isFAQ: true,
-      }
-      setMessages(prev => [...prev, assistantMessage])
+      }])
       setFaqCount(prev => prev + 1)
       setIsLoading(false)
       return
     }
     
-    // Si no hay FAQ, llamar a la IA
+    // Call AI
     setIsLoading(true)
     setStreamingContent("")
 
@@ -309,16 +335,13 @@ export function AIAssistant({
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          messages: [...messages, userMessage].map(m => ({
-            role: m.role,
-            content: m.content,
-          })),
+          messages: [...messages, userMessage].map(m => ({ role: m.role, content: m.content })),
           documentContext: documentText,
           documentName: documentName,
         }),
       })
 
-      if (!response.ok) throw new Error("Error en la respuesta")
+      if (!response.ok) throw new Error("Error")
 
       const reader = response.body?.getReader()
       const decoder = new TextDecoder()
@@ -328,274 +351,220 @@ export function AIAssistant({
         while (true) {
           const { done, value } = await reader.read()
           if (done) break
-          const chunk = decoder.decode(value, { stream: true })
-          fullContent += chunk
+          fullContent += decoder.decode(value, { stream: true })
           setStreamingContent(fullContent)
         }
       }
 
-      const assistantMessage: Message = {
+      setMessages(prev => [...prev, {
         id: `assistant-${Date.now()}`,
         role: "assistant",
-        content: fullContent || "Lo siento, no pude procesar tu mensaje.",
-      }
-
-      setMessages(prev => [...prev, assistantMessage])
+        content: fullContent || "Error al procesar.",
+      }])
       setStreamingContent("")
-    } catch (error) {
-      console.error("Error:", error)
-      const errorMessage: Message = {
+    } catch {
+      setMessages(prev => [...prev, {
         id: `error-${Date.now()}`,
         role: "assistant",
-        content: "Hubo un error. Por favor intenta de nuevo.",
-      }
-      setMessages(prev => [...prev, errorMessage])
+        content: "Error. Intenta de nuevo.",
+      }])
     } finally {
       setIsLoading(false)
     }
   }
 
-  const handleQuickQuestion = (question: string) => {
-    sendMessage(question)
-  }
-
-  const onFormSubmit = (e: React.FormEvent) => {
-    e.preventDefault()
-    sendMessage(inputValue)
-  }
-
-  const switchAssistant = () => {
-    setCurrentAssistant(prev => prev === 'lia' ? 'mandu' : 'lia')
-  }
-
   const formatContent = (content: string) => {
     return content
       .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
-      .replace(/\*(.*?)\*/g, '<em>$1</em>')
+      .replace(/\*(.*?)\*/g, '<em class="text-slate-500">$1</em>')
       .replace(/\n/g, '<br/>')
+  }
+
+  const switchAssistant = (type: AssistantType) => {
+    setCurrentAssistant(type)
+    setShowAssistantPicker(false)
   }
 
   if (!isOpen) return null
 
   return (
     <div className="fixed inset-0 z-[70] flex items-end sm:items-center justify-center">
-      {/* Overlay */}
-      <div 
-        className="absolute inset-0 bg-black/50 backdrop-blur-sm"
-        onClick={onClose}
-      />
+      <div className="absolute inset-0 bg-black/40" onClick={onClose} />
       
-      {/* Dialog */}
-      <div className="relative w-full max-w-md h-[85vh] sm:h-[80vh] bg-white rounded-t-3xl sm:rounded-2xl shadow-2xl flex flex-col overflow-hidden animate-in slide-in-from-bottom-4 duration-300">
-        {/* Header */}
-        <div className={`p-4 border-b bg-gradient-to-r ${assistant.gradient}`}>
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <div className="w-12 h-12 rounded-full overflow-hidden border-2 border-white/40 shadow-lg bg-white">
-                <img 
-                  src={assistant.avatar || "/placeholder.svg"}
-                  alt={assistant.name}
-                  className="w-full h-full object-cover"
-                />
-              </div>
-              <div>
-                <h2 className="text-white text-base font-semibold flex items-center gap-2">
-                  {assistant.name}
-                  <Sparkles className="w-4 h-4 text-yellow-300" />
-                </h2>
-                <p className="text-white/80 text-xs">
-                  {assistant.subtitle}
-                </p>
-              </div>
-            </div>
-            <button
-              onClick={onClose}
-              className="w-8 h-8 rounded-full bg-white/20 hover:bg-white/30 flex items-center justify-center transition-colors"
+      <div className="relative w-full max-w-sm h-[80vh] sm:h-[75vh] bg-white rounded-t-2xl sm:rounded-2xl shadow-2xl flex flex-col overflow-hidden">
+        {/* Header minimalista */}
+        <div className="flex items-center justify-between p-3 border-b bg-slate-50">
+          <div className="relative">
+            <button 
+              onClick={() => setShowAssistantPicker(!showAssistantPicker)}
+              className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-white border hover:bg-slate-50 transition-colors"
             >
-              <X className="w-5 h-5 text-white" />
+              <div className={`w-6 h-6 rounded-full overflow-hidden ${assistant.color}`}>
+                <img src={assistant.avatar || "/placeholder.svg"} alt={assistant.name} className="w-full h-full object-cover" />
+              </div>
+              <span className="font-medium text-sm">{assistant.name}</span>
+              <span>{assistant.emoji}</span>
+              <ChevronDown className="w-3 h-3 text-slate-400" />
             </button>
+            
+            {/* Dropdown asistentes */}
+            {showAssistantPicker && (
+              <div className="absolute top-full left-0 mt-1 bg-white border rounded-xl shadow-lg py-1 min-w-[160px] z-10">
+                {ASSISTANT_ORDER.map(type => (
+                  <button
+                    key={type}
+                    onClick={() => switchAssistant(type)}
+                    className={`w-full flex items-center gap-2 px-3 py-2 hover:bg-slate-50 transition-colors ${currentAssistant === type ? 'bg-slate-100' : ''}`}
+                  >
+                    <div className={`w-6 h-6 rounded-full overflow-hidden ${ASSISTANTS[type].color}`}>
+                      <img src={ASSISTANTS[type].avatar || "/placeholder.svg"} alt={ASSISTANTS[type].name} className="w-full h-full object-cover" />
+                    </div>
+                    <span className="text-sm">{ASSISTANTS[type].name}</span>
+                    <span className="text-xs">{ASSISTANTS[type].emoji}</span>
+                  </button>
+                ))}
+              </div>
+            )}
           </div>
           
-          {/* Botón cambiar asistente */}
-          <button
-            onClick={switchAssistant}
-            className="mt-3 w-full flex items-center justify-center gap-2 py-2 px-3 rounded-xl bg-white/20 hover:bg-white/30 transition-colors text-white text-xs font-medium"
-          >
-            <RefreshCw className="w-3.5 h-3.5" />
-            Cambiar a {currentAssistant === 'lia' ? 'Mandu' : 'Lía'}
+          <button onClick={onClose} className="p-1.5 rounded-full hover:bg-slate-200 transition-colors">
+            <X className="w-5 h-5 text-slate-500" />
           </button>
         </div>
 
         {/* Mensajes */}
-        <div 
-          ref={messagesContainerRef}
-          className="flex-1 overflow-y-auto p-4 space-y-4 bg-slate-50"
-        >
-          {/* Mensaje de bienvenida */}
-          <div className="flex gap-3">
-            <div className={`w-8 h-8 rounded-full overflow-hidden shrink-0 border-2 ${assistant.borderColor} bg-white`}>
-              <img 
-                src={assistant.avatar || "/placeholder.svg"}
-                alt={assistant.name}
-                className="w-full h-full object-cover"
-              />
+        <div className="flex-1 overflow-y-auto p-3 space-y-3 bg-white">
+          {/* Welcome */}
+          <div className="flex gap-2">
+            <div className={`w-7 h-7 rounded-full overflow-hidden shrink-0 ${assistant.color}`}>
+              <img src={assistant.avatar || "/placeholder.svg"} alt={assistant.name} className="w-full h-full object-cover" />
             </div>
-            <div className="max-w-[85%] rounded-2xl px-4 py-3 bg-white border shadow-sm">
-              <div
-                className="text-sm leading-relaxed"
-                dangerouslySetInnerHTML={{ __html: formatContent(welcomeMessage) }}
-              />
+            <div className="bg-slate-100 rounded-2xl rounded-tl-sm px-3 py-2 max-w-[85%]">
+              <p className="text-sm" dangerouslySetInnerHTML={{ __html: formatContent(assistant.welcomeMessage) }} />
             </div>
           </div>
 
-          {/* Mensajes del chat */}
-          {messages.map((message) => (
-            <div
-              key={message.id}
-              className={`flex gap-3 ${message.role === "user" ? "flex-row-reverse" : ""}`}
-            >
-              {message.role === "user" ? (
-                <div className="w-8 h-8 rounded-full bg-blue-600 flex items-center justify-center shrink-0">
+          {/* Messages */}
+          {messages.map((msg) => (
+            <div key={msg.id} className={`flex gap-2 ${msg.role === "user" ? "flex-row-reverse" : ""}`}>
+              {msg.role === "user" ? (
+                <div className="w-7 h-7 rounded-full bg-blue-500 flex items-center justify-center shrink-0">
                   <User className="w-4 h-4 text-white" />
                 </div>
               ) : (
-                <div className={`w-8 h-8 rounded-full overflow-hidden shrink-0 border-2 ${assistant.borderColor} bg-white`}>
-                  <img 
-                    src={assistant.avatar || "/placeholder.svg"}
-                    alt={assistant.name}
-                    className="w-full h-full object-cover"
-                  />
+                <div className={`w-7 h-7 rounded-full overflow-hidden shrink-0 ${assistant.color}`}>
+                  <img src={assistant.avatar || "/placeholder.svg"} alt={assistant.name} className="w-full h-full object-cover" />
                 </div>
               )}
-              <div
-                className={`max-w-[85%] rounded-2xl px-4 py-3 ${
-                  message.role === "user"
-                    ? "bg-blue-600 text-white"
-                    : "bg-white border shadow-sm"
-                }`}
-              >
-                <div
-                  className="text-sm leading-relaxed"
-                  dangerouslySetInnerHTML={{
-                    __html: message.role === "assistant" ? formatContent(message.content) : message.content
-                  }}
-                />
+              <div className={`rounded-2xl px-3 py-2 max-w-[85%] ${
+                msg.role === "user" 
+                  ? "bg-blue-500 text-white rounded-tr-sm" 
+                  : "bg-slate-100 rounded-tl-sm"
+              }`}>
+                <p className="text-sm" dangerouslySetInnerHTML={{ 
+                  __html: msg.role === "assistant" ? formatContent(msg.content) : msg.content 
+                }} />
               </div>
             </div>
           ))}
 
-          {/* Streaming content */}
+          {/* Streaming */}
           {streamingContent && (
-            <div className="flex gap-3">
-              <div className={`w-8 h-8 rounded-full overflow-hidden shrink-0 border-2 ${assistant.borderColor} bg-white`}>
-                <img 
-                  src={assistant.avatar || "/placeholder.svg"}
-                  alt={assistant.name}
-                  className="w-full h-full object-cover"
-                />
+            <div className="flex gap-2">
+              <div className={`w-7 h-7 rounded-full overflow-hidden shrink-0 ${assistant.color}`}>
+                <img src={assistant.avatar || "/placeholder.svg"} alt={assistant.name} className="w-full h-full object-cover" />
               </div>
-              <div className="max-w-[85%] rounded-2xl px-4 py-3 bg-white border shadow-sm">
-                <div
-                  className="text-sm leading-relaxed"
-                  dangerouslySetInnerHTML={{ __html: formatContent(streamingContent) }}
-                />
+              <div className="bg-slate-100 rounded-2xl rounded-tl-sm px-3 py-2 max-w-[85%]">
+                <p className="text-sm" dangerouslySetInnerHTML={{ __html: formatContent(streamingContent) }} />
               </div>
             </div>
           )}
 
-          {/* Preguntas rápidas */}
-          {messages.length === 0 && !streamingContent && (
-            <div className="space-y-2 pt-2">
-              <p className="text-xs text-muted-foreground text-center mb-3">Preguntas frecuentes:</p>
-              <div className="grid grid-cols-2 gap-2">
-                {QUICK_QUESTIONS.map((q, i) => (
-                  <button
-                    key={i}
-                    onClick={() => handleQuickQuestion(q.text)}
-                    disabled={isLoading}
-                    className={`flex items-center gap-2 p-3 rounded-xl text-left text-xs font-medium transition-all hover:scale-[1.02] disabled:opacity-50 ${q.color}`}
-                  >
-                    <q.icon className="w-4 h-4 shrink-0" />
-                    <span className="line-clamp-2">{q.text}</span>
-                  </button>
-                ))}
-              </div>
+          {/* Quick questions */}
+          {messages.length === 0 && (
+            <div className="flex flex-wrap gap-2 pt-2">
+              {QUICK_QUESTIONS.map((q, i) => (
+                <button
+                  key={i}
+                  onClick={() => sendMessage(q.text)}
+                  disabled={isLoading}
+                  className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium border transition-all hover:scale-105 disabled:opacity-50 ${q.color}`}
+                >
+                  <q.icon className="w-3.5 h-3.5" />
+                  {q.text}
+                </button>
+              ))}
             </div>
           )}
 
-          {/* CTA - Botón crear cuenta */}
+          {/* CTA */}
           {showCTA && (
-            <div className="bg-gradient-to-r from-green-50 to-emerald-50 border border-green-200 rounded-2xl p-4 mt-4">
-              <div className="flex items-center gap-2 mb-3">
-                <UserPlus className="w-5 h-5 text-green-600" />
-                <span className="font-semibold text-green-800">Continua en la app</span>
+            <div className="bg-emerald-50 border border-emerald-200 rounded-xl p-3 mt-2">
+              <div className="flex items-center gap-2 mb-2">
+                <UserPlus className="w-4 h-4 text-emerald-600" />
+                <span className="font-medium text-emerald-800 text-sm">Continua en la app</span>
               </div>
-              <p className="text-sm text-green-700 mb-3">
-                Crea tu cuenta de invitado gratis para calcular tu liquidación y guardar tus documentos.
-              </p>
               <Link href="/?tab=register&guest=true" onClick={onClose}>
-                <Button className="w-full bg-green-600 hover:bg-green-700 text-white gap-2">
-                  Crear cuenta de invitado
-                  <ArrowRight className="w-4 h-4" />
+                <Button size="sm" className="w-full bg-emerald-600 hover:bg-emerald-700 text-white gap-1 text-xs">
+                  Crear cuenta gratis
+                  <ArrowRight className="w-3 h-3" />
                 </Button>
               </Link>
             </div>
           )}
 
-          {/* Loading indicator */}
+          {/* Loading */}
           {isLoading && !streamingContent && (
-            <div className="flex gap-3">
-              <div className={`w-8 h-8 rounded-full overflow-hidden shrink-0 border-2 ${assistant.borderColor} bg-white`}>
-                <img 
-                  src={assistant.avatar || "/placeholder.svg"}
-                  alt={assistant.name}
-                  className="w-full h-full object-cover"
-                />
+            <div className="flex gap-2">
+              <div className={`w-7 h-7 rounded-full overflow-hidden shrink-0 ${assistant.color}`}>
+                <img src={assistant.avatar || "/placeholder.svg"} alt={assistant.name} className="w-full h-full object-cover" />
               </div>
-              <div className="bg-white border shadow-sm rounded-2xl px-4 py-3">
-                <div className="flex items-center gap-2 text-muted-foreground">
-                  <Loader2 className="w-4 h-4 animate-spin" />
-                  <span className="text-sm">{assistant.loadingText}</span>
+              <div className="bg-slate-100 rounded-2xl rounded-tl-sm px-3 py-2">
+                <div className="flex items-center gap-2 text-slate-500">
+                  <Loader2 className="w-3 h-3 animate-spin" />
+                  <span className="text-xs">{assistant.loadingText}</span>
                 </div>
               </div>
             </div>
           )}
+
+          <div ref={messagesEndRef} />
         </div>
 
         {/* Input */}
-        <div className="p-4 border-t bg-white">
-          <form id="chat-form" onSubmit={onFormSubmit} className="flex gap-2">
+        <form onSubmit={(e) => { e.preventDefault(); sendMessage(inputValue) }} className="p-3 border-t bg-slate-50">
+          <div className="flex gap-2">
             <input
               ref={inputRef}
               type="text"
               value={inputValue}
               onChange={(e) => setInputValue(e.target.value)}
               placeholder="Escribe tu pregunta..."
-              className="flex-1 px-4 py-2.5 rounded-full border-2 bg-slate-50 focus:bg-white focus:border-green-400 outline-none text-sm"
+              className="flex-1 px-3 py-2 rounded-full border bg-white focus:border-emerald-400 outline-none text-sm"
               disabled={isLoading}
             />
             <Button
               type="submit"
               size="icon"
               disabled={isLoading || !inputValue.trim()}
-              className={`rounded-full w-10 h-10 ${assistant.buttonColor}`}
+              className="rounded-full bg-emerald-500 hover:bg-emerald-600 w-9 h-9"
             >
               <Send className="w-4 h-4" />
             </Button>
-          </form>
-        </div>
+          </div>
+        </form>
       </div>
     </div>
   )
 }
 
-// Botón flotante exportado para uso global
+// Export del botón flotante
 export function AIAssistantButton({ onClick }: { onClick: () => void }) {
   return (
     <button
       onClick={onClick}
-      className="w-14 h-14 rounded-full bg-gradient-to-br from-green-500 to-emerald-600 shadow-lg hover:shadow-xl transition-all hover:scale-105 flex items-center justify-center"
-      aria-label="Abrir Lía, tu asistente legal IA"
+      className="w-14 h-14 rounded-full bg-emerald-500 hover:bg-emerald-600 shadow-lg hover:shadow-xl transition-all flex items-center justify-center"
+      aria-label="Abrir asistente"
     >
       <Sparkles className="w-6 h-6 text-white" />
     </button>
