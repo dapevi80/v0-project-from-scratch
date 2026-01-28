@@ -15,6 +15,7 @@ import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { ArrowLeft, Building2, User, Mail, Phone, FileText, CheckCircle2, XCircle, Clock, ExternalLink, Shield, Award, Loader2, Search, RefreshCw, MapPin, GraduationCap, Briefcase, Calendar, Award as IdCard, FileCheck, Eye } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
+import { aprobarAbogado, rechazarAbogado } from './upgrade-actions'
 
 interface LawyerProfile {
   id: string
@@ -133,46 +134,22 @@ export default function SolicitudesAbogadosPage() {
     setProcessing(true)
     setError(null)
     
-    const supabase = createClient()
+    // Usar la accion de upgrade que registra todo el tracking
+    const result = await aprobarAbogado(selectedAbogado.user_id)
     
-    // Actualizar lawyer_profile
-    const { error: lawyerError } = await supabase
-      .from('lawyer_profiles')
-      .update({
-        verification_status: 'verified',
-        verified_at: new Date().toISOString(),
-        is_available: true
-      })
-      .eq('user_id', selectedAbogado.user_id)
-    
-    if (lawyerError) {
-      setError(lawyerError.message)
+    if (result.error) {
+      setError(result.error)
       setProcessing(false)
       return
     }
     
-    // Actualizar profile role a 'lawyer'
-    const { error: profileError } = await supabase
-      .from('profiles')
-      .update({
-        role: 'lawyer',
-        verification_status: 'verified'
-      })
-      .eq('id', selectedAbogado.user_id)
-    
-    if (profileError) {
-      setError(profileError.message)
-      setProcessing(false)
-      return
-    }
-    
-    setSuccess(`Abogado ${selectedAbogado.display_name} verificado exitosamente`)
+    setSuccess(`Abogado ${selectedAbogado.display_name} verificado exitosamente. Upgrade: ${result.previousRole} -> ${result.newRole}`)
     setShowApproveDialog(false)
     setSelectedAbogado(null)
     loadAbogados()
     setProcessing(false)
     
-    setTimeout(() => setSuccess(null), 3000)
+    setTimeout(() => setSuccess(null), 5000)
   }
 
   const handleRechazar = async () => {
@@ -181,20 +158,17 @@ export default function SolicitudesAbogadosPage() {
     setProcessing(true)
     setError(null)
     
-    const supabase = createClient()
+    // Usar la accion de rechazo que registra el downgrade si aplica
+    const result = await rechazarAbogado(
+      selectedAbogado.user_id,
+      notasRechazo,
+      true // forzar downgrade
+    )
     
-    const { error: updateError } = await supabase
-      .from('lawyer_profiles')
-      .update({
-        verification_status: 'rejected',
-        notas_rechazo: notasRechazo
-      })
-      .eq('user_id', selectedAbogado.user_id)
-    
-    if (updateError) {
-      setError(updateError.message)
+    if (result.error) {
+      setError(result.error)
     } else {
-      setSuccess(`Solicitud de ${selectedAbogado.display_name} rechazada`)
+      setSuccess(`Solicitud de ${selectedAbogado.display_name} rechazada${result.wasDowngraded ? '. Cuenta degradada.' : ''}`)
       setShowRejectDialog(false)
       setSelectedAbogado(null)
       setNotasRechazo('')
@@ -202,7 +176,7 @@ export default function SolicitudesAbogadosPage() {
     }
     setProcessing(false)
     
-    setTimeout(() => setSuccess(null), 3000)
+    setTimeout(() => setSuccess(null), 5000)
   }
 
   const filteredAbogados = abogados.filter(a => 

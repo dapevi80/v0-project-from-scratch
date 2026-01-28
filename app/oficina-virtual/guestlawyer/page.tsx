@@ -33,12 +33,16 @@ import {
 import { getGuestLawyerDashboard } from './actions'
 import { CedulaDigitalModal } from '@/components/abogado/cedula-digital-modal'
 import { EfirmaConfig } from '@/components/abogado/efirma-config'
+import { LawyerCelebration } from '@/components/lawyer-celebration'
+import { DowngradeAlert } from '@/components/downgrade-alert'
 
 export default function GuestLawyerDashboardPage() {
   const [loading, setLoading] = useState(true)
   const [data, setData] = useState<Awaited<ReturnType<typeof getGuestLawyerDashboard>>['data']>(null)
   const [error, setError] = useState<string | null>(null)
   const [showCedula, setShowCedula] = useState(false)
+  const [showCelebration, setShowCelebration] = useState(false)
+  const [celebrationType, setCelebrationType] = useState<'verification_approved' | 'reactivation'>('verification_approved')
 
   useEffect(() => {
     loadData()
@@ -51,6 +55,12 @@ export default function GuestLawyerDashboardPage() {
       setError(result.error)
     } else {
       setData(result.data)
+      
+      // Verificar si hay celebracion pendiente
+      if (result.data?.celebrationPending && result.data?.verificationProgress?.verificado) {
+        setCelebrationType(result.data?.wasReactivation ? 'reactivation' : 'verification_approved')
+        setShowCelebration(true)
+      }
     }
     setLoading(false)
   }
@@ -135,6 +145,11 @@ export default function GuestLawyerDashboardPage() {
       </header>
 
       <main className="container mx-auto px-4 py-6 space-y-6 max-w-4xl">
+        {/* Alerta de downgrade si aplica */}
+        {data.wasDowngraded && (
+          <DowngradeAlert userId={profile.id} />
+        )}
+
         {/* Estado de verificacion */}
         <Card className="border-slate-200">
           <CardHeader className="pb-2">
@@ -366,6 +381,16 @@ export default function GuestLawyerDashboardPage() {
           profile={profile}
           lawyerProfile={lawyerProfile}
           onClose={() => setShowCedula(false)}
+        />
+      )}
+      
+      {/* Celebracion de verificacion */}
+      {showCelebration && (
+        <LawyerCelebration
+          userId={profile.id}
+          upgradeType={celebrationType}
+          userName={profile.full_name}
+          onClose={() => setShowCelebration(false)}
         />
       )}
     </div>

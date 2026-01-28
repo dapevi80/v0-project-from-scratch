@@ -85,6 +85,15 @@ export async function getGuestLawyerDashboard() {
     .eq('lawyer_id', user.id)
     .maybeSingle()
   
+  // Verificar si hay celebracion pendiente
+  const celebrationPending = !profile.celebration_shown && (
+    profile.verification_status === 'verified' ||
+    (profile.upgrade_at && profile.role === 'lawyer')
+  )
+  
+  const wasReactivation = profile.upgrade_type === 'reactivation'
+  const wasDowngraded = profile.verification_status === 'documents_missing'
+
   return {
     error: null,
     data: {
@@ -99,7 +108,13 @@ export async function getGuestLawyerDashboard() {
       },
       efirmaStatus: efirmaConfig 
         ? { configured: true, status: efirmaConfig.status as 'pending' | 'active' | 'expired' } 
-        : { configured: false, status: undefined }
+        : { configured: false, status: undefined },
+      // Datos de celebracion y downgrade
+      celebrationPending,
+      wasReactivation,
+      wasDowngraded,
+      downgradeReason: profile.downgrade_reason,
+      upgradeType: profile.upgrade_type
     }
   }
 }
