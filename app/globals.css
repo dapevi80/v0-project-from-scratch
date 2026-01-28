@@ -1,0 +1,336 @@
+@import 'tailwindcss';
+@import 'tw-animate-css';
+
+@custom-variant dark (&:is(.dark *));
+
+/* ============================================
+   MECORRIERON.MX - SISTEMA DE DISEÑO
+   
+   Paleta de colores:
+   - Azul (Confianza): #2563EB (primary)
+   - Rojo (Urgencia): #DC2626 (urgent/destructive)
+   - Neutros: Grises para texto y fondos
+   ============================================ */
+
+:root {
+  /* Fondos */
+  --background: oklch(0.99 0 0);
+  --foreground: oklch(0.15 0.01 260);
+  
+  /* Tarjetas */
+  --card: oklch(1 0 0);
+  --card-foreground: oklch(0.15 0.01 260);
+  
+  /* Popovers */
+  --popover: oklch(1 0 0);
+  --popover-foreground: oklch(0.15 0.01 260);
+  
+  /* Primary - Azul Confianza (#2563EB) */
+  --primary: oklch(0.55 0.22 260);
+  --primary-foreground: oklch(1 0 0);
+  
+  /* Secondary - Azul claro */
+  --secondary: oklch(0.95 0.02 260);
+  --secondary-foreground: oklch(0.35 0.15 260);
+  
+  /* Muted - Gris suave */
+  --muted: oklch(0.96 0.005 260);
+  --muted-foreground: oklch(0.45 0.01 260);
+  
+  /* Accent - Azul muy claro */
+  --accent: oklch(0.92 0.04 260);
+  --accent-foreground: oklch(0.35 0.15 260);
+  
+  /* Destructive/Urgent - Rojo Urgencia (#DC2626) */
+  --destructive: oklch(0.55 0.22 25);
+  --destructive-foreground: oklch(1 0 0);
+  
+  /* Urgent - Alias para rojo de urgencia */
+  --urgent: oklch(0.55 0.22 25);
+  --urgent-foreground: oklch(1 0 0);
+  --urgent-muted: oklch(0.95 0.03 25);
+  
+  /* Borders & Inputs */
+  --border: oklch(0.90 0.01 260);
+  --input: oklch(0.90 0.01 260);
+  --ring: oklch(0.55 0.22 260);
+  
+  /* Charts - Azules y rojos */
+  --chart-1: oklch(0.55 0.22 260);
+  --chart-2: oklch(0.65 0.18 260);
+  --chart-3: oklch(0.55 0.22 25);
+  --chart-4: oklch(0.75 0.14 260);
+  --chart-5: oklch(0.65 0.16 25);
+  
+  /* Radius */
+  --radius: 0.5rem;
+  
+  /* Sidebar */
+  --sidebar: oklch(0.98 0.005 260);
+  --sidebar-foreground: oklch(0.15 0.01 260);
+  --sidebar-primary: oklch(0.55 0.22 260);
+  --sidebar-primary-foreground: oklch(1 0 0);
+  --sidebar-accent: oklch(0.94 0.02 260);
+  --sidebar-accent-foreground: oklch(0.35 0.15 260);
+  --sidebar-border: oklch(0.90 0.01 260);
+  --sidebar-ring: oklch(0.55 0.22 260);
+  
+  /* Sombras personalizadas */
+  --shadow-sm: 0 1px 2px 0 oklch(0.15 0.01 260 / 0.05);
+  --shadow-md: 0 4px 6px -1px oklch(0.15 0.01 260 / 0.08), 0 2px 4px -2px oklch(0.15 0.01 260 / 0.05);
+  --shadow-lg: 0 10px 15px -3px oklch(0.15 0.01 260 / 0.08), 0 4px 6px -4px oklch(0.15 0.01 260 / 0.05);
+  --shadow-xl: 0 20px 25px -5px oklch(0.15 0.01 260 / 0.1), 0 8px 10px -6px oklch(0.15 0.01 260 / 0.05);
+  
+  /* Sombras con color (para elementos destacados) */
+  --shadow-primary: 0 4px 14px 0 oklch(0.55 0.22 260 / 0.25);
+  --shadow-urgent: 0 4px 14px 0 oklch(0.55 0.22 25 / 0.25);
+  
+  /* Success - Verde para estados positivos */
+  --success: oklch(0.55 0.18 145);
+  --success-foreground: oklch(1 0 0);
+  
+  /* Warning - Amarillo para alertas */
+  --warning: oklch(0.75 0.18 85);
+  --warning-foreground: oklch(0.25 0.05 85);
+}
+
+.dark {
+  /* Fondos oscuros */
+  --background: oklch(0.12 0.01 260);
+  --foreground: oklch(0.95 0.005 260);
+  
+  /* Tarjetas oscuras */
+  --card: oklch(0.16 0.01 260);
+  --card-foreground: oklch(0.95 0.005 260);
+  
+  /* Popovers oscuros */
+  --popover: oklch(0.16 0.01 260);
+  --popover-foreground: oklch(0.95 0.005 260);
+  
+  /* Primary - Azul más brillante en dark */
+  --primary: oklch(0.65 0.20 260);
+  --primary-foreground: oklch(0.12 0.01 260);
+  
+  /* Secondary oscuro */
+  --secondary: oklch(0.22 0.02 260);
+  --secondary-foreground: oklch(0.95 0.005 260);
+  
+  /* Muted oscuro */
+  --muted: oklch(0.22 0.01 260);
+  --muted-foreground: oklch(0.65 0.01 260);
+  
+  /* Accent oscuro */
+  --accent: oklch(0.25 0.03 260);
+  --accent-foreground: oklch(0.95 0.005 260);
+  
+  /* Destructive/Urgent oscuro */
+  --destructive: oklch(0.60 0.20 25);
+  --destructive-foreground: oklch(0.12 0.01 260);
+  
+  /* Urgent oscuro */
+  --urgent: oklch(0.60 0.20 25);
+  --urgent-foreground: oklch(0.12 0.01 260);
+  --urgent-muted: oklch(0.25 0.05 25);
+  
+  /* Borders oscuros */
+  --border: oklch(0.28 0.01 260);
+  --input: oklch(0.28 0.01 260);
+  --ring: oklch(0.65 0.20 260);
+  
+  /* Charts oscuros */
+  --chart-1: oklch(0.65 0.20 260);
+  --chart-2: oklch(0.55 0.16 260);
+  --chart-3: oklch(0.60 0.20 25);
+  --chart-4: oklch(0.70 0.12 260);
+  --chart-5: oklch(0.55 0.14 25);
+  
+  /* Sidebar oscuro */
+  --sidebar: oklch(0.14 0.01 260);
+  --sidebar-foreground: oklch(0.95 0.005 260);
+  --sidebar-primary: oklch(0.65 0.20 260);
+  --sidebar-primary-foreground: oklch(0.12 0.01 260);
+  --sidebar-accent: oklch(0.22 0.02 260);
+  --sidebar-accent-foreground: oklch(0.95 0.005 260);
+  --sidebar-border: oklch(0.28 0.01 260);
+  --sidebar-ring: oklch(0.65 0.20 260);
+  
+  /* Sombras oscuras */
+  --shadow-sm: 0 1px 2px 0 oklch(0 0 0 / 0.3);
+  --shadow-md: 0 4px 6px -1px oklch(0 0 0 / 0.4), 0 2px 4px -2px oklch(0 0 0 / 0.3);
+  --shadow-lg: 0 10px 15px -3px oklch(0 0 0 / 0.4), 0 4px 6px -4px oklch(0 0 0 / 0.3);
+  --shadow-xl: 0 20px 25px -5px oklch(0 0 0 / 0.5), 0 8px 10px -6px oklch(0 0 0 / 0.4);
+  
+  /* Sombras con color oscuras */
+  --shadow-primary: 0 4px 14px 0 oklch(0.65 0.20 260 / 0.3);
+  --shadow-urgent: 0 4px 14px 0 oklch(0.60 0.20 25 / 0.3);
+  
+  /* Success oscuro */
+  --success: oklch(0.60 0.16 145);
+  --success-foreground: oklch(0.12 0.01 260);
+  
+  /* Warning oscuro */
+  --warning: oklch(0.70 0.16 85);
+  --warning-foreground: oklch(0.20 0.03 85);
+}
+
+@theme inline {
+  /* Tipografía - Inter para mejor legibilidad legal */
+  --font-sans: var(--font-inter), 'Inter', system-ui, sans-serif;
+  --font-mono: var(--font-geist-mono), 'Geist Mono', monospace;
+  
+  /* Colores base */
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  
+  /* Primary - Azul Confianza */
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  
+  /* Secondary */
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  
+  /* Muted */
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  
+  /* Accent */
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  
+  /* Destructive/Urgent - Rojo Urgencia */
+  --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
+  
+  /* Urgent - Para botones de ayuda urgente */
+  --color-urgent: var(--urgent);
+  --color-urgent-foreground: var(--urgent-foreground);
+  --color-urgent-muted: var(--urgent-muted);
+  
+  /* Success - Verde confirmación */
+  --color-success: var(--success);
+  --color-success-foreground: var(--success-foreground);
+  
+  /* Warning - Amarillo alertas */
+  --color-warning: var(--warning);
+  --color-warning-foreground: var(--warning-foreground);
+  
+  /* Borders & Inputs */
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+  
+  /* Charts */
+  --color-chart-1: var(--chart-1);
+  --color-chart-2: var(--chart-2);
+  --color-chart-3: var(--chart-3);
+  --color-chart-4: var(--chart-4);
+  --color-chart-5: var(--chart-5);
+  
+  /* Radius */
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 4px);
+  
+  /* Sidebar */
+  --color-sidebar: var(--sidebar);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar-primary: var(--sidebar-primary);
+  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+  --color-sidebar-accent: var(--sidebar-accent);
+  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+  --color-sidebar-border: var(--sidebar-border);
+  --color-sidebar-ring: var(--sidebar-ring);
+  
+  /* Sombras */
+  --shadow-sm: var(--shadow-sm);
+  --shadow-md: var(--shadow-md);
+  --shadow-lg: var(--shadow-lg);
+  --shadow-xl: var(--shadow-xl);
+  --shadow-primary: var(--shadow-primary);
+  --shadow-urgent: var(--shadow-urgent);
+}
+
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
+  }
+  body {
+    @apply bg-background text-foreground antialiased;
+  }
+  
+  /* Estilos de tipografía para documentos legales */
+  h1, h2, h3, h4, h5, h6 {
+    @apply font-semibold tracking-tight text-balance;
+  }
+  
+  h1 { @apply text-3xl md:text-4xl; }
+  h2 { @apply text-2xl md:text-3xl; }
+  h3 { @apply text-xl md:text-2xl; }
+  h4 { @apply text-lg md:text-xl; }
+  
+  p {
+    @apply leading-relaxed text-pretty;
+  }
+  
+  /* Links con estilo de confianza */
+  a:not([class]) {
+    @apply text-primary underline-offset-4 hover:underline;
+  }
+}
+
+/* Utilidades personalizadas para mecorrieron.mx */
+@layer utilities {
+  /* Botón de urgencia con efecto pulse */
+  .btn-urgent {
+    @apply bg-urgent text-urgent-foreground hover:bg-urgent/90;
+    box-shadow: var(--shadow-urgent);
+  }
+  
+  /* Botón primario con sombra */
+  .btn-primary-shadow {
+    box-shadow: var(--shadow-primary);
+  }
+  
+  /* Card elevada */
+  .card-elevated {
+    box-shadow: var(--shadow-md);
+  }
+  
+  /* Card con hover */
+  .card-interactive {
+    @apply transition-shadow duration-200;
+    box-shadow: var(--shadow-sm);
+  }
+  .card-interactive:hover {
+    box-shadow: var(--shadow-md);
+  }
+  
+  /* Badge de estado */
+  .badge-urgent {
+    @apply bg-urgent-muted text-urgent;
+  }
+  
+  .badge-success {
+    @apply bg-success/10 text-success;
+  }
+  
+  .badge-warning {
+    @apply bg-warning/10 text-warning-foreground;
+  }
+  
+  /* Texto legal pequeño */
+  .text-legal {
+    @apply text-xs text-muted-foreground leading-relaxed;
+  }
+  
+  /* Referencia a artículo LFT */
+  .lft-reference {
+    @apply text-xs text-primary/80 font-medium;
+  }
+}

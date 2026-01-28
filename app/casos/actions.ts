@@ -1,0 +1,1081 @@
+'use server'
+
+import { createClient } from '@/lib/supabase/server'
+import { revalidatePath } from 'next/cache'
+
+// Status labels en español
+export const statusLabels: Record<string, string> = {
+  draft: 'Borrador',
+  pending_review: 'En Revision',
+  open: 'Abierto',
+  assigned: 'Asignado',
+  in_conciliation: 'En Conciliacion',
+  in_trial: 'En Juicio',
+  resolved: 'Resuelto',
+  closed: 'Cerrado'
+}
+
+export const statusColors: Record<string, string> = {
+  draft: 'bg-gray-100 text-gray-700',
+  pending_review: 'bg-yellow-100 text-yellow-700',
+  open: 'bg-blue-100 text-blue-700',
+  assigned: 'bg-purple-100 text-purple-700',
+  in_conciliation: 'bg-orange-100 text-orange-700',
+  in_trial: 'bg-red-100 text-red-700',
+  resolved: 'bg-green-100 text-green-700',
+  closed: 'bg-gray-200 text-gray-600'
+}
+
+export const prioridadLabels: Record<string, string> = {
+  baja: 'Baja',
+  normal: 'Normal',
+  alta: 'Alta',
+  urgente: 'Urgente'
+}
+
+export const prioridadColors: Record<string, string> = {
+  baja: 'bg-slate-100 text-slate-600',
+  normal: 'bg-blue-100 text-blue-600',
+  alta: 'bg-orange-100 text-orange-600',
+  urgente: 'bg-red-100 text-red-600'
+}
+
+export interface CalculoLiquidacion {
+  id: string
+  user_id: string
+  salario_diario: number
+  salario_mensual: number | null
+  fecha_ingreso: string
+  fecha_salida: string | null
+  total_conciliacion: number | null
+  neto_conciliacion: number | null
+  total_juicio: number | null
+  neto_juicio: number | null
+  antiguedad_anios: number | null
+  antiguedad_meses: number | null
+  antiguedad_dias: number | null
+  desglose_conciliacion: Record<string, unknown> | null
+  desglose_juicio: Record<string, unknown> | null
+  // Campos de empresa y despido
+  empresa_nombre: string | null
+  empresa_rfc: string | null
+  direccion_trabajo: string | null
+  ciudad: string | null
+  estado: string | null
+  puesto: string | null
+  tipo_jornada: string | null
+  tipo_contrato: string | null
+  motivo_separacion: string | null
+  fecha_despido: string | null
+  hechos_despido: string | null
+  datos_completos: boolean
+  listo_para_caso: boolean
+  created_at: string
+}
+
+// Categorias de casos
+export const categoriaLabels: Record<string, string> = {
+  nuevo: 'Nuevos Casos',
+  por_preaprobar: 'Por Preaprobar',
+  asignado: 'Asignados',
+  conciliacion: 'En Conciliacion',
+  juicio: 'En Juicio',
+  concluido: 'Concluidos',
+  referido: 'Mis Referidos',
+  archivado: 'Archivados'
+}
+
+export const categoriaColors: Record<string, string> = {
+  nuevo: 'bg-blue-100 text-blue-700 border-blue-200',
+  por_preaprobar: 'bg-yellow-100 text-yellow-700 border-yellow-200',
+  asignado: 'bg-purple-100 text-purple-700 border-purple-200',
+  conciliacion: 'bg-orange-100 text-orange-700 border-orange-200',
+  juicio: 'bg-red-100 text-red-700 border-red-200',
+  concluido: 'bg-green-100 text-green-700 border-green-200',
+  referido: 'bg-cyan-100 text-cyan-700 border-cyan-200',
+  archivado: 'bg-gray-100 text-gray-500 border-gray-200'
+}
+
+export interface Caso {
+  id: string
+  folio: string
+  worker_id: string
+  lawyer_id: string | null
+  calculo_id: string | null
+  status: string
+  categoria: string
+  empresa_nombre: string
+  empresa_rfc: string | null
+  ciudad: string | null
+  estado: string | null
+  monto_estimado: number | null
+  monto_final: number | null
+  oferta_empresa: number | null
+  oferta_empresa_fecha: string | null
+  porcentaje_honorarios: number
+  fecha_proxima_audiencia: string | null
+  fecha_limite_conciliacion: string | null
+  notas_abogado: string | null
+  prioridad: string
+  tipo_caso: 'despido' | 'rescision'
+  dias_prescripcion: number
+  fecha_limite_prescripcion: string | null
+  archivado: boolean
+  archivado_at: string | null
+  es_referido: boolean
+  referido_por: string | null
+  metadata: Record<string, unknown> | null
+  created_at: string
+  updated_at: string
+  // Relaciones
+  calculo?: CalculoLiquidacion | null
+  abogado?: { id: string; full_name: string; email: string } | null
+  unread_messages?: number
+  next_event?: { id: string; title: string; starts_at: string; event_type: string } | null
+}
+
+// Obtener calculos completos del usuario que pueden convertirse en casos
+export async function obtenerCalculosParaCasos() {
+  const supabase = await createClient()
+  
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return { error: 'No autenticado', data: null }
+  
+  // Obtener calculos completos (con datos de empresa y despido) que estan listos para caso
+  const { data: calculos, error: calculosError } = await supabase
+    .from('calculos_liquidacion')
+    .select('*')
+    .eq('user_id', user.id)
+    .eq('listo_para_caso', true)
+    .order('created_at', { ascending: false })
+  
+  if (calculosError) {
+    console.error('Error obteniendo calculos:', calculosError)
+    return { error: calculosError.message, data: null }
+  }
+  
+  // Obtener IDs de calculos que ya tienen caso
+  const { data: casosExistentes } = await supabase
+    .from('casos')
+    .select('calculo_id')
+    .eq('worker_id', user.id)
+    .not('calculo_id', 'is', null)
+  
+  const calculosConCaso = new Set(casosExistentes?.map(c => c.calculo_id) || [])
+  
+  // Filtrar calculos sin caso
+  const calculosSinCaso = calculos?.filter(c => !calculosConCaso.has(c.id)) || []
+  
+  return { error: null, data: calculosSinCaso as CalculoLiquidacion[], todos: calculos as CalculoLiquidacion[] }
+}
+
+// Obtener mis casos (basados en calculos)
+export async function obtenerMisCasos(filtros?: { 
+  status?: string
+  busqueda?: string
+  categoria?: string
+  incluirArchivados?: boolean 
+}) {
+  const supabase = await createClient()
+  
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return { error: 'No autenticado', data: null }
+  
+  let query = supabase
+    .from('casos')
+    .select(`
+      *,
+      calculo:calculos_liquidacion(*),
+      case_messages(id, read_by_worker_at, created_at),
+      case_events(id, title, starts_at, event_type)
+    `)
+    .eq('worker_id', user.id)
+    .order('updated_at', { ascending: false })
+  
+  // Por defecto no incluir archivados, a menos que se solicite
+  if (!filtros?.incluirArchivados) {
+    query = query.eq('archivado', false)
+  }
+  
+  if (filtros?.status && filtros.status !== 'all') {
+    query = query.eq('status', filtros.status)
+  }
+  
+  if (filtros?.categoria && filtros.categoria !== 'todos') {
+    query = query.eq('categoria', filtros.categoria)
+  }
+  
+  if (filtros?.busqueda) {
+    query = query.or(`empresa_nombre.ilike.%${filtros.busqueda}%,folio.ilike.%${filtros.busqueda}%`)
+  }
+  
+  const { data, error } = await query
+  
+  if (error) {
+    console.error('Error obteniendo casos:', error)
+    return { error: error.message, data: null }
+  }
+  
+  // Obtener datos de abogados por separado
+  const lawyerIds = [...new Set(data?.map(c => c.lawyer_id).filter(Boolean) || [])]
+  let abogadosMap: Record<string, { id: string; full_name: string; email: string }> = {}
+  
+  if (lawyerIds.length > 0) {
+    const { data: abogados } = await supabase
+      .from('profiles')
+      .select('id, full_name, email')
+      .in('id', lawyerIds)
+    
+    abogadosMap = Object.fromEntries(abogados?.map(a => [a.id, a]) || [])
+  }
+  
+  // Procesar datos para agregar campos computados
+  const casosConExtras = data?.map(caso => {
+    const unreadMessages = caso.case_messages?.filter((m: { read_by_worker_at: string | null }) => !m.read_by_worker_at).length || 0
+    const futureEvents = caso.case_events
+      ?.filter((e: { starts_at: string }) => new Date(e.starts_at) >= new Date())
+      .sort((a: { starts_at: string }, b: { starts_at: string }) => 
+        new Date(a.starts_at).getTime() - new Date(b.starts_at).getTime()
+      )
+    const nextEvent = futureEvents?.[0] || null
+    
+    return {
+      ...caso,
+      abogado: caso.lawyer_id ? abogadosMap[caso.lawyer_id] || null : null,
+      unread_messages: unreadMessages,
+      next_event: nextEvent ? {
+        id: nextEvent.id,
+        title: nextEvent.title,
+        event_date: nextEvent.starts_at,
+        event_type: nextEvent.event_type
+      } : null,
+      case_messages: undefined,
+      case_events: undefined
+    }
+  })
+  
+  return { error: null, data: casosConExtras as Caso[] }
+}
+
+// Obtener estadisticas de casos por categoria
+export async function obtenerEstadisticasCasos() {
+  const supabase = await createClient()
+  
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return { error: 'No autenticado', data: null }
+  
+  const { data, error } = await supabase
+    .from('casos')
+    .select('status, categoria, monto_estimado, monto_final, oferta_empresa, archivado, es_referido')
+    .eq('worker_id', user.id)
+  
+  if (error) {
+    console.error('Error obteniendo estadisticas:', error)
+    return { error: error.message, data: null }
+  }
+  
+  // Estadisticas generales
+  const total = data?.filter(c => !c.archivado).length || 0
+  const activos = data?.filter(c => !c.archivado && !['resolved', 'closed'].includes(c.status)).length || 0
+  const resueltos = data?.filter(c => c.categoria === 'concluido' || c.status === 'resolved').length || 0
+  const montoTotalEstimado = data?.filter(c => !c.archivado).reduce((acc, c) => acc + (Number(c.monto_estimado) || 0), 0) || 0
+  const montoTotalOfertas = data?.filter(c => !c.archivado).reduce((acc, c) => acc + (Number(c.oferta_empresa) || 0), 0) || 0
+  
+  // Conteo por categoria
+  const porCategoria: Record<string, number> = {
+    nuevo: data?.filter(c => c.categoria === 'nuevo' && !c.archivado).length || 0,
+    por_preaprobar: data?.filter(c => c.categoria === 'por_preaprobar' && !c.archivado).length || 0,
+    asignado: data?.filter(c => c.categoria === 'asignado' && !c.archivado).length || 0,
+    conciliacion: data?.filter(c => c.categoria === 'conciliacion' && !c.archivado).length || 0,
+    juicio: data?.filter(c => c.categoria === 'juicio' && !c.archivado).length || 0,
+    concluido: data?.filter(c => c.categoria === 'concluido' && !c.archivado).length || 0,
+    referido: data?.filter(c => c.es_referido && !c.archivado).length || 0,
+    archivado: data?.filter(c => c.archivado).length || 0
+  }
+  
+  return { 
+    error: null, 
+    data: { total, activos, resueltos, montoTotalEstimado, montoTotalOfertas, porCategoria } 
+  }
+}
+
+// Crear caso desde calculo
+export async function crearCasoDesdeCalculo(calculoId: string, datos: {
+  empresa_nombre: string
+  empresa_rfc?: string
+  ciudad?: string
+  estado?: string
+}) {
+  const supabase = await createClient()
+  
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return { error: 'No autenticado', data: null }
+  
+  // Obtener el calculo
+  const { data: calculo, error: calculoError } = await supabase
+    .from('calculos_liquidacion')
+    .select('*')
+    .eq('id', calculoId)
+    .eq('user_id', user.id)
+    .single()
+  
+  if (calculoError || !calculo) {
+    return { error: 'Calculo no encontrado', data: null }
+  }
+  
+  // Generar folio unico
+  const folio = `MC-${Date.now().toString(36).toUpperCase()}`
+  
+  const { data, error } = await supabase
+    .from('casos')
+    .insert({
+      folio,
+      worker_id: user.id,
+      calculo_id: calculoId,
+      status: 'pending_review',
+      empresa_nombre: datos.empresa_nombre,
+      empresa_rfc: datos.empresa_rfc,
+      ciudad: datos.ciudad,
+      estado: datos.estado,
+      monto_estimado: calculo.total_conciliacion || calculo.total_juicio,
+      prioridad: 'normal'
+    })
+    .select()
+    .single()
+  
+  if (error) {
+    console.error('Error creando caso:', error)
+    return { error: error.message, data: null }
+  }
+  
+  revalidatePath('/casos')
+  return { error: null, data }
+}
+
+// Obtener detalle de un caso
+export async function obtenerCaso(casoId: string) {
+  const supabase = await createClient()
+  
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return { error: 'No autenticado', data: null }
+  
+  const { data, error } = await supabase
+    .from('casos')
+    .select(`
+      *,
+      calculo:calculos_liquidacion(*),
+      abogado:profiles!casos_lawyer_id_fkey(id, full_name, email)
+    `)
+    .eq('id', casoId)
+    .eq('worker_id', user.id)
+    .single()
+  
+  if (error) {
+    console.error('Error obteniendo caso:', error)
+    return { error: error.message, data: null }
+  }
+  
+  return { error: null, data: data as Caso }
+}
+
+// Obtener mensajes de un caso
+export async function obtenerMensajes(casoId: string) {
+  const supabase = await createClient()
+  
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return { error: 'No autenticado', data: null }
+  
+  const { data, error } = await supabase
+    .from('case_messages')
+    .select(`
+      *,
+      sender:profiles!case_messages_sender_id_fkey(id, full_name, role)
+    `)
+    .eq('case_id', casoId)
+    .order('created_at', { ascending: true })
+  
+  if (error) {
+    console.error('Error obteniendo mensajes:', error)
+    return { error: error.message, data: null }
+  }
+  
+  return { error: null, data }
+}
+
+// Enviar mensaje
+export async function enviarMensaje(casoId: string, body: string) {
+  const supabase = await createClient()
+  
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return { error: 'No autenticado', data: null }
+  
+  const { data: profile } = await supabase
+    .from('profiles')
+    .select('role')
+    .eq('id', user.id)
+    .single()
+  
+  const { data, error } = await supabase
+    .from('case_messages')
+    .insert({
+      case_id: casoId,
+      sender_id: user.id,
+      sender_role: profile?.role || 'worker',
+      body
+    })
+    .select()
+    .single()
+  
+  if (error) {
+    console.error('Error enviando mensaje:', error)
+    return { error: error.message, data: null }
+  }
+  
+  revalidatePath(`/caso/${casoId}`)
+  return { error: null, data }
+}
+
+// Marcar mensajes como leidos
+export async function marcarMensajesLeidos(casoId: string) {
+  const supabase = await createClient()
+  
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return { error: 'No autenticado' }
+  
+  const { data: profile } = await supabase
+    .from('profiles')
+    .select('role')
+    .eq('id', user.id)
+    .single()
+  
+  const isWorker = profile?.role === 'worker' || profile?.role === 'guest'
+  
+  const { error } = await supabase
+    .from('case_messages')
+    .update(isWorker ? { read_by_worker_at: new Date().toISOString() } : { read_by_lawyer_at: new Date().toISOString() })
+    .eq('case_id', casoId)
+    .neq('sender_id', user.id)
+  
+  if (error) {
+    console.error('Error marcando mensajes:', error)
+    return { error: error.message }
+  }
+  
+  return { error: null }
+}
+
+// Obtener eventos de un caso
+export async function obtenerEventos(casoId: string) {
+  const supabase = await createClient()
+  
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return { error: 'No autenticado', data: null }
+  
+  const { data, error } = await supabase
+    .from('case_events')
+    .select('*')
+    .eq('case_id', casoId)
+    .order('starts_at', { ascending: true })
+  
+  if (error) {
+    console.error('Error obteniendo eventos:', error)
+    return { error: error.message, data: null }
+  }
+  
+  return { error: null, data }
+}
+
+// Formatear moneda
+export function formatCurrency(amount: number | null | undefined): string {
+  if (amount === null || amount === undefined) return '$0.00'
+  return new Intl.NumberFormat('es-MX', {
+    style: 'currency',
+    currency: 'MXN'
+  }).format(amount)
+}
+
+// Formatear fecha
+export function formatDate(date: string | null | undefined): string {
+  if (!date) return '-'
+  return new Date(date).toLocaleDateString('es-MX', {
+    day: 'numeric',
+    month: 'short',
+    year: 'numeric'
+  })
+}
+
+// Calcular dias restantes
+export function calcularDiasRestantes(fecha: string | null): number | null {
+  if (!fecha) return null
+  const hoy = new Date()
+  const fechaObj = new Date(fecha)
+  const diff = fechaObj.getTime() - hoy.getTime()
+  return Math.ceil(diff / (1000 * 60 * 60 * 24))
+}
+
+// Calcular dias de prescripcion
+export function calcularDiasPrescripcion(fechaLimite: string | null): number | null {
+  if (!fechaLimite) return null
+  const hoy = new Date()
+  hoy.setHours(0, 0, 0, 0)
+  const limite = new Date(fechaLimite)
+  limite.setHours(0, 0, 0, 0)
+  const diff = limite.getTime() - hoy.getTime()
+  return Math.ceil(diff / (1000 * 60 * 60 * 24))
+}
+
+// Calcular porcentaje de oferta vs estimado
+export function calcularPorcentajeOferta(oferta: number | null, estimado: number | null): number | null {
+  if (!oferta || !estimado || estimado === 0) return null
+  return Math.round((oferta / estimado) * 100)
+}
+
+// Crear caso (sin calculo vinculado)
+export async function crearCaso(datos: {
+  empresa_nombre: string
+  empresa_rfc?: string
+  ciudad?: string
+  estado?: string
+  monto_estimado?: number
+}) {
+  const supabase = await createClient()
+  
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return { error: 'No autenticado', data: null }
+  
+  const folio = `MC-${Date.now().toString(36).toUpperCase()}`
+  
+  const { data, error } = await supabase
+    .from('casos')
+    .insert({
+      folio,
+      worker_id: user.id,
+      status: 'draft',
+      empresa_nombre: datos.empresa_nombre,
+      empresa_rfc: datos.empresa_rfc,
+      ciudad: datos.ciudad,
+      estado: datos.estado,
+      monto_estimado: datos.monto_estimado,
+      prioridad: 'normal'
+    })
+    .select()
+    .single()
+  
+  if (error) {
+    console.error('Error creando caso:', error)
+    return { error: error.message, data: null }
+  }
+  
+  revalidatePath('/casos')
+  return { error: null, data }
+}
+
+// Obtener documentos de un caso
+export async function obtenerDocumentosCaso(casoId: string) {
+  const supabase = await createClient()
+  
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return { error: 'No autenticado', data: null }
+  
+  const { data, error } = await supabase
+    .from('case_documents')
+    .select('*')
+    .eq('case_id', casoId)
+    .order('created_at', { ascending: false })
+  
+  if (error) {
+    console.error('Error obteniendo documentos:', error)
+    return { error: error.message, data: null }
+  }
+  
+  return { error: null, data }
+}
+
+// Archivar/Desarchivar caso
+export async function archivarCaso(casoId: string, archivar: boolean = true) {
+  const supabase = await createClient()
+  
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return { error: 'No autenticado' }
+  
+  const { error } = await supabase
+    .from('casos')
+    .update({
+      archivado: archivar,
+      archivado_at: archivar ? new Date().toISOString() : null,
+      categoria: archivar ? 'archivado' : 'nuevo'
+    })
+    .eq('id', casoId)
+    .eq('worker_id', user.id)
+  
+  if (error) {
+    return { error: error.message }
+  }
+  
+  revalidatePath('/casos')
+  return { error: null }
+}
+
+// Crear caso automaticamente desde calculo completo
+export async function crearCasoDesdeCalculoCompleto(calculoId: string) {
+  const supabase = await createClient()
+  
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return { error: 'No autenticado', data: null }
+  
+  // Obtener el calculo
+  const { data: calculo, error: calculoError } = await supabase
+    .from('calculos_liquidacion')
+    .select('*')
+    .eq('id', calculoId)
+    .eq('user_id', user.id)
+    .single()
+  
+  if (calculoError || !calculo) {
+    return { error: 'Calculo no encontrado', data: null }
+  }
+  
+  // Verificar que el calculo tiene datos completos
+  if (!calculo.empresa_nombre || !calculo.fecha_despido) {
+    return { error: 'El calculo no tiene datos completos', data: null }
+  }
+  
+  // Verificar que no exista ya un caso para este calculo
+  const { data: casoExistente } = await supabase
+    .from('casos')
+    .select('id')
+    .eq('calculo_id', calculoId)
+    .single()
+  
+  if (casoExistente) {
+    return { error: 'Ya existe un caso para esta cotizacion', data: null }
+  }
+  
+  // Generar folio consecutivo
+  const { count } = await supabase
+    .from('casos')
+    .select('*', { count: 'exact', head: true })
+  
+  const numeroConsecutivo = (count || 0) + 1
+  const folio = `MC-${new Date().getFullYear()}-${String(numeroConsecutivo).padStart(4, '0')}`
+  
+  // Calcular fecha limite de prescripcion (60 dias para despido, 30 para rescision)
+  const fechaDespido = new Date(calculo.fecha_despido)
+  const diasPrescripcion = calculo.motivo_separacion === 'rescision_trabajador' ? 30 : 60
+  const fechaLimitePrescripcion = new Date(fechaDespido)
+  fechaLimitePrescripcion.setDate(fechaLimitePrescripcion.getDate() + diasPrescripcion)
+  
+  // Crear el caso
+  const { data: nuevoCaso, error } = await supabase
+    .from('casos')
+    .insert({
+      folio,
+      worker_id: user.id,
+      calculo_id: calculoId,
+      status: 'draft',
+      categoria: 'nuevo',
+      empresa_nombre: calculo.empresa_nombre,
+      empresa_rfc: calculo.empresa_rfc,
+      ciudad: calculo.ciudad,
+      estado: calculo.estado,
+      monto_estimado: calculo.total_conciliacion,
+      prioridad: 'normal',
+      tipo_caso: calculo.motivo_separacion === 'rescision_trabajador' ? 'rescision' : 'despido',
+      dias_prescripcion: diasPrescripcion,
+      fecha_limite_prescripcion: fechaLimitePrescripcion.toISOString().split('T')[0],
+      fecha_despido: calculo.fecha_despido,
+      direccion_trabajo_calle: calculo.direccion_trabajo,
+      direccion_trabajo_estado: calculo.estado,
+      direccion_trabajo_municipio: calculo.ciudad,
+      puesto_trabajo: calculo.puesto,
+      tipo_jornada: calculo.tipo_jornada,
+      tipo_contrato: calculo.tipo_contrato,
+      motivo_separacion: calculo.motivo_separacion,
+      hechos_despido: calculo.hechos_despido
+    })
+    .select()
+    .single()
+  
+  if (error) {
+    console.error('Error creando caso:', error)
+    return { error: error.message, data: null }
+  }
+  
+  revalidatePath('/casos')
+  return { error: null, data: nuevoCaso }
+}
+
+// ============================================
+// FUNCIONES PARA ADMIN Y SUPERADMIN
+// ============================================
+
+// Obtener todos los casos (para admin/superadmin)
+export async function obtenerTodosLosCasos(filtros?: { 
+  status?: string
+  busqueda?: string 
+  lawyerId?: string
+  incluirSinAbogado?: boolean
+}) {
+  const supabase = await createClient()
+  
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return { error: 'No autenticado', data: null }
+  
+  // Verificar rol
+  const { data: profile } = await supabase
+    .from('profiles')
+    .select('role')
+    .eq('id', user.id)
+    .single()
+  
+  if (!profile || !['admin', 'superadmin'].includes(profile.role)) {
+    return { error: 'No autorizado', data: null }
+  }
+  
+  let query = supabase
+    .from('casos')
+    .select(`
+      *,
+      calculo:calculos_liquidacion(*),
+      case_messages(id, read_by_worker_at, read_by_lawyer_at, created_at),
+      case_events(id, title, starts_at, event_type)
+    `)
+    .order('updated_at', { ascending: false })
+  
+  // Admin solo ve casos asignados a abogados
+  if (profile.role === 'admin') {
+    query = query.not('lawyer_id', 'is', null)
+  }
+  
+  // Superadmin ve todo, pero puede filtrar
+  if (profile.role === 'superadmin' && !filtros?.incluirSinAbogado) {
+    // Por defecto muestra todo
+  }
+  
+  if (filtros?.status && filtros.status !== 'all') {
+    query = query.eq('status', filtros.status)
+  }
+  
+  if (filtros?.lawyerId) {
+    query = query.eq('lawyer_id', filtros.lawyerId)
+  }
+  
+  if (filtros?.busqueda) {
+    query = query.or(`empresa_nombre.ilike.%${filtros.busqueda}%,folio.ilike.%${filtros.busqueda}%`)
+  }
+  
+  const { data, error } = await query
+  
+  if (error) {
+    console.error('Error obteniendo todos los casos:', error)
+    return { error: error.message, data: null }
+  }
+  
+  // Obtener datos de abogados y trabajadores por separado
+  const lawyerIds = [...new Set(data?.map(c => c.lawyer_id).filter(Boolean) || [])]
+  const workerIds = [...new Set(data?.map(c => c.worker_id).filter(Boolean) || [])]
+  
+  let profilesMap: Record<string, { id: string; full_name: string; email: string; phone?: string; curp?: string; identificacion_verificada?: boolean }> = {}
+  
+  const allIds = [...lawyerIds, ...workerIds]
+  if (allIds.length > 0) {
+    const { data: profiles } = await supabase
+      .from('profiles')
+      .select('id, full_name, email, phone, curp, identificacion_verificada')
+      .in('id', allIds)
+    
+    profilesMap = Object.fromEntries(profiles?.map(p => [p.id, p]) || [])
+  }
+  
+  // Procesar datos
+  const casosConExtras = data?.map(caso => {
+    const unreadMessages = caso.case_messages?.length || 0
+    const futureEvents = caso.case_events
+      ?.filter((e: { starts_at: string }) => new Date(e.starts_at) >= new Date())
+      .sort((a: { starts_at: string }, b: { starts_at: string }) => 
+        new Date(a.starts_at).getTime() - new Date(b.starts_at).getTime()
+      )
+    const nextEvent = futureEvents?.[0] || null
+    
+    return {
+      ...caso,
+      abogado: caso.lawyer_id ? profilesMap[caso.lawyer_id] || null : null,
+      trabajador: caso.worker_id ? profilesMap[caso.worker_id] || null : null,
+      unread_messages: unreadMessages,
+      next_event: nextEvent,
+      case_messages: undefined,
+      case_events: undefined
+    }
+  })
+  
+  return { error: null, data: casosConExtras }
+}
+
+// Obtener todas las cotizaciones/calculos (para superadmin)
+export async function obtenerTodasLasCotizaciones(filtros?: {
+  conCaso?: boolean
+  sinCaso?: boolean
+  busqueda?: string
+}) {
+  const supabase = await createClient()
+  
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return { error: 'No autenticado', data: null }
+  
+  // Solo superadmin puede ver todas las cotizaciones
+  const { data: profile } = await supabase
+    .from('profiles')
+    .select('role')
+    .eq('id', user.id)
+    .single()
+  
+  if (!profile || profile.role !== 'superadmin') {
+    return { error: 'No autorizado', data: null }
+  }
+  
+  // Obtener todos los calculos
+  const { data: calculos, error } = await supabase
+    .from('calculos_liquidacion')
+    .select('*')
+    .order('created_at', { ascending: false })
+  
+  if (error) {
+    console.error('Error obteniendo cotizaciones:', error)
+    return { error: error.message, data: null }
+  }
+  
+  // Obtener info de usuarios
+  const userIds = [...new Set(calculos?.map(c => c.user_id).filter(Boolean) || [])]
+  let usuariosMap: Record<string, { id: string; full_name: string; email: string; phone?: string; role: string }> = {}
+  
+  if (userIds.length > 0) {
+    const { data: usuarios } = await supabase
+      .from('profiles')
+      .select('id, full_name, email, phone, role')
+      .in('id', userIds)
+    
+    usuariosMap = Object.fromEntries(usuarios?.map(u => [u.id, u]) || [])
+  }
+  
+  // Obtener casos asociados
+  const { data: casos } = await supabase
+    .from('casos')
+    .select('calculo_id, id, folio, status, lawyer_id')
+  
+  const casosPorCalculo = new Map(casos?.map(c => [c.calculo_id, c]) || [])
+  
+  // Combinar datos
+  let resultado = calculos?.map(calc => ({
+    ...calc,
+    usuario: usuariosMap[calc.user_id] || null,
+    caso: casosPorCalculo.get(calc.id) || null,
+    tiene_caso: casosPorCalculo.has(calc.id)
+  })) || []
+  
+  // Aplicar filtros
+  if (filtros?.conCaso) {
+    resultado = resultado.filter(c => c.tiene_caso)
+  }
+  if (filtros?.sinCaso) {
+    resultado = resultado.filter(c => !c.tiene_caso)
+  }
+  
+  return { error: null, data: resultado }
+}
+
+// Obtener estadisticas globales (para admin/superadmin)
+export async function obtenerEstadisticasGlobales() {
+  const supabase = await createClient()
+  
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return { error: 'No autenticado', data: null }
+  
+  const { data: profile } = await supabase
+    .from('profiles')
+    .select('role')
+    .eq('id', user.id)
+    .single()
+  
+  if (!profile || !['admin', 'superadmin'].includes(profile.role)) {
+    return { error: 'No autorizado', data: null }
+  }
+  
+  // Estadisticas de casos
+  const { data: casos } = await supabase
+    .from('casos')
+    .select('status, monto_estimado, monto_final, oferta_empresa, lawyer_id')
+  
+  // Estadisticas de cotizaciones
+  const { data: cotizaciones } = await supabase
+    .from('calculos_liquidacion')
+    .select('id, total_conciliacion')
+  
+  // Estadisticas de abogados
+  const { data: abogados } = await supabase
+    .from('profiles')
+    .select('id')
+    .eq('role', 'lawyer')
+  
+  const totalCasos = casos?.length || 0
+  const casosAsignados = casos?.filter(c => c.lawyer_id).length || 0
+  const casosSinAsignar = casos?.filter(c => !c.lawyer_id).length || 0
+  const casosActivos = casos?.filter(c => !['resolved', 'closed', 'draft'].includes(c.status)).length || 0
+  const casosResueltos = casos?.filter(c => c.status === 'resolved').length || 0
+  const totalCotizaciones = cotizaciones?.length || 0
+  const totalAbogados = abogados?.length || 0
+  const montoTotalEstimado = casos?.reduce((acc, c) => acc + (Number(c.monto_estimado) || 0), 0) || 0
+  const montoTotalOfertas = casos?.reduce((acc, c) => acc + (Number(c.oferta_empresa) || 0), 0) || 0
+  
+  return {
+    error: null,
+    data: {
+      totalCasos,
+      casosAsignados,
+      casosSinAsignar,
+      casosActivos,
+      casosResueltos,
+      totalCotizaciones,
+      totalAbogados,
+      montoTotalEstimado,
+      montoTotalOfertas
+    }
+  }
+}
+
+// Obtener lista de abogados (para filtros)
+// Crear caso desde verificacion de usuario guest con fechas de prescripcion automaticas
+export async function crearCasoDesdeVerificacion(userId: string, calculoId: string) {
+  const supabase = await createClient()
+  
+  // Obtener datos del calculo
+  const { data: calculo, error: calculoError } = await supabase
+    .from('documentos_boveda')
+    .select('id, nombre, metadata')
+    .eq('id', calculoId)
+    .single()
+  
+  if (calculoError || !calculo) {
+    return { error: 'No se encontro el calculo' }
+  }
+  
+  const meta = calculo.metadata as { 
+    nombreEmpresa?: string
+    salarioMensual?: number
+    totalConciliacion?: number
+    fechaSalida?: string
+  } | null
+  
+  // Generar folio unico
+  const folio = `MC-${Date.now().toString(36).toUpperCase()}`
+  
+  // Verificar si ya existe un caso para este usuario
+  const { data: casoExistente } = await supabase
+    .from('casos')
+    .select('id')
+    .eq('worker_id', userId)
+    .in('status', ['open', 'assigned', 'in_progress', 'pending_review'])
+    .limit(1)
+    .single()
+  
+  if (casoExistente) {
+    return { error: null, casoId: casoExistente.id, yaExistia: true }
+  }
+  
+  // Crear el caso
+  const { data: nuevoCaso, error: casoError } = await supabase
+    .from('casos')
+    .insert({
+      folio,
+      worker_id: userId,
+      calculo_id: calculoId,
+      nombre_empresa: meta?.nombreEmpresa || calculo.nombre || 'Sin especificar',
+      salario_mensual: meta?.salarioMensual || 0,
+      monto_reclamacion: meta?.totalConciliacion || 0,
+      status: 'pending_review', // Pendiente de revision/verificacion
+      urgency: 'normal',
+      source: 'guest_verification'
+    })
+    .select()
+    .single()
+  
+  if (casoError || !nuevoCaso) {
+    return { error: casoError?.message || 'Error al crear el caso' }
+  }
+  
+  // Calcular fechas de prescripcion basadas en fecha de salida o fecha actual
+  const fechaBase = meta?.fechaSalida ? new Date(meta.fechaSalida) : new Date()
+  
+  // Fecha de prescripcion para rescision: 30 dias (Art. 517 fraccion I LFT)
+  const fechaRescision = new Date(fechaBase)
+  fechaRescision.setDate(fechaRescision.getDate() + 30)
+  
+  // Fecha de prescripcion para despido: 60 dias (Art. 518 LFT)
+  const fechaDespido = new Date(fechaBase)
+  fechaDespido.setDate(fechaDespido.getDate() + 60)
+  
+  // Crear alertas de prescripcion en la agenda del usuario
+  const alertas = [
+    {
+      user_id: userId,
+      caso_id: nuevoCaso.id,
+      tipo: 'prescripcion_rescision',
+      titulo: 'PRESCRIPCION - Rescision Laboral',
+      descripcion: 'Art. 517 fraccion I LFT: Las acciones de los trabajadores para separarse del trabajo prescriben en 30 dias contados a partir de la fecha en que se tenga conocimiento de la causa de separacion.',
+      fecha_evento: fechaRescision.toISOString().split('T')[0],
+      hora_evento: '09:00',
+      prioridad: 'urgente',
+      recordatorio_dias: 5,
+      activa: true
+    },
+    {
+      user_id: userId,
+      caso_id: nuevoCaso.id,
+      tipo: 'prescripcion_despido',
+      titulo: 'PRESCRIPCION - Despido Injustificado',
+      descripcion: 'Art. 518 LFT: Prescriben en dos meses las acciones de los trabajadores que sean separados del trabajo. El plazo corre a partir del dia siguiente a la fecha de separacion.',
+      fecha_evento: fechaDespido.toISOString().split('T')[0],
+      hora_evento: '09:00',
+      prioridad: 'urgente',
+      recordatorio_dias: 7,
+      activa: true
+    }
+  ]
+  
+  // Insertar alertas en la tabla de eventos/alertas
+  await supabase
+    .from('caso_eventos')
+    .insert(alertas.map(alerta => ({
+      caso_id: nuevoCaso.id,
+      tipo: alerta.tipo,
+      titulo: alerta.titulo,
+      descripcion: alerta.descripcion,
+      fecha_evento: alerta.fecha_evento,
+      created_by: userId,
+      metadata: {
+        articulo_lft: alerta.tipo === 'prescripcion_rescision' ? 'Art. 517 fraccion I' : 'Art. 518',
+        prioridad: alerta.prioridad,
+        recordatorio_dias: alerta.recordatorio_dias
+      }
+    })))
+  
+  revalidatePath('/dashboard')
+  revalidatePath('/casos')
+  
+  return { error: null, casoId: nuevoCaso.id, folio }
+}
+
+export async function obtenerAbogados() {
+  const supabase = await createClient()
+  
+  const { data, error } = await supabase
+    .from('profiles')
+    .select('id, full_name, email')
+    .eq('role', 'lawyer')
+    .order('full_name')
+  
+  if (error) {
+    return { error: error.message, data: null }
+  }
+  
+  return { error: null, data }
+}
