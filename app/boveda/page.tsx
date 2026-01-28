@@ -954,7 +954,7 @@ export default function BovedaPage() {
           setShowUploader(open)
           if (!open) setUploaderCategoria(undefined)
         }}>
-          <DialogContent className="max-w-md p-0 gap-0 overflow-hidden max-h-[90vh] [&>button]:hidden">
+          <DialogContent className="w-[95vw] max-w-sm sm:max-w-md p-0 gap-0 overflow-hidden max-h-[85vh] [&>button]:hidden">
             <DocumentUploader 
               onUploaded={() => {
                 setShowUploader(false)
