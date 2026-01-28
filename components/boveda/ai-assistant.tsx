@@ -72,7 +72,7 @@ export function AIAssistant({
   const assistant = ASSISTANTS[assistantType]
   const welcomeMessage = assistant.welcomeMessage(documentName)
 
-  const { messages, input, handleInputChange, handleSubmit, isLoading } = useChat({
+  const { messages, handleSubmit, isLoading, input, handleInputChange, append } = useChat({
     api: assistantType === 'mandu' ? "/api/mandu-assistant" : "/api/legal-assistant",
     body: {
       documentContext: documentText,
@@ -90,18 +90,10 @@ export function AIAssistant({
     }
   }, [isOpen])
 
-  const handleQuickQuestion = (question: string) => {
-    // Crear un evento sintético para enviar la pregunta
-    const syntheticEvent = {
-      target: { value: question }
-    } as React.ChangeEvent<HTMLInputElement>
-    handleInputChange(syntheticEvent)
-    
-    // Enviar después de actualizar el input
-    setTimeout(() => {
-      const form = document.getElementById('chat-form') as HTMLFormElement
-      if (form) form.requestSubmit()
-    }, 100)
+  const handleQuickQuestion = async (question: string) => {
+    if (append) {
+      await append({ role: "user", content: question })
+    }
   }
 
   const onFormSubmit = (e: React.FormEvent) => {
