@@ -669,8 +669,19 @@ export async function verifyUserAccount(userId: string, datos: {
   }
   
   if (datos.aprobado) {
+    // Obtener rol actual para registrar el upgrade
+    const { data: currentProfile } = await supabase
+      .from('profiles')
+      .select('role, verification_status')
+      .eq('id', userId)
+      .single()
+    
+    const previousRole = currentProfile?.role || 'guest'
+    const wasDowngraded = currentProfile?.verification_status === 'documents_missing'
+    const upgradeType = wasDowngraded ? 'reactivation' : 'verification_complete'
+    
     // Aprobar verificación y actualizar rol a worker
-    // Resetear celebration_shown para mostrar celebracion (especialmente importante para re-verificaciones)
+    // Registrar upgrade con todos los datos necesarios
     const { error } = await supabase
       .from('profiles')
       .update({
@@ -682,10 +693,18 @@ export async function verifyUserAccount(userId: string, datos: {
         identificacion_verificada_por: user.id,
         identificacion_verificada_at: new Date().toISOString(),
         verification_status: 'verified',
-        celebration_shown: false, // Resetear para mostrar celebracion
-        downgrade_reason: null, // Limpiar razon de downgrade anterior
-        downgrade_at: null,
-        previous_role: null
+        celebration_shown: false, // Mostrar celebracion
+        // Datos de upgrade
+        upgrade_reason: wasDowngraded 
+          ? 'Cuenta reactivada despues de re-verificacion de documentos' 
+          : 'Verificacion de identidad completada exitosamente',
+        upgrade_at: new Date().toISOString(),
+        upgraded_by: user.id,
+        upgrade_type: upgradeType,
+        previous_role: previousRole,
+        // Limpiar datos de downgrade
+        downgrade_reason: null,
+        downgrade_at: null
       })
       .eq('id', userId)
     

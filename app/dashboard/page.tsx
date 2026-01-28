@@ -15,12 +15,13 @@ import { Lock } from 'lucide-react'
 import { CryptoWallet } from '@/components/wallet/crypto-wallet'
 import { VerificacionCelebration } from '@/components/verificacion-celebration'
 import { DowngradeAlert } from '@/components/downgrade-alert'
+import { UpgradeAlert } from '@/components/upgrade-alert'
 import type { User } from '@supabase/supabase-js'
 
 export default function DashboardPage() {
   const router = useRouter()
   const [user, setUser] = useState<User | null>(null)
-  const [profile, setProfile] = useState<{ role?: string; full_name?: string; codigo_usuario?: string; verification_status?: string; downgrade_reason?: string; previous_role?: string } | null>(null)
+  const [profile, setProfile] = useState<{ role?: string; full_name?: string; codigo_usuario?: string; verification_status?: string; downgrade_reason?: string; previous_role?: string; upgrade_at?: string; celebration_shown?: boolean } | null>(null)
   const [casosActivos, setCasosActivos] = useState(0)
   const [loading, setLoading] = useState(true)
   const [showVerifiedEffect, setShowVerifiedEffect] = useState(false)
@@ -44,7 +45,7 @@ export default function DashboardPage() {
         
         // Ejecutar consultas en paralelo para mejor rendimiento
         const [profileResult, casosResult] = await Promise.all([
-          supabase.from('profiles').select('role, full_name, codigo_usuario, verification_status, celebration_shown, downgrade_reason, previous_role').eq('id', currentUser.id).single(),
+          supabase.from('profiles').select('role, full_name, codigo_usuario, verification_status, celebration_shown, downgrade_reason, previous_role, upgrade_at, upgrade_type').eq('id', currentUser.id).single(),
           supabase.from('calculos_liquidacion').select('*', { count: 'exact', head: true }).eq('user_id', currentUser.id)
         ])
         
@@ -198,6 +199,11 @@ export default function DashboardPage() {
       {/* Main content */}
       <main className="container mx-auto px-3 sm:px-4 py-4 sm:py-8">
         <div className="space-y-6 sm:space-y-8">
+          {/* Alerta de upgrade si aplica (mostrar celebracion de upgrade reciente) */}
+          {profile?.verification_status === 'verified' && !profile?.celebration_shown && profile?.upgrade_at && (
+            <UpgradeAlert userId={user?.id} />
+          )}
+
           {/* Alerta de downgrade si aplica */}
           {profile?.verification_status === 'documents_missing' && (
             <DowngradeAlert userId={user?.id} />

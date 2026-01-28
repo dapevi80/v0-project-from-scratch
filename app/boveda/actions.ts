@@ -5,7 +5,7 @@ import { revalidatePath } from 'next/cache'
 import { Buffer } from 'buffer'
 
 // Jerarquia de roles para downgrade
-const ROLE_HIERARCHY = {
+const ROLE_HIERARCHY_DOWN = {
   superadmin: 'admin',
   admin: 'lawyer', 
   lawyer: 'guestlawyer',
@@ -14,6 +14,131 @@ const ROLE_HIERARCHY = {
   guestlawyer: 'guest',
   guest: 'guest'
 } as const
+
+// Jerarquia de roles para upgrade
+const ROLE_HIERARCHY_UP = {
+  guest: 'guestworker',
+  guestworker: 'worker',
+  guestlawyer: 'lawyer',
+  worker: 'worker', // Worker es el maximo para trabajadores
+  lawyer: 'admin',
+  admin: 'superadmin',
+  superadmin: 'superadmin'
+} as const
+
+// Tipos de upgrade disponibles
+export type UpgradeType = 
+  | 'verification_complete'    // Verificacion de identidad completada
+  | 'lawyer_approved'          // Abogado aprobado
+  | 'admin_promotion'          // Promocion a admin
+  | 'superadmin_promotion'     // Promocion a superadmin
+  | 'reactivation'             // Reactivacion de cuenta degradada
+
+// Registrar un upgrade de cuenta
+export async function registrarUpgrade(
+  userId: string, 
+  nuevoRol: string, 
+  tipoUpgrade: UpgradeType,
+  razon: string
+) {
+  const supabase = await createClient()
+  
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return { error: 'No autenticado', success: false }
+  
+  // Obtener rol actual del usuario
+  const { data: profile } = await supabase
+    .from('profiles')
+    .select('role, verification_status')
+    .eq('id', userId)
+    .single()
+  
+  if (!profile) return { error: 'Usuario no encontrado', success: false }
+  
+  const rolAnterior = profile.role
+  
+  // Actualizar perfil con upgrade
+  const { error } = await supabase
+    .from('profiles')
+    .update({
+      role: nuevoRol,
+      verification_status: 'verified',
+      upgrade_reason: razon,
+      upgrade_at: new Date().toISOString(),
+      upgraded_by: user.id,
+      upgrade_type: tipoUpgrade,
+      previous_role: rolAnterior,
+      celebration_shown: false, // Mostrar celebracion
+      // Limpiar datos de downgrade si existian
+      downgrade_reason: null,
+      downgrade_at: null
+    })
+    .eq('id', userId)
+  
+  if (error) return { error: error.message, success: false }
+  
+  revalidatePath('/dashboard')
+  revalidatePath('/perfil')
+  revalidatePath('/boveda')
+  
+  return { 
+    success: true, 
+    previousRole: rolAnterior,
+    newRole: nuevoRol,
+    upgradeType: tipoUpgrade
+  }
+}
+
+// Obtener historial de cambios de rol
+export async function obtenerHistorialRol(userId?: string) {
+  const supabase = await createClient()
+  
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return { error: 'No autenticado', data: null }
+  
+  const targetUserId = userId || user.id
+  
+  const { data: profile } = await supabase
+    .from('profiles')
+    .select(`
+      role,
+      verification_status,
+      previous_role,
+      upgrade_reason,
+      upgrade_at,
+      upgraded_by,
+      upgrade_type,
+      downgrade_reason,
+      downgrade_at,
+      celebration_shown
+    `)
+    .eq('id', targetUserId)
+    .single()
+  
+  if (!profile) return { error: 'Perfil no encontrado', data: null }
+  
+  return {
+    error: null,
+    data: {
+      currentRole: profile.role,
+      verificationStatus: profile.verification_status,
+      previousRole: profile.previous_role,
+      // Info de ultimo upgrade
+      lastUpgrade: profile.upgrade_at ? {
+        reason: profile.upgrade_reason,
+        at: profile.upgrade_at,
+        by: profile.upgraded_by,
+        type: profile.upgrade_type
+      } : null,
+      // Info de ultimo downgrade
+      lastDowngrade: profile.downgrade_at ? {
+        reason: profile.downgrade_reason,
+        at: profile.downgrade_at
+      } : null,
+      celebrationPending: !profile.celebration_shown && profile.verification_status === 'verified'
+    }
+  }
+}
 
 // Verificar y hacer downgrade si faltan archivos de verificacion
 export async function verificarArchivosVerificacion() {
@@ -58,8 +183,8 @@ export async function verificarArchivosVerificacion() {
   
   // Si faltan archivos, hacer downgrade
   if (archivosFaltantes.length > 0) {
-    const currentRole = profile.role as keyof typeof ROLE_HIERARCHY
-    const newRole = ROLE_HIERARCHY[currentRole] || 'guest'
+    const currentRole = profile.role as keyof typeof ROLE_HIERARCHY_DOWN
+    const newRole = ROLE_HIERARCHY_DOWN[currentRole] || 'guest'
     
     // Actualizar perfil con downgrade
     await supabase
@@ -489,7 +614,7 @@ export async function guardarGrabacionAudio(params: {
     }
     
     revalidatePath('/boveda')
-    return { success: true, documento: docData as DocumentoBoveda }
+    return { success: true }
     
   } catch (error) {
     console.error('Error en guardarGrabacionAudio:', error)
