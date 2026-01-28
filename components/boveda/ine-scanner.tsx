@@ -1,39 +1,44 @@
 'use client'
 
 import React from "react"
-
 import { useState, useRef, useCallback, useEffect } from 'react'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Progress } from '@/components/ui/progress'
 import { 
-  X, 
   Camera, 
   Upload, 
+  X, 
   RotateCw, 
   ScanLine, 
+  FileText,
   Loader2,
-  ChevronRight,
   CheckCircle,
-  AlertTriangle,
+  User,
+  MapPin,
+  Calendar,
+  AlertCircle,
+  RefreshCw,
   Crop,
   Wand2,
+  Move,
+  Sun,
+  Contrast,
   CreditCard,
-  User,
-  Calendar,
-  MapPin,
-  FileText,
-  ArrowRight,
-  RefreshCw
+  AlertTriangle,
+  ArrowRight
 } from 'lucide-react'
 import { 
   processImageOCR,
-  imageToCanvas, 
-  fileToBase64, 
+  imageToCanvas,
   rotateImage,
+  generatePageId,
   detectDocumentCorners,
   applyPerspectiveTransform,
-  autoEnhanceDocument
+  autoEnhanceDocument,
+  fileToBase64,
+  type DocumentBounds,
+  type Corner
 } from '@/lib/ocr-scanner'
 import { 
   parseINEFromOCR, 
@@ -64,9 +69,14 @@ export function INEScanner({ onClose, onComplete, lado, datosExistentes }: INESc
   const [ineData, setIneData] = useState<INEData | null>(null)
   const [isProcessing, setIsProcessing] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [documentBounds, setDocumentBounds] = useState<DocumentBounds | null>(null)
+  const [imageSize, setImageSize] = useState({ width: 0, height: 0 })
+  const [draggedCorner, setDraggedCorner] = useState<string | null>(null)
+  const [enhancement, setEnhancement] = useState({ brightness: 0, contrast: 0 })
   
   const fileInputRef = useRef<HTMLInputElement>(null)
   const cameraInputRef = useRef<HTMLInputElement>(null)
+  const cropContainerRef = useRef<HTMLDivElement>(null)
 
   // Procesar imagen capturada
   const handleImageCapture = async (file: File) => {
@@ -137,22 +147,12 @@ export function INEScanner({ onClose, onComplete, lado, datosExistentes }: INESc
     }
   }
 
-  // Reintentar escaneo
-  const handleRetry = () => {
-    setImageUrl(null)
-    setProcessedUrl(null)
-    setIneData(null)
-    setError(null)
-    setStep('capture')
-  }
-
   // Rotar imagen
   const handleRotate = async () => {
     if (!processedUrl) return
     setIsProcessing(true)
     
     try {
-      // Convertir URL a canvas primero
       const canvas = await imageToCanvas(processedUrl)
       const rotatedCanvas = rotateImage(canvas, 90)
       const rotatedUrl = rotatedCanvas.toDataURL('image/jpeg', 0.92)
@@ -161,6 +161,87 @@ export function INEScanner({ onClose, onComplete, lado, datosExistentes }: INESc
       console.error('Error rotando:', err)
     } finally {
       setIsProcessing(false)
+    }
+  }
+
+  // Detectar esquinas y entrar en modo recorte
+  const handleDetectCorners = async () => {
+    if (!processedUrl) return
+    setIsProcessing(true)
+    
+    try {
+      const canvas = await imageToCanvas(processedUrl)
+      setImageSize({ width: canvas.width, height: canvas.height })
+      const bounds = detectDocumentCorners(canvas)
+      setDocumentBounds(bounds)
+      setStep('crop')
+    } catch (err) {
+      console.error('Error detectando esquinas:', err)
+    } finally {
+      setIsProcessing(false)
+    }
+  }
+
+  // Aplicar recorte y mejora
+  const handleApplyCrop = async () => {
+    if (!processedUrl || !documentBounds) return
+    setIsProcessing(true)
+    
+    try {
+      let canvas = await imageToCanvas(processedUrl)
+      canvas = applyPerspectiveTransform(canvas, documentBounds)
+      canvas = autoEnhanceDocument(canvas)
+      
+      const newUrl = canvas.toDataURL('image/jpeg', 0.92)
+      setProcessedUrl(newUrl)
+      setDocumentBounds(null)
+      setStep('processing')
+      await processOCR(newUrl)
+    } catch (err) {
+      console.error('Error aplicando recorte:', err)
+    } finally {
+      setIsProcessing(false)
+    }
+  }
+
+  // Auto mejorar sin recorte
+  const handleAutoEnhance = async () => {
+    if (!processedUrl) return
+    setIsProcessing(true)
+    
+    try {
+      let canvas = await imageToCanvas(processedUrl)
+      canvas = autoEnhanceDocument(canvas)
+      const newUrl = canvas.toDataURL('image/jpeg', 0.92)
+      setProcessedUrl(newUrl)
+    } catch (err) {
+      console.error('Error mejorando:', err)
+    } finally {
+      setIsProcessing(false)
+    }
+  }
+
+  // Arrastrar esquina
+  const handleCornerDrag = (corner: string, clientX: number, clientY: number) => {
+    if (!cropContainerRef.current || !documentBounds) return
+    
+    const rect = cropContainerRef.current.getBoundingClientRect()
+    const scaleX = imageSize.width / rect.width
+    const scaleY = imageSize.height / rect.height
+    
+    const x = Math.max(0, Math.min(imageSize.width, (clientX - rect.left) * scaleX))
+    const y = Math.max(0, Math.min(imageSize.height, (clientY - rect.top) * scaleY))
+    
+    setDocumentBounds(prev => prev ? { ...prev, [corner]: { x, y } } : prev)
+  }
+
+  // Convertir coordenadas
+  const getScreenCoords = (corner: Corner) => {
+    if (!cropContainerRef.current) return { x: 0, y: 0 }
+    const rect = cropContainerRef.current.getBoundingClientRect()
+    return {
+      x: (corner.x / imageSize.width) * rect.width,
+      y: (corner.y / imageSize.height) * rect.height
     }
   }
 
@@ -310,6 +391,130 @@ export function INEScanner({ onClose, onComplete, lado, datosExistentes }: INESc
           </div>
         )}
 
+        {/* === RECORTE INTELIGENTE === */}
+        {step === 'crop' && processedUrl && documentBounds && (
+          <div className="flex flex-col h-full">
+            {/* Header */}
+            <div className="p-2 bg-purple-50 border-b flex items-center justify-between">
+              <button onClick={() => { setStep('review'); setDocumentBounds(null) }} className="p-1.5 hover:bg-purple-100 rounded-lg">
+                <X className="w-4 h-4 text-purple-600" />
+              </button>
+              <div className="text-center">
+                <span className="text-xs font-medium text-purple-700">Ajusta las esquinas</span>
+                <p className="text-[9px] text-purple-500">Arrastra los puntos azules</p>
+              </div>
+              <div className="w-8" />
+            </div>
+            
+            {/* Área de recorte */}
+            <div className="flex-1 relative bg-gray-900 flex items-center justify-center p-2">
+              <div 
+                ref={cropContainerRef}
+                className="relative max-w-full max-h-full"
+                style={{ touchAction: 'none' }}
+              >
+                <img 
+                  src={processedUrl || "/placeholder.svg"} 
+                  alt="INE"
+                  className="max-w-full max-h-[40vh] object-contain rounded"
+                  onLoad={(e) => {
+                    const img = e.target as HTMLImageElement
+                    setImageSize({ width: img.naturalWidth, height: img.naturalHeight })
+                  }}
+                />
+                
+                {/* Overlay con polígono */}
+                {cropContainerRef.current && (
+                  <svg className="absolute inset-0 w-full h-full pointer-events-none" style={{ overflow: 'visible' }}>
+                    <defs>
+                      <mask id="ineCropMask">
+                        <rect width="100%" height="100%" fill="white" />
+                        <polygon
+                          points={`
+                            ${getScreenCoords(documentBounds.topLeft).x},${getScreenCoords(documentBounds.topLeft).y}
+                            ${getScreenCoords(documentBounds.topRight).x},${getScreenCoords(documentBounds.topRight).y}
+                            ${getScreenCoords(documentBounds.bottomRight).x},${getScreenCoords(documentBounds.bottomRight).y}
+                            ${getScreenCoords(documentBounds.bottomLeft).x},${getScreenCoords(documentBounds.bottomLeft).y}
+                          `}
+                          fill="black"
+                        />
+                      </mask>
+                    </defs>
+                    <rect width="100%" height="100%" fill="rgba(0,0,0,0.6)" mask="url(#ineCropMask)" />
+                    <polygon
+                      points={`
+                        ${getScreenCoords(documentBounds.topLeft).x},${getScreenCoords(documentBounds.topLeft).y}
+                        ${getScreenCoords(documentBounds.topRight).x},${getScreenCoords(documentBounds.topRight).y}
+                        ${getScreenCoords(documentBounds.bottomRight).x},${getScreenCoords(documentBounds.bottomRight).y}
+                        ${getScreenCoords(documentBounds.bottomLeft).x},${getScreenCoords(documentBounds.bottomLeft).y}
+                      `}
+                      fill="none"
+                      stroke="#3b82f6"
+                      strokeWidth="2"
+                    />
+                  </svg>
+                )}
+                
+                {/* Puntos de esquina */}
+                {cropContainerRef.current && (['topLeft', 'topRight', 'bottomRight', 'bottomLeft'] as const).map((corner) => {
+                  const coords = getScreenCoords(documentBounds[corner])
+                  return (
+                    <div
+                      key={corner}
+                      onMouseDown={(e) => {
+                        e.preventDefault()
+                        setDraggedCorner(corner)
+                        const moveHandler = (ev: MouseEvent) => handleCornerDrag(corner, ev.clientX, ev.clientY)
+                        const upHandler = () => {
+                          setDraggedCorner(null)
+                          window.removeEventListener('mousemove', moveHandler)
+                          window.removeEventListener('mouseup', upHandler)
+                        }
+                        window.addEventListener('mousemove', moveHandler)
+                        window.addEventListener('mouseup', upHandler)
+                      }}
+                      onTouchStart={(e) => {
+                        e.preventDefault()
+                        setDraggedCorner(corner)
+                        const moveHandler = (ev: TouchEvent) => handleCornerDrag(corner, ev.touches[0].clientX, ev.touches[0].clientY)
+                        const upHandler = () => {
+                          setDraggedCorner(null)
+                          window.removeEventListener('touchmove', moveHandler)
+                          window.removeEventListener('touchend', upHandler)
+                        }
+                        window.addEventListener('touchmove', moveHandler)
+                        window.addEventListener('touchend', upHandler)
+                      }}
+                      className={`absolute w-6 h-6 -ml-3 -mt-3 rounded-full border-2 cursor-move transition-transform ${
+                        draggedCorner === corner ? 'scale-125 bg-blue-500 border-white' : 'bg-white border-blue-500'
+                      } shadow-lg flex items-center justify-center`}
+                      style={{ left: coords.x, top: coords.y, touchAction: 'none' }}
+                    >
+                      <Move className="w-3 h-3 text-blue-600" />
+                    </div>
+                  )
+                })}
+              </div>
+            </div>
+            
+            {/* Botones */}
+            <div className="p-3 border-t flex gap-2">
+              <Button variant="outline" size="sm" onClick={() => { setStep('review'); setDocumentBounds(null) }} className="flex-1 bg-transparent">
+                Cancelar
+              </Button>
+              <Button 
+                size="sm" 
+                onClick={handleApplyCrop}
+                disabled={isProcessing}
+                className="flex-1 bg-gradient-to-r from-blue-500 to-indigo-600"
+              >
+                {isProcessing ? <Loader2 className="w-4 h-4 animate-spin mr-1" /> : <Crop className="w-4 h-4 mr-1" />}
+                Aplicar
+              </Button>
+            </div>
+          </div>
+        )}
+
         {/* === PROCESANDO OCR === */}
         {step === 'processing' && (
           <div className="p-6 flex flex-col items-center justify-center min-h-[300px]">
@@ -338,18 +543,55 @@ export function INEScanner({ onClose, onComplete, lado, datosExistentes }: INESc
 
         {/* === REVISIÓN DE DATOS === */}
         {step === 'review' && ineData && (
-          <div className="p-4 space-y-4">
+          <div className="p-4 space-y-3">
             {/* Imagen procesada */}
-            <div className="relative aspect-[1.586/1] rounded-lg overflow-hidden border">
+            <div className="relative aspect-[1.586/1] rounded-lg overflow-hidden border bg-slate-100">
               {processedUrl && (
-                <img src={processedUrl || "/placeholder.svg"} alt="INE procesada" className="w-full h-full object-contain bg-slate-100" />
+                <img src={processedUrl || "/placeholder.svg"} alt="INE procesada" className="w-full h-full object-contain" />
               )}
-              <button
-                onClick={handleRotate}
-                className="absolute top-2 right-2 p-2 bg-black/50 rounded-full text-white hover:bg-black/70"
+            </div>
+            
+            {/* Barra de herramientas */}
+            <div className="flex items-center justify-center gap-1 p-2 bg-muted/50 rounded-lg">
+              <button 
+                onClick={handleDetectCorners}
                 disabled={isProcessing}
+                className="p-2 hover:bg-purple-100 bg-purple-50 rounded-lg flex flex-col items-center gap-0.5 text-purple-600"
+                title="Recortar documento"
+              >
+                {isProcessing ? <Loader2 className="w-4 h-4 animate-spin" /> : <Crop className="w-4 h-4" />}
+                <span className="text-[8px] font-medium">Recortar</span>
+              </button>
+              <button 
+                onClick={handleAutoEnhance}
+                disabled={isProcessing}
+                className="p-2 hover:bg-amber-100 bg-amber-50 rounded-lg flex flex-col items-center gap-0.5 text-amber-600"
+                title="Mejorar imagen"
+              >
+                <Wand2 className="w-4 h-4" />
+                <span className="text-[8px]">Mejorar</span>
+              </button>
+              <button 
+                onClick={handleRotate}
+                disabled={isProcessing}
+                className="p-2 hover:bg-muted rounded-lg flex flex-col items-center gap-0.5"
+                title="Rotar 90°"
               >
                 <RotateCw className="w-4 h-4" />
+                <span className="text-[8px]">Rotar</span>
+              </button>
+              <button 
+                onClick={() => {
+                  if (!processedUrl) return
+                  setStep('processing')
+                  processOCR(processedUrl)
+                }}
+                disabled={isProcessing}
+                className="p-2 hover:bg-blue-100 bg-blue-50 rounded-lg flex flex-col items-center gap-0.5 text-blue-600"
+                title="Re-escanear OCR"
+              >
+                <ScanLine className="w-4 h-4" />
+                <span className="text-[8px]">Re-OCR</span>
               </button>
             </div>
 
@@ -498,7 +740,11 @@ export function INEScanner({ onClose, onComplete, lado, datosExistentes }: INESc
           <Button
             variant="outline"
             size="sm"
-            onClick={handleRetry}
+            onClick={() => {
+              if (!processedUrl) return
+              setStep('processing')
+              processOCR(processedUrl)
+            }}
             className="flex-1 bg-transparent"
           >
             <RefreshCw className="w-4 h-4 mr-1" />
