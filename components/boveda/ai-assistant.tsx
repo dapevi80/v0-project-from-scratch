@@ -1,8 +1,6 @@
 "use client"
 
-import React from "react"
-
-import { useState, useRef, useEffect } from "react"
+import React, { useState, useRef, useEffect } from "react"
 import { Button } from "@/components/ui/button"
 import {
   X,
@@ -22,6 +20,7 @@ interface AIAssistantProps {
   onClose: () => void
   documentText?: string
   documentName?: string
+  assistantType?: 'lia' | 'mandu'
 }
 
 // Preguntas prediseñadas
@@ -32,40 +31,55 @@ const QUICK_QUESTIONS = [
   { icon: HelpCircle, text: "¿Cuánto tiempo tengo para demandar?", color: "bg-purple-100 text-purple-700" },
 ]
 
+// Configuración por asistente
+const ASSISTANTS = {
+  lia: {
+    name: "Lía",
+    subtitle: "Tu asistente legal IA",
+    avatar: "/lia-avatar.jpg",
+    gradient: "from-green-600 to-emerald-600",
+    borderColor: "border-green-300",
+    buttonColor: "bg-green-600 hover:bg-green-700",
+    welcomeMessage: (docName?: string) => docName 
+      ? `¡Hola! Soy **Lía**, tu asistente legal de **Me Corrieron**. Mi nombre viene de "Ley" + "IA" - soy tu aliada en derecho laboral mexicano.\n\nVeo que tienes el documento "${docName}". Puedo ayudarte a entenderlo y explicarte cómo te afecta.\n\nPregúntame lo que necesites - estoy al día con las reformas laborales.`
+      : `¡Hola! Soy **Lía**, tu asistente legal de **Me Corrieron**. Mi nombre viene de "Ley" + "IA" - soy tu aliada en derecho laboral mexicano.\n\nPuedo ayudarte con:\n• **Calcular tu liquidación** - Te guío paso a paso\n• **Entender documentos** - Contratos, cartas de despido\n• **Conocer tus derechos** - Ley Federal del Trabajo\n• **El proceso legal** - Conciliación, demandas\n\n¿En qué te ayudo hoy?`,
+    loadingText: "Lía está escribiendo...",
+  },
+  mandu: {
+    name: "Mandu",
+    subtitle: "El gato legal perezoso",
+    avatar: "/mandu-avatar.jpg",
+    gradient: "from-slate-600 to-slate-700",
+    borderColor: "border-slate-300",
+    buttonColor: "bg-slate-600 hover:bg-slate-700",
+    welcomeMessage: (docName?: string) => docName
+      ? `*bosteza* Miau... Soy **Mandu**, el gato legal de Me Corrieron. Estaba tomando una siesta pero bueno, aquí estoy... 😺\n\nVeo que tienes "${docName}". Déjame revisarlo mientras me estiro un poco...\n\n*se rasca la oreja* ¿Qué quieres saber?`
+      : `*bosteza* Miau... Soy **Mandu**, el gato legal de Me Corrieron. Preferiría estar durmiendo, pero está bien... te ayudo. 😺\n\nPuedo ayudarte con:\n• **Liquidaciones** - *ronronea* Son mis favoritas\n• **Documentos** - Los analizo mientras dormito\n• **Tus derechos** - Conozco la ley de memoria\n• **Procesos legales** - *se lame la pata*\n\n¿Qué necesitas? Hazlo rápido que tengo sueño... 💤`,
+    loadingText: "Mandu está pensando... *bosteza*",
+  }
+}
+
 export function AIAssistant({
   isOpen,
   onClose,
   documentText,
   documentName,
+  assistantType = 'lia',
 }: AIAssistantProps) {
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const inputRef = useRef<HTMLInputElement>(null)
-  const [localInput, setLocalInput] = useState("")
+  const [inputValue, setInputValue] = useState("")
 
-  const welcomeMessage = documentText
-    ? `¡Hola! Soy **Lía**, tu asistente legal de **Me Corrieron**. Mi nombre viene de "Ley" + "IA" - soy tu aliada en derecho laboral mexicano.
+  const assistant = ASSISTANTS[assistantType]
+  const welcomeMessage = assistant.welcomeMessage(documentName)
 
-${documentName ? `Veo que tienes el documento "${documentName}". ` : ""}Puedo ayudarte a entenderlo y explicarte cómo te afecta.
-
-Pregúntame lo que necesites - estoy al día con las reformas laborales y los procedimientos de los Centros de Conciliación.`
-    : `¡Hola! Soy **Lía**, tu asistente legal de **Me Corrieron**. Mi nombre viene de "Ley" + "IA" - soy tu aliada en derecho laboral mexicano.
-
-Puedo ayudarte con:
-• **Calcular tu liquidación** - Te guío paso a paso
-• **Entender documentos** - Contratos, cartas de despido, finiquitos
-• **Conocer tus derechos** - Todo sobre la Ley Federal del Trabajo
-• **El proceso legal** - Conciliación, demandas, plazos
-
-¿En qué te ayudo hoy?`
-
-  const { messages, input, handleInputChange, handleSubmit, isLoading, append } =
-    useChat({
-      api: "/api/legal-assistant",
-      body: {
-        documentContext: documentText,
-        documentName: documentName,
-      },
-    })
+  const { messages, handleSubmit, isLoading, setInput } = useChat({
+    api: assistantType === 'mandu' ? "/api/mandu-assistant" : "/api/legal-assistant",
+    body: {
+      documentContext: documentText,
+      documentName: documentName,
+    },
+  })
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" })
@@ -78,16 +92,26 @@ Puedo ayudarte con:
   }, [isOpen])
 
   const handleQuickQuestion = (question: string) => {
-    append({
-      role: "user",
-      content: question,
-    })
+    setInputValue(question)
+    setInput(question)
+    // Submit after setting input
+    setTimeout(() => {
+      const form = document.getElementById('chat-form') as HTMLFormElement
+      if (form) form.requestSubmit()
+    }, 50)
   }
 
   const onFormSubmit = (e: React.FormEvent) => {
     e.preventDefault()
-    if (!input?.trim()) return
+    if (!inputValue.trim()) return
+    setInput(inputValue)
     handleSubmit(e)
+    setInputValue("")
+  }
+
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setInputValue(e.target.value)
+    setInput(e.target.value)
   }
 
   // Mostrar mensaje de bienvenida + mensajes del chat
@@ -99,7 +123,7 @@ Puedo ayudarte con:
   if (!isOpen) return null
 
   return (
-    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center">
+    <div className="fixed inset-0 z-[70] flex items-end sm:items-center justify-center">
       {/* Overlay */}
       <div 
         className="absolute inset-0 bg-black/50 backdrop-blur-sm"
@@ -109,22 +133,22 @@ Puedo ayudarte con:
       {/* Dialog */}
       <div className="relative w-full max-w-md h-[85vh] sm:h-[80vh] bg-white rounded-t-3xl sm:rounded-2xl shadow-2xl flex flex-col overflow-hidden animate-in slide-in-from-bottom-4 duration-300">
         {/* Header */}
-        <div className="p-4 border-b bg-gradient-to-r from-green-600 to-emerald-600 flex items-center justify-between">
+        <div className={`p-4 border-b bg-gradient-to-r ${assistant.gradient} flex items-center justify-between`}>
           <div className="flex items-center gap-3">
             <div className="w-12 h-12 rounded-full overflow-hidden border-2 border-white/40 shadow-lg bg-white">
               <img 
-                src="/ai-assistant-avatar.jpg" 
-                alt="Asistente Legal" 
+                src={assistant.avatar || "/placeholder.svg"}
+                alt={assistant.name}
                 className="w-full h-full object-cover"
               />
             </div>
             <div>
               <h2 className="text-white text-base font-semibold flex items-center gap-2">
-                Lía
+                {assistant.name}
                 <Sparkles className="w-4 h-4 text-yellow-300" />
               </h2>
-              <p className="text-green-100 text-xs">
-                Tu asistente legal IA
+              <p className="text-white/80 text-xs">
+                {assistant.subtitle}
               </p>
             </div>
           </div>
@@ -150,10 +174,10 @@ Puedo ayudarte con:
                   <User className="w-4 h-4 text-white" />
                 </div>
               ) : (
-                <div className="w-8 h-8 rounded-full overflow-hidden shrink-0 border-2 border-green-300 bg-white">
+                <div className={`w-8 h-8 rounded-full overflow-hidden shrink-0 border-2 ${assistant.borderColor} bg-white`}>
                   <img 
-                    src="/ai-assistant-avatar.jpg" 
-                    alt="Asistente" 
+                    src={assistant.avatar || "/placeholder.svg"}
+                    alt={assistant.name}
                     className="w-full h-full object-cover"
                   />
                 </div>
@@ -202,17 +226,17 @@ Puedo ayudarte con:
 
           {isLoading && (
             <div className="flex gap-3">
-              <div className="w-8 h-8 rounded-full overflow-hidden shrink-0 border-2 border-green-300 bg-white">
+              <div className={`w-8 h-8 rounded-full overflow-hidden shrink-0 border-2 ${assistant.borderColor} bg-white`}>
                 <img 
-                  src="/ai-assistant-avatar.jpg" 
-                  alt="Asistente" 
+                  src={assistant.avatar || "/placeholder.svg"}
+                  alt={assistant.name}
                   className="w-full h-full object-cover"
                 />
               </div>
               <div className="bg-white border shadow-sm rounded-2xl px-4 py-3">
                 <div className="flex items-center gap-2 text-muted-foreground">
                   <Loader2 className="w-4 h-4 animate-spin" />
-                  <span className="text-sm">Lía está escribiendo...</span>
+                  <span className="text-sm">{assistant.loadingText}</span>
                 </div>
               </div>
             </div>
@@ -223,13 +247,14 @@ Puedo ayudarte con:
 
         {/* Input */}
         <form
+          id="chat-form"
           onSubmit={onFormSubmit}
           className="p-4 border-t bg-white flex gap-2"
         >
           <input
             ref={inputRef}
             type="text"
-            value={input || ""}
+            value={inputValue}
             onChange={handleInputChange}
             placeholder="Escribe tu pregunta..."
             className="flex-1 px-4 py-2.5 rounded-full border-2 bg-slate-50 focus:bg-white focus:border-green-400 outline-none text-sm"
@@ -238,8 +263,8 @@ Puedo ayudarte con:
           <Button
             type="submit"
             size="icon"
-            disabled={isLoading || !input?.trim()}
-            className="rounded-full bg-green-600 hover:bg-green-700 w-10 h-10"
+            disabled={isLoading || !inputValue.trim()}
+            className={`rounded-full ${assistant.buttonColor} w-10 h-10`}
           >
             {isLoading ? (
               <Loader2 className="w-4 h-4 animate-spin" />
@@ -262,7 +287,7 @@ export function AIAssistantButton({ onClick }: { onClick: () => void }) {
       aria-label="Abrir Lía, tu asistente legal IA"
     >
       <img 
-        src="/ai-assistant-avatar.jpg" 
+        src="/lia-avatar.jpg" 
         alt="Asistente Legal" 
         className="w-full h-full object-cover"
       />
