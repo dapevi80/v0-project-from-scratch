@@ -28,7 +28,9 @@ import {
   Crop,
   Wand2,
   Move,
-  CornerUpLeft
+  CornerUpLeft,
+  CheckCircle,
+  RefreshCw
 } from 'lucide-react'
 import { 
   processImageOCR, 
@@ -54,7 +56,7 @@ interface OCRScannerProps {
 }
 
 export function OCRScanner({ onClose, onComplete, initialImages }: OCRScannerProps) {
-  const [step, setStep] = useState<'select' | 'scan' | 'crop' | 'review' | 'saving' | 'done'>('select')
+  const [step, setStep] = useState<'select' | 'scan' | 'crop' | 'review' | 'saving' | 'done' | 'pdf-processing' | 'pdf-review'>('select')
   const [pages, setPages] = useState<ScanPage[]>([])
   const [currentPageIndex, setCurrentPageIndex] = useState(0)
   const [isProcessingOCR, setIsProcessingOCR] = useState(false)
@@ -67,6 +69,8 @@ export function OCRScanner({ onClose, onComplete, initialImages }: OCRScannerPro
   const [editableText, setEditableText] = useState('')
   const [aiSummary, setAiSummary] = useState('')
   const [isGeneratingSummary, setIsGeneratingSummary] = useState(false)
+  const [pdfFile, setPdfFile] = useState<File | null>(null)
+  const [pdfProcessing, setPdfProcessing] = useState(false)
   
   // Estados para recorte inteligente
   const [documentBounds, setDocumentBounds] = useState<DocumentBounds | null>(null)
@@ -77,6 +81,7 @@ export function OCRScanner({ onClose, onComplete, initialImages }: OCRScannerPro
   
   const fileInputRef = useRef<HTMLInputElement>(null)
   const cameraInputRef = useRef<HTMLInputElement>(null)
+  const pdfInputRef = useRef<HTMLInputElement>(null)
 
   // Cargar imágenes iniciales de la bóveda
   const loadInitialImages = useCallback(async () => {
@@ -140,6 +145,87 @@ export function OCRScanner({ onClose, onComplete, initialImages }: OCRScannerPro
     setStep('scan')
     
     if (e.target) e.target.value = ''
+  }
+
+  // Manejar subida de PDF
+  const handlePdfSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files
+    if (!files || files.length === 0) return
+    
+    const file = files[0]
+    if (file.type !== 'application/pdf') {
+      return
+    }
+    
+    setPdfFile(file)
+    setPdfProcessing(true)
+    setStep('pdf-processing')
+    
+    try {
+      // Convertir PDF a base64
+      const base64 = await fileToBase64(file)
+      
+      // Llamar al API para extraer texto y generar resumen
+      const response = await fetch('/api/process-pdf', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ 
+          pdfBase64: base64,
+          fileName: file.name 
+        })
+      })
+      
+      if (response.ok) {
+        const data = await response.json()
+        setExtractedText(data.text || '')
+        setAiSummary(data.summary || '')
+        setEditableText(data.text || '')
+        setStep('pdf-review')
+      } else {
+        setStep('select')
+      }
+    } catch (error) {
+      console.error('Error procesando PDF:', error)
+      setStep('select')
+    } finally {
+      setPdfProcessing(false)
+      if (e.target) e.target.value = ''
+    }
+  }
+
+  // Guardar PDF con resumen
+  const handleSavePdfWithSummary = async () => {
+    if (!pdfFile) return
+    
+    setSavingProgress('Guardando...')
+    setStep('saving')
+    
+    try {
+      const base64 = await fileToBase64(pdfFile)
+      
+      await subirDocumento({
+        archivo: base64,
+        nombre: pdfFile.name.replace('.pdf', ''),
+        nombreOriginal: pdfFile.name,
+        categoria: 'documento_legal' as CategoriaDocumento,
+        mimeType: 'application/pdf',
+        tamanioBytes: pdfFile.size,
+        metadata: {
+          resumenIA: aiSummary,
+          textoExtraido: editableText.slice(0, 5000),
+          fechaProcesado: new Date().toISOString()
+        }
+      })
+      
+      setStep('done')
+      setTimeout(() => onComplete({ 
+        pdfUrl: base64,
+        resumen: aiSummary 
+      }), 1000)
+    } catch (error) {
+      console.error('Error guardando PDF:', error)
+      setStep('pdf-review')
+    }
   }
 
   // Rotar página actual
@@ -582,7 +668,7 @@ export function OCRScanner({ onClose, onComplete, initialImages }: OCRScannerPro
               </div>
             </button>
             
-            {/* Subir archivo */}
+            {/* Subir imágenes */}
             <button 
               onClick={() => fileInputRef.current?.click()}
               className="w-full p-4 rounded-xl border-2 border-dashed border-purple-200 hover:border-purple-400 bg-purple-50/50 hover:bg-purple-50 transition-all flex items-center gap-3"
@@ -592,14 +678,31 @@ export function OCRScanner({ onClose, onComplete, initialImages }: OCRScannerPro
               </div>
               <div className="text-left">
                 <p className="font-medium text-sm">Subir imágenes</p>
-                <p className="text-xs text-muted-foreground">Selecciona fotos de tu dispositivo</p>
+                <p className="text-xs text-muted-foreground">Fotos de documentos</p>
+              </div>
+            </button>
+            
+            {/* Subir PDF - NUEVO */}
+            <button 
+              onClick={() => pdfInputRef.current?.click()}
+              className="w-full p-4 rounded-xl border-2 border-dashed border-green-200 hover:border-green-400 bg-green-50/50 hover:bg-green-50 transition-all flex items-center gap-3"
+            >
+              <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-green-500 to-emerald-600 flex items-center justify-center">
+                <FileText className="w-6 h-6 text-white" />
+              </div>
+              <div className="text-left flex-1">
+                <p className="font-medium text-sm">Subir PDF</p>
+                <p className="text-xs text-muted-foreground">Con resumen IA de tu documento</p>
+              </div>
+              <div className="px-2 py-0.5 bg-green-100 rounded text-[9px] font-medium text-green-700">
+                IA
               </div>
             </button>
             
             {/* Info */}
-            <div className="bg-amber-50 border border-amber-200 rounded-lg p-3 mt-4">
-              <p className="text-xs text-amber-700 text-center">
-                Puedes agregar múltiples páginas para crear un solo PDF
+            <div className="bg-slate-50 border rounded-lg p-3 mt-2">
+              <p className="text-[10px] text-muted-foreground text-center">
+                Los PDFs se analizan con IA para crear un resumen simple de tu caso
               </p>
             </div>
           </div>
@@ -621,6 +724,102 @@ export function OCRScanner({ onClose, onComplete, initialImages }: OCRScannerPro
             onChange={handleCameraCapture}
             className="hidden"
           />
+          <input
+            ref={pdfInputRef}
+            type="file"
+            accept="application/pdf"
+            onChange={handlePdfSelect}
+            className="hidden"
+          />
+        </div>
+      )}
+
+      {/* ===== PROCESANDO PDF ===== */}
+      {step === 'pdf-processing' && (
+        <div className="flex flex-col items-center justify-center p-8 min-h-[300px]">
+          <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-green-500 to-emerald-600 flex items-center justify-center mb-4 animate-pulse">
+            <FileText className="w-8 h-8 text-white" />
+          </div>
+          <p className="font-medium text-sm mb-2">Analizando documento...</p>
+          <p className="text-xs text-muted-foreground text-center">
+            La IA está leyendo tu PDF para crear un resumen simple
+          </p>
+          <div className="mt-4 flex items-center gap-2">
+            <Loader2 className="w-4 h-4 animate-spin text-green-600" />
+            <span className="text-xs text-green-600">Procesando</span>
+          </div>
+        </div>
+      )}
+
+      {/* ===== REVISIÓN DE PDF ===== */}
+      {step === 'pdf-review' && (
+        <div className="flex flex-col h-full max-h-[70vh]">
+          {/* Header */}
+          <div className="flex items-center justify-between p-3 border-b">
+            <button onClick={() => setStep('select')} className="p-1.5 hover:bg-muted rounded-lg">
+              <ChevronLeft className="w-4 h-4" />
+            </button>
+            <span className="text-xs font-medium">Resumen del documento</span>
+            <button onClick={onClose} className="p-1.5 hover:bg-muted rounded-lg">
+              <X className="w-4 h-4" />
+            </button>
+          </div>
+          
+          {/* Contenido */}
+          <div className="flex-1 overflow-y-auto p-4 space-y-4">
+            {/* Archivo */}
+            <div className="flex items-center gap-3 p-3 bg-green-50 rounded-xl border border-green-200">
+              <div className="w-10 h-10 rounded-lg bg-green-500 flex items-center justify-center">
+                <FileText className="w-5 h-5 text-white" />
+              </div>
+              <div className="flex-1 min-w-0">
+                <p className="text-sm font-medium truncate">{pdfFile?.name}</p>
+                <p className="text-[10px] text-muted-foreground">
+                  {pdfFile ? `${(pdfFile.size / 1024).toFixed(1)} KB` : ''}
+                </p>
+              </div>
+              <CheckCircle className="w-5 h-5 text-green-600 shrink-0" />
+            </div>
+            
+            {/* Resumen IA */}
+            {aiSummary && (
+              <div className="p-4 bg-gradient-to-br from-blue-50 to-indigo-50 rounded-xl border border-blue-200">
+                <div className="flex items-center gap-2 mb-2">
+                  <div className="w-6 h-6 rounded-full bg-blue-500 flex items-center justify-center">
+                    <Sparkles className="w-3.5 h-3.5 text-white" />
+                  </div>
+                  <span className="text-xs font-semibold text-blue-700">Resumen para tu caso</span>
+                </div>
+                <p className="text-sm text-blue-900 leading-relaxed">{aiSummary}</p>
+              </div>
+            )}
+            
+            {/* Tip */}
+            <p className="text-[10px] text-muted-foreground text-center">
+              Este documento se guardará en tu bóveda con el resumen
+            </p>
+          </div>
+          
+          {/* Acciones */}
+          <div className="p-3 border-t flex gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setStep('select')}
+              className="flex-1 bg-transparent"
+            >
+              <RefreshCw className="w-4 h-4 mr-1" />
+              Otro archivo
+            </Button>
+            <Button
+              size="sm"
+              onClick={handleSavePdfWithSummary}
+              className="flex-1 bg-gradient-to-r from-green-500 to-emerald-600"
+            >
+              <Download className="w-4 h-4 mr-1" />
+              Guardar
+            </Button>
+          </div>
         </div>
       )}
 
@@ -869,6 +1068,13 @@ export function OCRScanner({ onClose, onComplete, initialImages }: OCRScannerPro
             accept="image/*"
             capture="environment"
             onChange={handleCameraCapture}
+            className="hidden"
+          />
+          <input
+            ref={pdfInputRef}
+            type="file"
+            accept="application/pdf"
+            onChange={handleFileSelect}
             className="hidden"
           />
         </div>
