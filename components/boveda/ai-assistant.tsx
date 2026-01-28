@@ -319,6 +319,7 @@ export function AIAssistant({ isOpen, onClose, documentText, documentName }: AIA
   const [faqCount, setFaqCount] = useState(0)
   const [showCTA, setShowCTA] = useState(false)
   const [showPicker, setShowPicker] = useState(false)
+  const [keyboardHeight, setKeyboardHeight] = useState(0)
   
   // Metricas de la sesion
   const [metrics, setMetrics] = useState<ChatMetrics>({
@@ -336,7 +337,37 @@ export function AIAssistant({ isOpen, onClose, documentText, documentName }: AIA
   
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const inputRef = useRef<HTMLInputElement>(null)
+  const containerRef = useRef<HTMLDivElement>(null)
   const assistant = ASSISTANTS[currentAssistant]
+  
+  // Detectar teclado virtual en movil
+  useEffect(() => {
+    if (typeof window === 'undefined' || !window.visualViewport) return
+    
+    const handleResize = () => {
+      const viewport = window.visualViewport
+      if (!viewport) return
+      
+      // Calcular altura del teclado
+      const keyboardH = window.innerHeight - viewport.height
+      setKeyboardHeight(keyboardH > 50 ? keyboardH : 0)
+      
+      // Scroll al input cuando el teclado se abre
+      if (keyboardH > 50) {
+        setTimeout(() => {
+          inputRef.current?.scrollIntoView({ behavior: 'smooth', block: 'nearest' })
+        }, 100)
+      }
+    }
+    
+    window.visualViewport.addEventListener('resize', handleResize)
+    window.visualViewport.addEventListener('scroll', handleResize)
+    
+    return () => {
+      window.visualViewport?.removeEventListener('resize', handleResize)
+      window.visualViewport?.removeEventListener('scroll', handleResize)
+    }
+  }, [isOpen])
   
   // Navegar a registro de invitado - rapido y directo
   const goToGuestRegister = useCallback(() => {
@@ -479,7 +510,17 @@ export function AIAssistant({ isOpen, onClose, documentText, documentName }: AIA
     <div className="fixed inset-0 z-[70] flex items-end sm:items-center justify-center">
       <div className="absolute inset-0 bg-black/40" onClick={onClose} />
       
-      <div className="relative w-full max-w-sm h-[75vh] bg-white rounded-t-2xl sm:rounded-2xl shadow-2xl flex flex-col overflow-hidden">
+      <div 
+        ref={containerRef}
+        className="relative w-full max-w-sm bg-white rounded-t-2xl sm:rounded-2xl shadow-2xl flex flex-col overflow-hidden"
+        style={{ 
+          height: keyboardHeight > 0 
+            ? `calc(100vh - ${keyboardHeight}px - env(safe-area-inset-top, 0px))` 
+            : '75vh',
+          maxHeight: keyboardHeight > 0 ? 'none' : '75vh',
+          transition: 'height 0.15s ease-out'
+        }}
+      >
         {/* Header */}
         <div className="flex items-center justify-between p-3 border-b bg-slate-50">
           <div className="relative">
@@ -620,8 +661,12 @@ export function AIAssistant({ isOpen, onClose, documentText, documentName }: AIA
           <div ref={messagesEndRef} />
         </div>
 
-        {/* Input */}
-        <form onSubmit={(e) => { e.preventDefault(); sendMessage(inputValue) }} className="p-3 border-t bg-slate-50">
+        {/* Input - sticky al fondo */}
+        <form 
+          onSubmit={(e) => { e.preventDefault(); sendMessage(inputValue) }} 
+          className="p-3 border-t bg-slate-50 shrink-0"
+          style={{ paddingBottom: keyboardHeight > 0 ? '8px' : 'max(12px, env(safe-area-inset-bottom))' }}
+        >
           <div className="flex gap-2">
             <input
               ref={inputRef}
@@ -631,8 +676,9 @@ export function AIAssistant({ isOpen, onClose, documentText, documentName }: AIA
               placeholder="Escribe tu pregunta..."
               className="flex-1 px-3 py-2 rounded-full border bg-white focus:border-emerald-400 outline-none text-sm"
               disabled={isLoading}
+              enterKeyHint="send"
             />
-            <Button type="submit" size="icon" disabled={isLoading || !inputValue.trim()} className="rounded-full bg-emerald-500 hover:bg-emerald-600 w-9 h-9">
+            <Button type="submit" size="icon" disabled={isLoading || !inputValue.trim()} className="rounded-full bg-emerald-500 hover:bg-emerald-600 w-9 h-9 shrink-0">
               <Send className="w-4 h-4" />
             </Button>
           </div>

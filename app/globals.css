@@ -346,3 +346,68 @@
   50% { top: 100%; }
   100% { top: 0; }
 }
+
+/* ============================================
+   SOPORTE PARA TECLADO VIRTUAL EN MOVIL
+   ============================================ */
+
+/* Usar dvh (dynamic viewport height) para mejor soporte de teclado */
+@supports (height: 100dvh) {
+  .h-screen-safe {
+    height: 100dvh;
+  }
+  .min-h-screen-safe {
+    min-height: 100dvh;
+  }
+  .max-h-screen-safe {
+    max-height: 100dvh;
+  }
+}
+
+/* Fallback para navegadores sin soporte dvh */
+@supports not (height: 100dvh) {
+  .h-screen-safe {
+    height: 100vh;
+    height: -webkit-fill-available;
+  }
+  .min-h-screen-safe {
+    min-height: 100vh;
+    min-height: -webkit-fill-available;
+  }
+  .max-h-screen-safe {
+    max-height: 100vh;
+    max-height: -webkit-fill-available;
+  }
+}
+
+/* Asegurar que inputs en modales sean visibles con teclado abierto */
+@media (max-width: 640px) {
+  /* Cuando el teclado esta abierto, ajustar la vista */
+  input:focus,
+  textarea:focus {
+    scroll-margin-bottom: 200px;
+  }
+  
+  /* Modales y drawers deben ser scrolleables */
+  [role="dialog"] {
+    max-height: 100dvh;
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+  
+  /* Forms dentro de modales */
+  [role="dialog"] form {
+    display: flex;
+    flex-direction: column;
+    max-height: 100%;
+  }
+}
+
+/* Safe area insets para dispositivos con notch */
+.pb-safe {
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+}
+
+.mb-safe {
+  margin-bottom: env(safe-area-inset-bottom, 0px);
+}
