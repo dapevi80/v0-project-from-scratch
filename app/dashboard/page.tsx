@@ -206,6 +206,7 @@ export default function DashboardPage() {
             fullName={profile?.full_name}
             role={role}
             isVerified={profile?.verification_status === 'verified' || role === 'worker' || role === 'lawyer'}
+            verificationStatus={profile?.verification_status || 'none'}
             casosActivos={casosActivos}
           />
 

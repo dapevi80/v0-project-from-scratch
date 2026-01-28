@@ -1,363 +1,325 @@
 'use client'
 
+import React from "react"
+
 import { useState, useEffect } from 'react'
 import Link from 'next/link'
+import { useRouter } from 'next/navigation'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Badge } from '@/components/ui/badge'
-import { Progress } from '@/components/ui/progress'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Separator } from '@/components/ui/separator'
 import { useToast } from '@/hooks/use-toast'
-import { UserProfileCard } from '@/components/user/user-profile-card'
-import { generateRandomCode } from '@/lib/types'
-import { ArrowLeft, Save, Mail, Phone, Briefcase, Building2, Calendar, Loader2, Shield, CheckCircle, XCircle, AlertTriangle, FileText, CreditCard, Scale } from 'lucide-react'
-import { LogOut as LogOutIcon, Trash2 as Trash2Icon } from 'lucide-react'
+import { 
+  ArrowLeft, 
+  Save, 
+  Mail, 
+  Phone, 
+  Loader2, 
+  Shield, 
+  CheckCircle, 
+  XCircle, 
+  AlertTriangle,
+  Camera,
+  User,
+  MapPin,
+  Calendar,
+  CreditCard,
+  FileText,
+  Edit3,
+  Trash2,
+  ChevronRight,
+  Building2,
+  Briefcase,
+  Scale,
+  LogOut
+} from 'lucide-react'
 import { CasoCreadoCelebration } from '@/components/caso-creado-celebration'
 import { crearCasoDesdeVerificacion } from '@/app/casos/actions'
 import { createClient } from '@/lib/supabase/client'
 
-interface DatosLaborales {
-  empresa: string
-  puesto: string
-  fechaIngreso: string
-  tieneCalculo: boolean
+// Datos extraidos de INE via OCR
+interface DatosPersonalesINE {
+  curp?: string
+  claveElector?: string
+  nombreCompleto?: string
+  fechaNacimiento?: string
+  sexo?: 'H' | 'M' | null
+  domicilio?: {
+    calle?: string
+    colonia?: string
+    codigoPostal?: string
+    municipio?: string
+    estado?: string
+    domicilioCompleto?: string
+  }
+  vigencia?: string
 }
 
-interface UserData {
-  displayName: string
-  fullName: string
+interface ProfileData {
+  id: string
   email: string
+  fullName: string
   phone: string
-  referralCode: string
-  isAnonymous: boolean
-  datosLaborales: DatosLaborales[]
+  role: string
+  codigoUsuario: string
+  verificationStatus: string // 'none' | 'pending' | 'verified'
+  // Datos de INE
+  curp?: string
+  tipoIdentificacion?: string
+  numeroIdentificacion?: string
+  fechaNacimiento?: string
+  sexo?: string
+  // Domicilio
+  calle?: string
+  colonia?: string
+  codigoPostal?: string
+  municipio?: string
+  estado?: string
+  // Contadores
+  calculosCount: number
+  tieneINE: boolean
 }
 
-interface VerificationStatus {
-  perfilCompleto: boolean
-  tieneCalculos: boolean
-  tieneDocumentoIdentidad: boolean
-  puedeVerificar: boolean
-  progreso: number
-}
-
-const checkVerificationStatus = (data: UserData, calculosCount?: number, tieneDocsIdentidad?: boolean) => {
-  // Verificar perfil completo (solo nombre y teléfono WhatsApp, email NO es obligatorio)
-  const perfilCompleto = !!(data.fullName && data.phone)
-  
-  // Verificar si tiene al menos un cálculo - usar contador de BD si está disponible
-  const tieneCalculos = (calculosCount !== undefined && calculosCount > 0) || 
-    (data.datosLaborales.length > 0 && data.datosLaborales.some(d => d.tieneCalculo))
-  
-  // Verificar documentos de identidad - usar flag de BD si está disponible
-  let tieneDocumentoIdentidad = tieneDocsIdentidad || false
-  
-  // Fallback: Verificar en localStorage si no tenemos info de BD
-  if (!tieneDocumentoIdentidad) {
-    // 1. Verificar en localStorage (documentos pendientes de subir)
-    const docsGuardados = localStorage.getItem('guest_documentos')
-    if (docsGuardados) {
-      try {
-        const docs = JSON.parse(docsGuardados)
-        tieneDocumentoIdentidad = docs.some((d: { categoria: string }) => 
-          ['ine_frente', 'ine_reverso', 'identificacion', 'pasaporte'].includes(d.categoria)
-        )
-      } catch {}
-    }
-    
-    // 2. Verificar en boveda_docs_uploaded (flag de documentos ya subidos)
-    const bovedaUploaded = localStorage.getItem('boveda_docs_uploaded')
-    if (bovedaUploaded) {
-      try {
-        const uploaded = JSON.parse(bovedaUploaded)
-        if (uploaded.ine || uploaded.ine_frente || uploaded.ine_reverso || uploaded.pasaporte || uploaded.identificacion) {
-          tieneDocumentoIdentidad = true
-        }
-      } catch {}
-    }
-  }
-  
-  // Calcular progreso
-  let progreso = 0
-  if (perfilCompleto) progreso += 40
-  if (tieneCalculos) progreso += 40
-  if (tieneDocumentoIdentidad) progreso += 20
-  
-  const puedeVerificar = perfilCompleto && tieneCalculos && tieneDocumentoIdentidad
-  
-  return {
-    perfilCompleto,
-    tieneCalculos,
-    tieneDocumentoIdentidad,
-    puedeVerificar,
-    progreso
-  }
-}
+type EditMode = 'none' | 'personal' | 'contact' | 'address'
 
 export default function PerfilPage() {
+  const router = useRouter()
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
-  const [userData, setUserData] = useState<UserData | null>(null)
-  const [codigoUsuarioDB, setCodigoUsuarioDB] = useState<string | null>(null)
-  const [userRole, setUserRole] = useState<string>('guest')
-  const [verification, setVerification] = useState<VerificationStatus>({
-    perfilCompleto: false,
-    tieneCalculos: false,
-    tieneDocumentoIdentidad: false,
-    puedeVerificar: false,
-    progreso: 0
-  })
+  const [profile, setProfile] = useState<ProfileData | null>(null)
+  const [editMode, setEditMode] = useState<EditMode>('none')
   const [showCelebration, setShowCelebration] = useState(false)
   const [creatingCaso, setCreatingCaso] = useState(false)
-  const [nombreEmpresa, setNombreEmpresa] = useState<string>('')
+  const [nombreEmpresa, setNombreEmpresa] = useState('')
+  
+  // Campos editables
+  const [editFullName, setEditFullName] = useState('')
+  const [editPhone, setEditPhone] = useState('')
+  const [editEmail, setEditEmail] = useState('')
+  const [editCalle, setEditCalle] = useState('')
+  const [editColonia, setEditColonia] = useState('')
+  const [editCP, setEditCP] = useState('')
+  const [editMunicipio, setEditMunicipio] = useState('')
+  const [editEstado, setEditEstado] = useState('')
 
   const { toast } = useToast()
-  
-  // Handler para crear caso al hacer click en "Contratar abogado"
-  const handleContratarAbogado = async () => {
-    setCreatingCaso(true)
+
+  useEffect(() => {
+    loadProfile()
+  }, [])
+
+  const loadProfile = async () => {
     try {
-      
       const supabase = createClient()
       const { data: { user } } = await supabase.auth.getUser()
       
       if (!user) {
-        toast({ title: 'Error', description: 'Debes iniciar sesion', variant: 'destructive' })
+        router.push('/acceso')
         return
       }
+
+      // Cargar perfil
+      const { data: profileData } = await supabase
+        .from('profiles')
+        .select('*')
+        .eq('id', user.id)
+        .single()
+
+      // Contar calculos
+      const { count: calculosCount } = await supabase
+        .from('documentos_boveda')
+        .select('*', { count: 'exact', head: true })
+        .eq('user_id', user.id)
+        .eq('categoria', 'calculo_liquidacion')
+        .eq('estado', 'activo')
+
+      // Verificar si tiene INE
+      const { count: ineCount } = await supabase
+        .from('documentos_boveda')
+        .select('*', { count: 'exact', head: true })
+        .eq('user_id', user.id)
+        .in('categoria', ['ine_frente', 'ine_reverso', 'pasaporte'])
+        .eq('estado', 'activo')
+
+      const profile: ProfileData = {
+        id: user.id,
+        email: profileData?.email || user.email || '',
+        fullName: profileData?.full_name || '',
+        phone: profileData?.phone || '',
+        role: profileData?.role || 'guest',
+        codigoUsuario: profileData?.codigo_usuario || '',
+        verificationStatus: profileData?.verification_status || 'none',
+        curp: profileData?.curp,
+        tipoIdentificacion: profileData?.tipo_identificacion,
+        numeroIdentificacion: profileData?.numero_identificacion,
+        fechaNacimiento: profileData?.fecha_nacimiento,
+        sexo: profileData?.sexo,
+        calle: profileData?.calle,
+        colonia: profileData?.colonia,
+        codigoPostal: profileData?.codigo_postal,
+        municipio: profileData?.municipio,
+        estado: profileData?.estado,
+        calculosCount: calculosCount || 0,
+        tieneINE: (ineCount || 0) > 0
+      }
+
+      setProfile(profile)
       
-      // Obtener el calculo guardado para extraer datos de la empresa
+      // Inicializar campos editables
+      setEditFullName(profile.fullName)
+      setEditPhone(profile.phone)
+      setEditEmail(profile.email)
+      setEditCalle(profile.calle || '')
+      setEditColonia(profile.colonia || '')
+      setEditCP(profile.codigoPostal || '')
+      setEditMunicipio(profile.municipio || '')
+      setEditEstado(profile.estado || '')
+
+    } catch (error) {
+      console.error('Error loading profile:', error)
+      toast({ title: 'Error', description: 'No se pudo cargar el perfil', variant: 'destructive' })
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const handleSave = async () => {
+    if (!profile) return
+    setSaving(true)
+
+    try {
+      const supabase = createClient()
+      
+      const updateData: Record<string, string | null> = {}
+      
+      if (editMode === 'personal' || editMode === 'contact') {
+        updateData.full_name = editFullName || null
+        updateData.phone = editPhone || null
+        updateData.email = editEmail || null
+      }
+      
+      if (editMode === 'address') {
+        updateData.calle = editCalle || null
+        updateData.colonia = editColonia || null
+        updateData.codigo_postal = editCP || null
+        updateData.municipio = editMunicipio || null
+        updateData.estado = editEstado || null
+      }
+
+      const { error } = await supabase
+        .from('profiles')
+        .update(updateData)
+        .eq('id', profile.id)
+
+      if (error) throw error
+
+      // Actualizar estado local
+      setProfile({
+        ...profile,
+        fullName: editFullName,
+        phone: editPhone,
+        email: editEmail,
+        calle: editCalle,
+        colonia: editColonia,
+        codigoPostal: editCP,
+        municipio: editMunicipio,
+        estado: editEstado
+      })
+
+      setEditMode('none')
+      toast({ title: 'Guardado', description: 'Perfil actualizado correctamente' })
+
+    } catch (error) {
+      console.error('Error saving:', error)
+      toast({ title: 'Error', description: 'No se pudo guardar', variant: 'destructive' })
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  const handleSolicitarVerificacion = async () => {
+    if (!profile) return
+    setCreatingCaso(true)
+
+    try {
+      const supabase = createClient()
+
+      // Obtener calculo para crear caso
       const { data: calculo } = await supabase
         .from('documentos_boveda')
         .select('id, nombre, metadata')
-        .eq('user_id', user.id)
+        .eq('user_id', profile.id)
         .eq('categoria', 'calculo_liquidacion')
         .eq('estado', 'activo')
         .order('created_at', { ascending: false })
         .limit(1)
         .single()
-      
+
       if (calculo) {
         const meta = calculo.metadata as { nombreEmpresa?: string } | null
-        const empresa = meta?.nombreEmpresa || calculo.nombre || 'Sin especificar'
-        setNombreEmpresa(empresa)
+        setNombreEmpresa(meta?.nombreEmpresa || calculo.nombre || '')
         
-        // Crear el caso con fechas de prescripcion
-        const result = await crearCasoDesdeVerificacion(user.id, calculo.id)
-        
-        if (result.error) {
-          toast({ title: 'Error', description: result.error, variant: 'destructive' })
-          return
-        }
+        await crearCasoDesdeVerificacion(profile.id, calculo.id)
       }
-      
-      // Actualizar status a pending_verification
+
+      // Actualizar status
       await supabase
         .from('profiles')
         .update({ 
           verification_status: 'pending',
           caso_creado: true
         })
-        .eq('id', user.id)
-      
-      // Mostrar celebracion
+        .eq('id', profile.id)
+
       setShowCelebration(true)
-      
+      setProfile({ ...profile, verificationStatus: 'pending' })
+
     } catch (error) {
-      toast({ title: 'Error', description: 'Error al crear el caso', variant: 'destructive' })
+      toast({ title: 'Error', description: 'No se pudo crear la solicitud', variant: 'destructive' })
     } finally {
       setCreatingCaso(false)
     }
   }
 
-  useEffect(() => {
-    loadUserData()
-    loadCodigoFromDB()
-  }, [])
-  
-  // Cargar codigo_usuario desde Supabase si el usuario está autenticado
-  const loadCodigoFromDB = async () => {
-    try {
-      
-      const supabase = createClient()
-      const { data: { user } } = await supabase.auth.getUser()
-      
-      if (user) {
-        const { data: profile } = await supabase
-          .from('profiles')
-          .select('codigo_usuario, role, full_name')
-          .eq('id', user.id)
-          .single()
-        
-        if (profile?.codigo_usuario) {
-          setCodigoUsuarioDB(profile.codigo_usuario)
-        }
-        if (profile?.role) {
-          setUserRole(profile.role)
-        }
-      }
-    } catch {
-      // Error silencioso - usuario no autenticado o sin perfil
-    }
+  const handleLogout = async () => {
+    const supabase = createClient()
+    await supabase.auth.signOut()
+    router.push('/acceso')
   }
 
-  const loadUserData = async () => {
-    try {
-      // Primero intentar cargar datos desde Supabase (usuario autenticado)
-      
-      const supabase = createClient()
-      const { data: { user } } = await supabase.auth.getUser()
-      
-      let userData: UserData
-      
-      let calculosCount = 0
-      let tieneDocsIdentidad = false
-      
-      if (user) {
-        // Cargar perfil desde la BD
-        const { data: profile } = await supabase
-          .from('profiles')
-          .select('*')
-          .eq('id', user.id)
-          .single()
-        
-        // Cargar calculos guardados en boveda para este usuario
-        // Los cálculos se guardan en documentos_boveda con categoria 'calculo_liquidacion'
-        const { data: calculos, error: calculosError } = await supabase
-          .from('documentos_boveda')
-          .select('id, nombre, metadata', { count: 'exact' })
-          .eq('user_id', user.id)
-          .eq('categoria', 'calculo_liquidacion')
-          .eq('estado', 'activo')
-          .limit(3)
-        
-        calculosCount = calculos?.length || 0
-        
-        // Verificar documentos de identificación en la bóveda
-        const { data: documentos, error: docsError } = await supabase
-          .from('documentos_boveda')
-          .select('categoria')
-          .eq('user_id', user.id)
-          .in('categoria', ['ine_frente', 'ine_reverso', 'identificacion', 'pasaporte'])
-          .eq('estado', 'activo')
-          .limit(1)
-        
-        tieneDocsIdentidad = (documentos && documentos.length > 0)
-        
-        // Extraer datos laborales de los metadatos del cálculo
-        const datosLaborales: DatosLaborales[] = (calculos || []).map(calc => {
-          const meta = calc.metadata as { nombreEmpresa?: string; puestoTrabajo?: string; fechaIngreso?: string } | null
-          return {
-            empresa: meta?.nombreEmpresa || calc.nombre || 'Sin nombre',
-            puesto: meta?.puestoTrabajo || 'Sin especificar',
-            fechaIngreso: meta?.fechaIngreso || '',
-            tieneCalculo: true
-          }
-        })
-        
-        userData = {
-          displayName: profile?.full_name || user.user_metadata?.full_name || `invitado${generateRandomCode(8)}`,
-          fullName: profile?.full_name || user.user_metadata?.full_name || '',
-          email: profile?.email || user.email || '',
-          phone: profile?.phone || '',
-          referralCode: profile?.referral_code || generateRandomCode(8),
-          isAnonymous: profile?.role === 'guest',
-          datosLaborales
-        }
-        
-        // Limpiar localStorage de datos anteriores si el usuario cambió
-        const storedUserId = localStorage.getItem('mc_current_user_id')
-        if (storedUserId !== user.id) {
-          localStorage.removeItem('mecorrieron_user_profile')
-          localStorage.removeItem('guest_profile')
-          localStorage.removeItem('guest_calculos')
-          localStorage.setItem('mc_current_user_id', user.id)
-        }
-      } else {
-        // Usuario no autenticado - usar datos vacíos
-        const code = generateRandomCode(8)
-        userData = {
-          displayName: `invitado${code}`,
-          fullName: '',
-          email: '',
-          phone: '',
-          referralCode: code,
-          isAnonymous: true,
-          datosLaborales: []
-        }
-      }
-
-    const verificationStatus = checkVerificationStatus(userData, calculosCount, tieneDocsIdentidad)
-      setUserData(userData)
-      setVerification(verificationStatus)
-    } catch (err) {
-      console.error('Error loading user data:', err)
-    } finally {
-      setLoading(false)
-    }
-  }
-  
-  const handleSave = async () => {
-    if (!userData) return
-    setSaving(true)
+  // Determinar estado de verificacion
+  const getVerificationState = () => {
+    if (!profile) return { status: 'loading', color: 'gray', icon: Loader2 }
     
-    try {
-      
-      const supabase = createClient()
-      const { data: { user } } = await supabase.auth.getUser()
-      
-      if (user) {
-        // Guardar en Supabase
-        const { error } = await supabase
-          .from('profiles')
-          .update({
-            full_name: userData.fullName,
-            email: userData.email || null,
-            phone: userData.phone || null,
-            updated_at: new Date().toISOString()
-          })
-          .eq('id', user.id)
-        
-        if (error) {
-          toast({
-            title: "Error al guardar",
-            description: "No se pudo guardar el perfil. Intenta de nuevo.",
-            variant: "destructive"
-          })
-          setSaving(false)
-          return
-        }
-      }
-      
-      // Actualizar estado de verificación después de guardar
-      const verificationStatus = checkVerificationStatus(userData)
-      setVerification(verificationStatus)
-      
-      toast({
-        title: "Perfil guardado",
-        description: verification.puedeVerificar 
-          ? "Tu cuenta está lista para verificación. Un abogado revisará tu información."
-          : "Completa los requisitos restantes para verificar tu cuenta.",
-      })
-    } catch (err) {
-      console.error('Error saving profile:', err)
-      toast({
-        title: "Error",
-        description: "Ocurrió un error al guardar el perfil.",
-        variant: "destructive"
-      })
-    } finally {
-      setSaving(false)
+    if (profile.verificationStatus === 'verified' || profile.role === 'worker') {
+      return { status: 'verified', color: 'green', icon: CheckCircle, label: 'Cuenta Verificada' }
+    }
+    if (profile.verificationStatus === 'pending') {
+      return { status: 'pending', color: 'amber', icon: AlertTriangle, label: 'Verificacion Pendiente' }
+    }
+    
+    // Verificar requisitos
+    const tieneNombre = !!profile.fullName
+    const tienePhone = !!profile.phone
+    const tieneCalculo = profile.calculosCount > 0
+    const tieneINE = profile.tieneINE
+    
+    const puedeVerificar = tieneNombre && tienePhone && tieneCalculo && tieneINE
+    
+    return { 
+      status: puedeVerificar ? 'ready' : 'incomplete', 
+      color: puedeVerificar ? 'blue' : 'gray', 
+      icon: puedeVerificar ? Shield : XCircle,
+      label: puedeVerificar ? 'Listo para Verificar' : 'Completa tu Perfil',
+      requisitos: { tieneNombre, tienePhone, tieneCalculo, tieneINE }
     }
   }
 
-  const handleInputChange = (field: keyof UserData, value: string) => {
-    if (!userData) return
-    setUserData({ ...userData, [field]: value })
-  }
+  const verification = getVerificationState()
 
   if (loading) {
     return (
@@ -367,11 +329,14 @@ export default function PerfilPage() {
     )
   }
 
-  if (!userData) return null
+  if (!profile) return null
+
+  // Check if user is lawyer
+  const isLawyer = ['lawyer', 'admin', 'superadmin', 'guestlawyer'].includes(profile.role)
 
   return (
     <div className="min-h-screen bg-background">
-      {/* Header */}
+      {/* Header compacto */}
       <header className="sticky top-0 z-50 bg-background/95 backdrop-blur border-b">
         <div className="container mx-auto px-4 h-14 flex items-center justify-between">
           <div className="flex items-center gap-3">
@@ -382,370 +347,429 @@ export default function PerfilPage() {
             </Link>
             <h1 className="font-semibold">Mi Perfil</h1>
           </div>
-          <Button 
-            onClick={handleSave} 
-            disabled={saving}
-            size="sm"
-          >
-            {saving ? (
-              <Loader2 className="w-4 h-4 animate-spin mr-2" />
-            ) : (
-              <Save className="w-4 h-4 mr-2" />
-            )}
-            Guardar
+          <Button variant="ghost" size="sm" onClick={handleLogout} className="text-muted-foreground">
+            <LogOut className="w-4 h-4 mr-2" />
+            Salir
           </Button>
         </div>
       </header>
 
-      {/* Contenido */}
-      <main className="container mx-auto px-4 py-6 max-w-lg space-y-6">
-        {/* Card de perfil con avatar y codigo */}
-        <UserProfileCard
-          fullName={userData.fullName || null}
-          isGuest={userRole === 'guest'}
-          role={userRole}
-          codigoUsuario={codigoUsuarioDB}
-        />
-
-        {/* Datos personales */}
-        <Card>
-          <CardHeader className="pb-3">
-            <CardTitle className="text-base flex items-center gap-2">
-              Datos personales
-              {verification.perfilCompleto ? (
-                <CheckCircle className="w-4 h-4 text-green-500" />
-              ) : (
-                <AlertTriangle className="w-4 h-4 text-amber-500" />
-              )}
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="space-y-2">
-              <Label htmlFor="fullName" className="text-sm">
-                Nombre completo *
-              </Label>
-              <Input
-                id="fullName"
-                placeholder="Tu nombre real"
-                value={userData.fullName}
-                onChange={(e) => handleInputChange('fullName', e.target.value)}
-              />
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="email" className="text-sm flex items-center gap-2">
-                <Mail className="w-4 h-4" />
-                Correo electronico
-                <span className="text-xs text-muted-foreground">(opcional)</span>
-              </Label>
-              <Input
-                id="email"
-                type="email"
-                placeholder="tu@email.com"
-                value={userData.email}
-                onChange={(e) => handleInputChange('email', e.target.value)}
-              />
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="phone" className="text-sm flex items-center gap-2">
-                <Phone className="w-4 h-4" />
-                Telefono WhatsApp *
-              </Label>
-              <Input
-                id="phone"
-                type="tel"
-                placeholder="+52 000 000 0000"
-                value={userData.phone}
-                onChange={(e) => handleInputChange('phone', e.target.value)}
-              />
-              <p className="text-xs text-muted-foreground">
-                Se usara para verificacion por 2 factores
-              </p>
+      <main className="container mx-auto px-4 py-6 max-w-lg space-y-4">
+        
+        {/* 1. ESTADO DE VERIFICACION - Siempre primero y prominente */}
+        <Card className={`border-2 ${
+          verification.color === 'green' ? 'border-green-500 bg-green-50' :
+          verification.color === 'amber' ? 'border-amber-500 bg-amber-50' :
+          verification.color === 'blue' ? 'border-blue-500 bg-blue-50' :
+          'border-gray-300 bg-gray-50'
+        }`}>
+          <CardContent className="pt-6">
+            <div className="flex items-start gap-4">
+              <div className={`w-14 h-14 rounded-full flex items-center justify-center ${
+                verification.color === 'green' ? 'bg-green-100' :
+                verification.color === 'amber' ? 'bg-amber-100' :
+                verification.color === 'blue' ? 'bg-blue-100' :
+                'bg-gray-100'
+              }`}>
+                <verification.icon className={`w-7 h-7 ${
+                  verification.color === 'green' ? 'text-green-600' :
+                  verification.color === 'amber' ? 'text-amber-600' :
+                  verification.color === 'blue' ? 'text-blue-600' :
+                  'text-gray-500'
+                }`} />
+              </div>
+              <div className="flex-1">
+                <h2 className={`font-bold text-lg ${
+                  verification.color === 'green' ? 'text-green-800' :
+                  verification.color === 'amber' ? 'text-amber-800' :
+                  verification.color === 'blue' ? 'text-blue-800' :
+                  'text-gray-700'
+                }`}>
+                  {verification.label}
+                </h2>
+                
+                {verification.status === 'verified' && (
+                  <p className="text-sm text-green-700 mt-1">
+                    Tu cuenta esta verificada. Tienes acceso completo a todas las funciones.
+                  </p>
+                )}
+                
+                {verification.status === 'pending' && (
+                  <p className="text-sm text-amber-700 mt-1">
+                    Un abogado esta revisando tu documentacion. Te contactaremos pronto.
+                  </p>
+                )}
+                
+                {verification.status === 'ready' && (
+                  <>
+                    <p className="text-sm text-blue-700 mt-1">
+                      Tienes todo listo. Solicita la verificacion para acceder a un abogado.
+                    </p>
+                    <Button 
+                      className="mt-3 bg-blue-600 hover:bg-blue-700"
+                      onClick={handleSolicitarVerificacion}
+                      disabled={creatingCaso}
+                    >
+                      {creatingCaso ? (
+                        <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                      ) : (
+                        <Shield className="w-4 h-4 mr-2" />
+                      )}
+                      Solicitar Verificacion
+                    </Button>
+                  </>
+                )}
+                
+                {verification.status === 'incomplete' && 'requisitos' in verification && (
+                  <div className="mt-3 space-y-2">
+                    <p className="text-xs text-gray-600 uppercase font-medium">Requisitos pendientes:</p>
+                    <div className="space-y-1.5">
+                      <RequisitoItem 
+                        cumplido={verification.requisitos.tieneNombre} 
+                        texto="Nombre completo"
+                        accion={!verification.requisitos.tieneNombre ? () => setEditMode('personal') : undefined}
+                      />
+                      <RequisitoItem 
+                        cumplido={verification.requisitos.tienePhone} 
+                        texto="Telefono WhatsApp"
+                        accion={!verification.requisitos.tienePhone ? () => setEditMode('contact') : undefined}
+                      />
+                      <RequisitoItem 
+                        cumplido={verification.requisitos.tieneCalculo} 
+                        texto="Calculo de liquidacion"
+                        link={!verification.requisitos.tieneCalculo ? '/calculadora' : undefined}
+                      />
+                      <RequisitoItem 
+                        cumplido={verification.requisitos.tieneINE} 
+                        texto="INE o identificacion"
+                        link={!verification.requisitos.tieneINE ? '/boveda' : undefined}
+                      />
+                    </div>
+                  </div>
+                )}
+              </div>
             </div>
           </CardContent>
         </Card>
 
-        {/* Datos laborales */}
+        {/* 2. CODIGO DE USUARIO */}
         <Card>
-          <CardHeader className="pb-3">
+          <CardContent className="py-4">
             <div className="flex items-center justify-between">
-              <CardTitle className="text-base flex items-center gap-2">
-                <Briefcase className="w-4 h-4" />
-                Datos laborales
-                {verification.tieneCalculos ? (
-                  <CheckCircle className="w-4 h-4 text-green-500" />
-                ) : (
-                  <XCircle className="w-4 h-4 text-muted-foreground" />
-                )}
-              </CardTitle>
-              <Badge variant="outline" className="text-xs">
-                {userData.datosLaborales.length}/3 empresas
+              <div>
+                <p className="text-xs text-muted-foreground uppercase tracking-wide">Tu Codigo</p>
+                <p className="font-mono text-xl font-bold text-primary">{profile.codigoUsuario}</p>
+              </div>
+              <Badge variant={profile.role === 'guest' ? 'secondary' : 'default'}>
+                {profile.role === 'guest' ? 'Invitado' : 
+                 profile.role === 'worker' ? 'Trabajador' : 
+                 profile.role === 'lawyer' ? 'Abogado' : 
+                 profile.role === 'admin' ? 'Admin' : profile.role}
               </Badge>
             </div>
-            <CardDescription className="text-xs">
-              Se cargan automaticamente de tus calculos guardados
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-3">
-            {userData.datosLaborales.length === 0 ? (
-              <div className="text-center py-6 text-muted-foreground">
-                <Scale className="w-8 h-8 mx-auto mb-2 opacity-50" />
-                <p className="text-sm">Sin datos laborales</p>
-                <p className="text-xs mt-1">Realiza un calculo para agregar tus datos</p>
-                <Button asChild variant="outline" size="sm" className="mt-3 bg-transparent">
-                  <Link href="/calculadora">Ir a Calculadora</Link>
-                </Button>
-              </div>
-            ) : (
-              userData.datosLaborales.map((dato, index) => (
-                <div 
-                  key={index}
-                  className="p-3 rounded-lg border bg-muted/30 space-y-2"
-                >
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-2">
-                      <Building2 className="w-4 h-4 text-primary" />
-                      <span className="font-medium text-sm">{dato.empresa}</span>
-                    </div>
-                    {dato.tieneCalculo && (
-                      <Badge variant="secondary" className="text-xs">
-                        <FileText className="w-3 h-3 mr-1" />
-                        Calculo
-                      </Badge>
-                    )}
-                  </div>
-                  <div className="grid grid-cols-2 gap-2 text-xs text-muted-foreground">
-                    <div className="flex items-center gap-1">
-                      <Briefcase className="w-3 h-3" />
-                      {dato.puesto}
-                    </div>
-                    <div className="flex items-center gap-1">
-                      <Calendar className="w-3 h-3" />
-                      {dato.fechaIngreso ? new Date(dato.fechaIngreso).toLocaleDateString('es-MX') : 'Sin fecha'}
-                    </div>
-                  </div>
-                </div>
-              ))
-            )}
           </CardContent>
         </Card>
 
-        {/* Verificacion de cuenta - Estados: guest (gris), pendiente (naranja), verificada (verde) */}
-        <Card className={`
-          ${verification.puedeVerificar 
-            ? 'border-amber-400 bg-amber-50' 
-            : 'border-muted bg-muted/30'
-          }
-        `}>
-          <CardHeader className="pb-3">
+        {/* 3. DATOS PERSONALES (de INE/OCR) */}
+        <Card>
+          <CardHeader className="pb-2">
             <div className="flex items-center justify-between">
               <CardTitle className="text-base flex items-center gap-2">
-                <Shield className={`w-5 h-5 ${verification.puedeVerificar ? 'text-amber-600' : 'text-muted-foreground'}`} />
-                {verification.puedeVerificar ? 'Cuenta Pendiente de Verificar' : 'Verificar cuenta'}
+                <User className="w-4 h-4" />
+                Datos Personales
               </CardTitle>
-              {verification.puedeVerificar ? (
-                <Badge className="bg-amber-500 text-white">Pendiente</Badge>
-              ) : (
-                <Badge variant="outline" className="text-muted-foreground">Guest</Badge>
+              {editMode !== 'personal' && (
+                <Button variant="ghost" size="sm" onClick={() => setEditMode('personal')}>
+                  <Edit3 className="w-4 h-4" />
+                </Button>
               )}
             </div>
-            <CardDescription>
-              {verification.puedeVerificar 
-                ? 'Tu información está completa. Un abogado revisará tu caso para verificar tu cuenta.'
-                : 'Contrata un abogado y accede a todos los beneficios'
-              }
-            </CardDescription>
+            {profile.curp && (
+              <p className="text-xs text-muted-foreground">Datos extraidos de tu INE</p>
+            )}
           </CardHeader>
-          <CardContent className="space-y-4">
-            {/* Barra de progreso */}
-            <div className="space-y-2">
-              <div className="flex justify-between text-xs">
-                <span>Progreso de verificacion</span>
-                <span className="font-medium">{verification.progreso}%</span>
-              </div>
-              <Progress 
-                value={verification.progreso} 
-                className={`h-2 ${verification.puedeVerificar ? '[&>div]:bg-amber-500' : ''}`} 
-              />
-            </div>
-
-            {/* Requisitos */}
-            <div className="space-y-2">
-              <p className="text-xs font-medium text-muted-foreground uppercase">Requisitos</p>
-              
-              <div className="flex items-center gap-2 text-sm">
-                {verification.perfilCompleto ? (
-                  <CheckCircle className="w-4 h-4 text-green-500 flex-shrink-0" />
-                ) : (
-                  <XCircle className="w-4 h-4 text-muted-foreground flex-shrink-0" />
-                )}
-                <span className={verification.perfilCompleto ? 'text-foreground' : 'text-muted-foreground'}>
-                  Nombre completo y telefono WhatsApp
-                </span>
-              </div>
-
-              <div className="flex items-center gap-2 text-sm">
-                {verification.tieneCalculos ? (
-                  <CheckCircle className="w-4 h-4 text-green-500 flex-shrink-0" />
-                ) : (
-                  <XCircle className="w-4 h-4 text-muted-foreground flex-shrink-0" />
-                )}
-                <span className={verification.tieneCalculos ? 'text-foreground' : 'text-muted-foreground'}>
-                  Al menos 1 calculo guardado en boveda
-                </span>
-              </div>
-
-              <div className="flex items-center gap-2 text-sm">
-                {verification.tieneDocumentoIdentidad ? (
-                  <CheckCircle className="w-4 h-4 text-green-500 flex-shrink-0" />
-                ) : (
-                  <XCircle className="w-4 h-4 text-muted-foreground flex-shrink-0" />
-                )}
-                <span className={verification.tieneDocumentoIdentidad ? 'text-foreground' : 'text-muted-foreground'}>
-                  INE o Pasaporte en boveda
-                </span>
-              </div>
-            </div>
-
-            <Separator />
-
-            {/* Boton de verificacion o acciones pendientes */}
-            {verification.puedeVerificar ? (
-              <div className="space-y-3">
-                <div className="p-3 rounded-lg bg-amber-100 border border-amber-300">
-                  <p className="text-sm text-amber-800 font-medium flex items-center gap-2">
-                    <Shield className="w-4 h-4" />
-                    Solicitud lista para revision
-                  </p>
-                  <p className="text-xs text-amber-700 mt-1">
-                    Un abogado o administrador verificará tu documentación y te contactará pronto.
-                  </p>
+          <CardContent className="space-y-3">
+            {editMode === 'personal' ? (
+              <>
+                <div className="space-y-2">
+                  <Label className="text-xs">Nombre completo</Label>
+                  <Input 
+                    value={editFullName} 
+                    onChange={(e) => setEditFullName(e.target.value)}
+                    placeholder="Tu nombre completo"
+                  />
                 </div>
-                <Button 
-                  className="w-full bg-amber-600 hover:bg-amber-700"
-                  onClick={handleContratarAbogado}
-                  disabled={creatingCaso}
-                >
-                  {creatingCaso ? (
-                    <>
-                      <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                      Creando caso...
-                    </>
-                  ) : (
-                    <>
-                      <Shield className="w-4 h-4 mr-2" />
-                      Contratar abogado ahora
-                    </>
-                  )}
+                <div className="flex gap-2">
+                  <Button size="sm" onClick={handleSave} disabled={saving}>
+                    {saving && <Loader2 className="w-3 h-3 mr-1 animate-spin" />}
+                    Guardar
+                  </Button>
+                  <Button size="sm" variant="ghost" onClick={() => setEditMode('none')}>
+                    Cancelar
+                  </Button>
+                </div>
+              </>
+            ) : (
+              <>
+                <DataRow icon={User} label="Nombre" value={profile.fullName || 'Sin registrar'} muted={!profile.fullName} />
+                {profile.curp && <DataRow icon={CreditCard} label="CURP" value={profile.curp} />}
+                {profile.fechaNacimiento && (
+                  <DataRow icon={Calendar} label="Nacimiento" value={profile.fechaNacimiento} />
+                )}
+                {profile.sexo && (
+                  <DataRow icon={User} label="Sexo" value={profile.sexo === 'H' ? 'Hombre' : 'Mujer'} />
+                )}
+              </>
+            )}
+          </CardContent>
+        </Card>
+
+        {/* 4. DATOS DE CONTACTO */}
+        <Card>
+          <CardHeader className="pb-2">
+            <div className="flex items-center justify-between">
+              <CardTitle className="text-base flex items-center gap-2">
+                <Phone className="w-4 h-4" />
+                Contacto
+              </CardTitle>
+              {editMode !== 'contact' && (
+                <Button variant="ghost" size="sm" onClick={() => setEditMode('contact')}>
+                  <Edit3 className="w-4 h-4" />
+                </Button>
+              )}
+            </div>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            {editMode === 'contact' ? (
+              <>
+                <div className="space-y-2">
+                  <Label className="text-xs">Telefono WhatsApp</Label>
+                  <Input 
+                    value={editPhone} 
+                    onChange={(e) => setEditPhone(e.target.value)}
+                    placeholder="+52 000 000 0000"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label className="text-xs">Correo electronico (opcional)</Label>
+                  <Input 
+                    value={editEmail} 
+                    onChange={(e) => setEditEmail(e.target.value)}
+                    placeholder="tu@email.com"
+                    type="email"
+                  />
+                </div>
+                <div className="flex gap-2">
+                  <Button size="sm" onClick={handleSave} disabled={saving}>
+                    {saving && <Loader2 className="w-3 h-3 mr-1 animate-spin" />}
+                    Guardar
+                  </Button>
+                  <Button size="sm" variant="ghost" onClick={() => setEditMode('none')}>
+                    Cancelar
+                  </Button>
+                </div>
+              </>
+            ) : (
+              <>
+                <DataRow icon={Phone} label="WhatsApp" value={profile.phone || 'Sin registrar'} muted={!profile.phone} />
+                <DataRow icon={Mail} label="Email" value={profile.email || 'Sin registrar'} muted={!profile.email} />
+              </>
+            )}
+          </CardContent>
+        </Card>
+
+        {/* 5. DOMICILIO (de INE) */}
+        {(profile.calle || profile.colonia || profile.codigoPostal) && (
+          <Card>
+            <CardHeader className="pb-2">
+              <div className="flex items-center justify-between">
+                <CardTitle className="text-base flex items-center gap-2">
+                  <MapPin className="w-4 h-4" />
+                  Domicilio
+                </CardTitle>
+                {editMode !== 'address' && (
+                  <Button variant="ghost" size="sm" onClick={() => setEditMode('address')}>
+                    <Edit3 className="w-4 h-4" />
+                  </Button>
+                )}
+              </div>
+              <p className="text-xs text-muted-foreground">Extraido de tu INE</p>
+            </CardHeader>
+            <CardContent>
+              {editMode === 'address' ? (
+                <div className="space-y-3">
+                  <div className="grid grid-cols-2 gap-2">
+                    <div className="space-y-1">
+                      <Label className="text-xs">Calle y numero</Label>
+                      <Input value={editCalle} onChange={(e) => setEditCalle(e.target.value)} />
+                    </div>
+                    <div className="space-y-1">
+                      <Label className="text-xs">Colonia</Label>
+                      <Input value={editColonia} onChange={(e) => setEditColonia(e.target.value)} />
+                    </div>
+                  </div>
+                  <div className="grid grid-cols-3 gap-2">
+                    <div className="space-y-1">
+                      <Label className="text-xs">C.P.</Label>
+                      <Input value={editCP} onChange={(e) => setEditCP(e.target.value)} />
+                    </div>
+                    <div className="space-y-1">
+                      <Label className="text-xs">Municipio</Label>
+                      <Input value={editMunicipio} onChange={(e) => setEditMunicipio(e.target.value)} />
+                    </div>
+                    <div className="space-y-1">
+                      <Label className="text-xs">Estado</Label>
+                      <Input value={editEstado} onChange={(e) => setEditEstado(e.target.value)} />
+                    </div>
+                  </div>
+                  <div className="flex gap-2">
+                    <Button size="sm" onClick={handleSave} disabled={saving}>
+                      {saving && <Loader2 className="w-3 h-3 mr-1 animate-spin" />}
+                      Guardar
+                    </Button>
+                    <Button size="sm" variant="ghost" onClick={() => setEditMode('none')}>
+                      Cancelar
+                    </Button>
+                  </div>
+                </div>
+              ) : (
+                <p className="text-sm text-muted-foreground">
+                  {[profile.calle, profile.colonia, profile.codigoPostal, profile.municipio, profile.estado]
+                    .filter(Boolean).join(', ')}
+                </p>
+              )}
+            </CardContent>
+          </Card>
+        )}
+
+        {/* 6. IDENTIFICACION */}
+        <Card>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-base flex items-center gap-2">
+              <CreditCard className="w-4 h-4" />
+              Identificacion
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            {profile.tieneINE ? (
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <CheckCircle className="w-5 h-5 text-green-500" />
+                  <div>
+                    <p className="text-sm font-medium">INE registrada</p>
+                    {profile.numeroIdentificacion && (
+                      <p className="text-xs text-muted-foreground">Clave: {profile.numeroIdentificacion}</p>
+                    )}
+                  </div>
+                </div>
+                <Button variant="ghost" size="sm" asChild>
+                  <Link href="/boveda">
+                    Ver <ChevronRight className="w-4 h-4 ml-1" />
+                  </Link>
                 </Button>
               </div>
             ) : (
-              <div className="space-y-3">
-                <Alert>
-                  <AlertTriangle className="h-4 w-4" />
-                  <AlertDescription className="text-xs">
-                    Completa los requisitos para verificar tu cuenta y contratar un abogado.
-                  </AlertDescription>
-                </Alert>
-                
-                <div className="grid grid-cols-2 gap-2">
-                  {!verification.tieneCalculos && (
-                    <Button asChild variant="outline" size="sm" className="bg-transparent">
-                      <Link href="/calculadora">
-                        <Scale className="w-3 h-3 mr-1" />
-                        Calculadora
-                      </Link>
-                    </Button>
-                  )}
-                  {!verification.tieneDocumentoIdentidad && (
-                    <Button asChild variant="outline" size="sm" className="bg-transparent">
-                      <Link href="/boveda">
-                        <CreditCard className="w-3 h-3 mr-1" />
-                        Subir INE
-                      </Link>
-                    </Button>
-                  )}
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2 text-muted-foreground">
+                  <XCircle className="w-5 h-5" />
+                  <p className="text-sm">Sin identificacion</p>
                 </div>
+                <Button size="sm" asChild>
+                  <Link href="/boveda">
+                    <Camera className="w-4 h-4 mr-2" />
+                    Escanear INE
+                  </Link>
+                </Button>
               </div>
             )}
           </CardContent>
         </Card>
 
-        {/* Info adicional */}
-        <Card className="border-dashed">
-          <CardContent className="py-4">
-            <p className="text-xs text-muted-foreground text-center">
-              Tu informacion esta protegida. Al verificar tu cuenta, un abogado revisara tu caso y te contactara para brindarte asesoria personalizada.
-            </p>
-          </CardContent>
-        </Card>
+        {/* 7. ACCESO RAPIDO - Para abogados */}
+        {isLawyer && (
+          <Card className="border-primary/20 bg-primary/5">
+            <CardHeader className="pb-2">
+              <CardTitle className="text-base flex items-center gap-2">
+                <Briefcase className="w-4 h-4 text-primary" />
+                Panel de Abogado
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <p className="text-sm text-muted-foreground mb-3">
+                Accede a tu oficina virtual para gestionar casos y clientes.
+              </p>
+              <Button asChild className="w-full">
+                <Link href="/oficina-virtual">
+                  Ir a Oficina Virtual
+                  <ChevronRight className="w-4 h-4 ml-2" />
+                </Link>
+              </Button>
+            </CardContent>
+          </Card>
+        )}
 
-        {/* Opciones de sesion */}
-        <Card className="border-gray-200">
-          <CardContent className="py-4 space-y-3">
-            <p className="text-sm font-medium text-gray-700">Opciones de sesion</p>
-            
-            <div className="flex flex-col gap-2">
-              <Button 
-                variant="outline" 
-                size="sm" 
-                className="w-full justify-start gap-2 bg-transparent"
-                onClick={() => {
-                  // Redirigir primero, cerrar sesion en segundo plano
-                  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
-                  if (supabaseUrl) {
-                    const projectRef = supabaseUrl.split('//')[1]?.split('.')[0]
-                    localStorage.removeItem(`sb-${projectRef}-auth-token`)
-                  }
-                  window.location.href = '/acceso'
-                }}
-              >
-                <LogOutIcon className="w-4 h-4" />
-                Cerrar sesion
-                <span className="text-xs text-gray-500 ml-auto">(mantiene acceso rapido)</span>
-              </Button>
-              
-              <Button 
-                variant="outline" 
-                size="sm" 
-                className="w-full justify-start gap-2 text-red-600 hover:text-red-700 hover:bg-red-100 bg-transparent border-red-200"
-                onClick={() => {
-                  // Borrar credenciales guardadas
-                  localStorage.removeItem('mc_guest_credentials')
-                  localStorage.removeItem('mc_current_user_id')
-                  
-                  // Borrar token de sesion
-                  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
-                  if (supabaseUrl) {
-                    const projectRef = supabaseUrl.split('//')[1]?.split('.')[0]
-                    localStorage.removeItem(`sb-${projectRef}-auth-token`)
-                  }
-                  
-                  window.location.href = '/acceso'
-                }}
-              >
-                <Trash2Icon className="w-4 h-4" />
-                Olvidar este dispositivo
-                <span className="text-xs text-red-400 ml-auto">(borra acceso rapido)</span>
-              </Button>
-            </div>
-            
-            <p className="text-xs text-gray-500">
-              "Cerrar sesion" te permite volver a entrar rapidamente. "Olvidar dispositivo" elimina tus credenciales guardadas.
-            </p>
-          </CardContent>
-        </Card>
+        {/* Info footer */}
+        <p className="text-xs text-center text-muted-foreground px-4">
+          Tu informacion esta protegida y solo se comparte con abogados verificados para tu caso.
+        </p>
       </main>
-      
-      {/* Celebracion de caso creado */}
-      {showCelebration && userData && (
+
+      {/* Celebracion */}
+      {showCelebration && profile && (
         <CasoCreadoCelebration
-          userName={userData.fullName || userData.displayName}
+          userName={profile.fullName || profile.codigoUsuario}
           nombreEmpresa={nombreEmpresa}
           onComplete={() => setShowCelebration(false)}
         />
       )}
     </div>
   )
+}
+
+// Componente para mostrar fila de datos
+function DataRow({ icon: Icon, label, value, muted = false }: { 
+  icon: React.ComponentType<{ className?: string }>, 
+  label: string, 
+  value: string,
+  muted?: boolean 
+}) {
+  return (
+    <div className="flex items-center gap-3">
+      <Icon className={`w-4 h-4 ${muted ? 'text-muted-foreground/50' : 'text-muted-foreground'}`} />
+      <div className="flex-1">
+        <p className="text-xs text-muted-foreground">{label}</p>
+        <p className={`text-sm ${muted ? 'text-muted-foreground italic' : ''}`}>{value}</p>
+      </div>
+    </div>
+  )
+}
+
+// Componente para requisitos
+function RequisitoItem({ cumplido, texto, accion, link }: { 
+  cumplido: boolean, 
+  texto: string,
+  accion?: () => void,
+  link?: string
+}) {
+  const content = (
+    <div className={`flex items-center gap-2 text-sm ${!cumplido ? 'cursor-pointer hover:bg-gray-100 rounded p-1 -m-1' : ''}`}>
+      {cumplido ? (
+        <CheckCircle className="w-4 h-4 text-green-500 flex-shrink-0" />
+      ) : (
+        <XCircle className="w-4 h-4 text-gray-400 flex-shrink-0" />
+      )}
+      <span className={cumplido ? 'text-gray-700' : 'text-gray-500'}>{texto}</span>
+      {!cumplido && <ChevronRight className="w-3 h-3 text-gray-400 ml-auto" />}
+    </div>
+  )
+
+  if (link && !cumplido) {
+    return <Link href={link}>{content}</Link>
+  }
+  
+  if (accion && !cumplido) {
+    return <button type="button" onClick={accion} className="w-full text-left">{content}</button>
+  }
+
+  return content
 }
