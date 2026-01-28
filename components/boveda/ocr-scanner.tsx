@@ -379,10 +379,26 @@ export function OCRScanner({ onClose, onComplete, initialImages }: OCRScannerPro
         
         const page = pages[i]
         
-        // Agregar imagen
+        // Agregar imagen con manejo de errores
         const img = new Image()
-        img.src = page.imageUrl
-        await new Promise(resolve => { img.onload = resolve })
+        img.crossOrigin = 'anonymous'
+        
+        // Cargar imagen con timeout y manejo de errores
+        const imageLoaded = await new Promise<boolean>((resolve) => {
+          const timeout = setTimeout(() => resolve(false), 10000)
+          
+          img.onload = () => {
+            clearTimeout(timeout)
+            resolve(true)
+          }
+          img.onerror = () => {
+            clearTimeout(timeout)
+            resolve(false)
+          }
+          img.src = page.imageUrl
+        })
+        
+        if (!imageLoaded) continue
         
         const imgRatio = img.width / img.height
         const maxWidth = pageWidth - (margin * 2)
