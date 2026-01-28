@@ -1,5 +1,6 @@
 // Sistema de Creditos para AutoCCL
 // Maneja planes, creditos y facturacion
+import 'server-only'
 
 import { createClient } from '@/lib/supabase/server'
 

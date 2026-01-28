@@ -2,137 +2,15 @@
 
 import { createClient } from '@/lib/supabase/server'
 import { revalidatePath } from 'next/cache'
-
-// Status labels en español
-export const statusLabels: Record<string, string> = {
-  draft: 'Borrador',
-  pending_review: 'En Revision',
-  open: 'Abierto',
-  assigned: 'Asignado',
-  in_conciliation: 'En Conciliacion',
-  in_trial: 'En Juicio',
-  resolved: 'Resuelto',
-  closed: 'Cerrado'
-}
-
-export const statusColors: Record<string, string> = {
-  draft: 'bg-gray-100 text-gray-700',
-  pending_review: 'bg-yellow-100 text-yellow-700',
-  open: 'bg-blue-100 text-blue-700',
-  assigned: 'bg-purple-100 text-purple-700',
-  in_conciliation: 'bg-orange-100 text-orange-700',
-  in_trial: 'bg-red-100 text-red-700',
-  resolved: 'bg-green-100 text-green-700',
-  closed: 'bg-gray-200 text-gray-600'
-}
-
-export const prioridadLabels: Record<string, string> = {
-  baja: 'Baja',
-  normal: 'Normal',
-  alta: 'Alta',
-  urgente: 'Urgente'
-}
-
-export const prioridadColors: Record<string, string> = {
-  baja: 'bg-slate-100 text-slate-600',
-  normal: 'bg-blue-100 text-blue-600',
-  alta: 'bg-orange-100 text-orange-600',
-  urgente: 'bg-red-100 text-red-600'
-}
-
-export interface CalculoLiquidacion {
-  id: string
-  user_id: string
-  salario_diario: number
-  salario_mensual: number | null
-  fecha_ingreso: string
-  fecha_salida: string | null
-  total_conciliacion: number | null
-  neto_conciliacion: number | null
-  total_juicio: number | null
-  neto_juicio: number | null
-  antiguedad_anios: number | null
-  antiguedad_meses: number | null
-  antiguedad_dias: number | null
-  desglose_conciliacion: Record<string, unknown> | null
-  desglose_juicio: Record<string, unknown> | null
-  // Campos de empresa y despido
-  empresa_nombre: string | null
-  empresa_rfc: string | null
-  direccion_trabajo: string | null
-  ciudad: string | null
-  estado: string | null
-  puesto: string | null
-  tipo_jornada: string | null
-  tipo_contrato: string | null
-  motivo_separacion: string | null
-  fecha_despido: string | null
-  hechos_despido: string | null
-  datos_completos: boolean
-  listo_para_caso: boolean
-  created_at: string
-}
-
-// Categorias de casos
-export const categoriaLabels: Record<string, string> = {
-  nuevo: 'Nuevos Casos',
-  por_preaprobar: 'Por Preaprobar',
-  asignado: 'Asignados',
-  conciliacion: 'En Conciliacion',
-  juicio: 'En Juicio',
-  concluido: 'Concluidos',
-  referido: 'Mis Referidos',
-  archivado: 'Archivados'
-}
-
-export const categoriaColors: Record<string, string> = {
-  nuevo: 'bg-blue-100 text-blue-700 border-blue-200',
-  por_preaprobar: 'bg-yellow-100 text-yellow-700 border-yellow-200',
-  asignado: 'bg-purple-100 text-purple-700 border-purple-200',
-  conciliacion: 'bg-orange-100 text-orange-700 border-orange-200',
-  juicio: 'bg-red-100 text-red-700 border-red-200',
-  concluido: 'bg-green-100 text-green-700 border-green-200',
-  referido: 'bg-cyan-100 text-cyan-700 border-cyan-200',
-  archivado: 'bg-gray-100 text-gray-500 border-gray-200'
-}
-
-export interface Caso {
-  id: string
-  folio: string
-  worker_id: string
-  lawyer_id: string | null
-  calculo_id: string | null
-  status: string
-  categoria: string
-  empresa_nombre: string
-  empresa_rfc: string | null
-  ciudad: string | null
-  estado: string | null
-  monto_estimado: number | null
-  monto_final: number | null
-  oferta_empresa: number | null
-  oferta_empresa_fecha: string | null
-  porcentaje_honorarios: number
-  fecha_proxima_audiencia: string | null
-  fecha_limite_conciliacion: string | null
-  notas_abogado: string | null
-  prioridad: string
-  tipo_caso: 'despido' | 'rescision'
-  dias_prescripcion: number
-  fecha_limite_prescripcion: string | null
-  archivado: boolean
-  archivado_at: string | null
-  es_referido: boolean
-  referido_por: string | null
-  metadata: Record<string, unknown> | null
-  created_at: string
-  updated_at: string
-  // Relaciones
-  calculo?: CalculoLiquidacion | null
-  abogado?: { id: string; full_name: string; email: string } | null
-  unread_messages?: number
-  next_event?: { id: string; title: string; starts_at: string; event_type: string } | null
-}
+import { CalculoLiquidacion, Caso } from './helpers'
+import {
+  statusLabels,
+  statusColors,
+  prioridadLabels,
+  prioridadColors,
+  categoriaLabels,
+  categoriaColors
+} from './helpers'
 
 // Obtener calculos completos del usuario que pueden convertirse en casos
 export async function obtenerCalculosParaCasos() {
@@ -943,6 +821,22 @@ export async function obtenerEstadisticasGlobales() {
 }
 
 // Obtener lista de abogados (para filtros)
+export async function obtenerAbogados() {
+  const supabase = await createClient()
+  
+  const { data, error } = await supabase
+    .from('profiles')
+    .select('id, full_name, email')
+    .eq('role', 'lawyer')
+    .order('full_name')
+  
+  if (error) {
+    return { error: error.message, data: null }
+  }
+  
+  return { error: null, data }
+}
+
 // Crear caso desde verificacion de usuario guest con fechas de prescripcion automaticas
 export async function crearCasoDesdeVerificacion(userId: string, calculoId: string) {
   const supabase = await createClient()
@@ -1062,20 +956,4 @@ export async function crearCasoDesdeVerificacion(userId: string, calculoId: stri
   revalidatePath('/casos')
   
   return { error: null, casoId: nuevoCaso.id, folio }
-}
-
-export async function obtenerAbogados() {
-  const supabase = await createClient()
-  
-  const { data, error } = await supabase
-    .from('profiles')
-    .select('id, full_name, email')
-    .eq('role', 'lawyer')
-    .order('full_name')
-  
-  if (error) {
-    return { error: error.message, data: null }
-  }
-  
-  return { error: null, data }
 }

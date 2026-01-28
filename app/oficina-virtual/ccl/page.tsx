@@ -37,7 +37,7 @@ import {
   generarSolicitudAutomatica,
   generarGuiaManual
 } from './actions'
-import { ESTADOS_MEXICO } from '@/lib/ccl/jurisdiction-engine'
+import { ESTADOS_MEXICO } from '@/lib/ccl/constants'
 
 const PASOS = [
   { id: 1, titulo: 'Ubicacion del trabajo', icono: MapPin },

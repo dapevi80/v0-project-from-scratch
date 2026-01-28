@@ -1,6 +1,7 @@
 // Motor de Jurisdiccion CCL - Determina competencia federal/local y CCL correspondiente
-
+import 'server-only'
 import { createClient } from '@/lib/supabase/server'
+import { constants } from './constants'
 
 export interface JurisdiccionInput {
   estadoCentroTrabajo: string
