@@ -1,5 +1,7 @@
 'use client'
 
+import { DialogFooter } from "@/components/ui/dialog"
+
 import { useState, useEffect, useCallback } from 'react'
 import Link from 'next/link'
 import { Button } from '@/components/ui/button'
@@ -34,7 +36,8 @@ import {
   Trash2,
   CheckCircle,
   ExternalLink,
-  ScanLine
+  ScanLine,
+  Edit3
 } from 'lucide-react'
 import { AudioRecorder } from '@/components/boveda/audio-recorder'
 import { DocumentUploader } from '@/components/boveda/document-uploader'
@@ -50,6 +53,7 @@ import {
   obtenerUrlDocumento,
   obtenerUrlPorPath,
   actualizarPerfilConINE,
+  renombrarDocumento,
   type DatosINEExtraidos
 } from './actions'
 import { AyudaUrgenteButton } from '@/components/ayuda-urgente-button'
@@ -171,6 +175,11 @@ export default function BovedaPage() {
   const [deleteConfirm, setDeleteConfirm] = useState<{ open: boolean; docId: string | null; docName?: string }>({ open: false, docId: null })
   const [deleting, setDeleting] = useState(false)
   
+  // Estado para renombrar documento
+  const [renameDoc, setRenameDoc] = useState<{ open: boolean; docId: string | null; currentName: string }>({ open: false, docId: null, currentName: '' })
+  const [newDocName, setNewDocName] = useState('')
+  const [renaming, setRenaming] = useState(false)
+  
   // Función para ver documento (obtiene URL firmada)
   const verDocumento = async (documentoId: string) => {
     setLoadingDocUrl(documentoId)
@@ -191,6 +200,7 @@ export default function BovedaPage() {
   const [visorUrl, setVisorUrl] = useState<string | null>(null)
   const [visorTipo, setVisorTipo] = useState<string | null>(null)
   const [visorOpen, setVisorOpen] = useState(false)
+  const [currentViewDoc, setCurrentViewDoc] = useState<DocumentoBoveda | null>(null)
   const [calculoSeleccionado, setCalculoSeleccionado] = useState<CalculoLiquidacion | null>(null) // Declare setCalculoSeleccionado
   const [visorCalculoOpen, setVisorCalculoOpen] = useState(false) // Declare setVisorCalculoOpen
   
@@ -231,12 +241,13 @@ export default function BovedaPage() {
     return () => { isMounted = false }
   }, [loadData])
   
-  // Ver documento
+// Ver documento
   const handleVerDocumento = async (doc: DocumentoBoveda) => {
     const result = await obtenerUrlDocumento(doc.id)
     if (result.success && result.url) {
       setVisorUrl(result.url)
       setVisorTipo(doc.mime_type || 'application/pdf')
+      setCurrentViewDoc(doc)
       setVisorOpen(true)
     }
   }
@@ -258,6 +269,25 @@ export default function BovedaPage() {
       loadData()
     }
     setDeleteConfirm({ open: false, docId: null })
+  }
+  
+  // Función para renombrar documento
+  const handleRename = async () => {
+    if (!renameDoc.docId || !newDocName.trim()) return
+    
+    setRenaming(true)
+    try {
+      const result = await renombrarDocumento(renameDoc.docId, newDocName.trim())
+      if (result.success) {
+        loadData()
+      }
+    } catch (error) {
+      console.error('Error renombrando:', error)
+    } finally {
+      setRenaming(false)
+      setRenameDoc({ open: false, docId: null, currentName: '' })
+      setNewDocName('')
+    }
   }
   
   // Agrupar documentos por categoría
@@ -521,6 +551,17 @@ export default function BovedaPage() {
                                 onClick={() => handleVerDocumento(doc)}
                               >
                                 <Eye className="w-4 h-4" />
+                              </Button>
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                className="h-8 w-8 p-0 text-blue-600"
+                                onClick={() => {
+                                  setRenameDoc({ open: true, docId: doc.id, currentName: doc.nombre })
+                                  setNewDocName(doc.nombre)
+                                }}
+                              >
+                                <Edit3 className="w-4 h-4" />
                               </Button>
                               <Button
                                 variant="ghost"
@@ -1088,10 +1129,36 @@ export default function BovedaPage() {
         </Dialog>
         
         {/* Modal: Visor de documentos */}
-        <Dialog open={visorOpen} onOpenChange={setVisorOpen}>
+        <Dialog open={visorOpen} onOpenChange={(open) => { setVisorOpen(open); if (!open) setCurrentViewDoc(null) }}>
           <DialogContent className="max-w-4xl w-[95vw] h-[90vh] p-0 overflow-hidden">
             <DialogHeader className="p-4 pb-2 border-b">
-              <DialogTitle>Visualizar Documento</DialogTitle>
+              <div className="flex items-center justify-between">
+                <div className="flex-1 min-w-0 mr-4">
+                  <DialogTitle className="truncate text-base">
+                    {currentViewDoc?.nombre || 'Documento'}
+                  </DialogTitle>
+                  {currentViewDoc && (
+                    <p className="text-xs text-muted-foreground mt-0.5">
+                      {new Date(currentViewDoc.created_at).toLocaleDateString('es-MX', { 
+                        day: 'numeric', month: 'long', year: 'numeric' 
+                      })}
+                    </p>
+                  )}
+                </div>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="h-8 w-8 p-0 text-blue-600 shrink-0"
+                  onClick={() => {
+                    if (currentViewDoc) {
+                      setRenameDoc({ open: true, docId: currentViewDoc.id, currentName: currentViewDoc.nombre })
+                      setNewDocName(currentViewDoc.nombre)
+                    }
+                  }}
+                >
+                  <Edit3 className="w-4 h-4" />
+                </Button>
+              </div>
             </DialogHeader>
             <div className="flex-1 h-full bg-muted">
               {visorUrl && (
@@ -1099,22 +1166,22 @@ export default function BovedaPage() {
                   <img 
                     src={visorUrl || "/placeholder.svg"} 
                     alt="Documento"
-                    className="w-full h-[calc(90vh-60px)] object-contain"
+                    className="w-full h-[calc(90vh-80px)] object-contain"
                   />
                 ) : visorTipo?.startsWith('video/') ? (
                   <video 
                     src={visorUrl}
                     controls
-                    className="w-full h-[calc(90vh-60px)]"
+                    className="w-full h-[calc(90vh-80px)]"
                   />
                 ) : visorTipo?.startsWith('audio/') ? (
-                  <div className="flex items-center justify-center h-[calc(90vh-60px)]">
+                  <div className="flex items-center justify-center h-[calc(90vh-80px)]">
                     <audio src={visorUrl} controls className="w-full max-w-md" />
                   </div>
                 ) : (
                   <iframe
                     src={visorUrl}
-                    className="w-full h-[calc(90vh-60px)]"
+                    className="w-full h-[calc(90vh-80px)]"
                     title="Documento"
                   />
                 )
@@ -1240,6 +1307,47 @@ export default function BovedaPage() {
             </AlertDialogFooter>
           </AlertDialogContent>
         </AlertDialog>
+        
+        {/* Dialog: Renombrar documento */}
+        <Dialog open={renameDoc.open} onOpenChange={(open) => !open && setRenameDoc({ open: false, docId: null, currentName: '' })}>
+          <DialogContent className="max-w-[340px]">
+            <DialogHeader>
+              <DialogTitle className="flex items-center gap-2 text-base">
+                <Edit3 className="w-5 h-5 text-blue-600" />
+                Renombrar documento
+              </DialogTitle>
+            </DialogHeader>
+            <div className="py-2">
+              <label className="text-xs text-muted-foreground mb-1.5 block">Nuevo nombre</label>
+              <input
+                type="text"
+                value={newDocName}
+                onChange={(e) => setNewDocName(e.target.value)}
+                placeholder={renameDoc.currentName}
+                className="w-full px-3 py-2.5 text-sm rounded-lg border-2 bg-white focus:border-blue-400 outline-none"
+                autoFocus
+              />
+            </div>
+            <DialogFooter className="flex-row gap-2">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setRenameDoc({ open: false, docId: null, currentName: '' })}
+                className="flex-1 bg-transparent"
+              >
+                Cancelar
+              </Button>
+              <Button
+                size="sm"
+                onClick={handleRename}
+                disabled={renaming || !newDocName.trim()}
+                className="flex-1 bg-blue-600 hover:bg-blue-700"
+              >
+                {renaming ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Guardar'}
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
       </div>
     </div>
   )
