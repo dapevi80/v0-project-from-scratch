@@ -2,14 +2,21 @@
 
 import { createClient } from '@/lib/supabase/server'
 import { revalidatePath } from 'next/cache'
-import { CalculoLiquidacion, Caso } from './helpers'
-import {
+
+// Re-export types and constants from helpers for backward compatibility
+export type { CalculoLiquidacion, Caso } from './helpers'
+export {
   statusLabels,
   statusColors,
   prioridadLabels,
   prioridadColors,
   categoriaLabels,
-  categoriaColors
+  categoriaColors,
+  formatCurrency,
+  formatDate,
+  calcularDiasRestantes,
+  calcularDiasPrescripcion,
+  calcularPorcentajeOferta
 } from './helpers'
 
 // Obtener calculos completos del usuario que pueden convertirse en casos
