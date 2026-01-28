@@ -1,48 +1,28 @@
 'use client'
 
-import { createClient } from '@/lib/supabase/client'
+import { useAuth } from '@/lib/auth/auth-provider'
 import { Button } from '@/components/ui/button'
 import { useState } from 'react'
 import { LogOut } from 'lucide-react'
-
-// Key para credenciales guest
-const GUEST_CREDENTIALS_KEY = 'mc_guest_credentials'
 
 interface LogoutButtonProps {
   forgetDevice?: boolean
 }
 
 export function LogoutButton({ forgetDevice = false }: LogoutButtonProps) {
+  const { logout, clearCache } = useAuth()
   const [isLoading, setIsLoading] = useState(false)
 
   const handleLogout = async () => {
     setIsLoading(true)
-    try {
-      const supabase = createClient()
-      // Cerrar sesión en Supabase
-      const { error } = await supabase.auth.signOut({ scope: 'global' })
-      
-      if (error) {
-        console.error('Error al cerrar sesión:', error)
-      }
-      
-      // Limpiar cualquier dato local de Supabase
-      if (typeof window !== 'undefined') {
-        localStorage.removeItem('sb-' + process.env.NEXT_PUBLIC_SUPABASE_URL?.split('//')[1]?.split('.')[0] + '-auth-token')
-        
-        // Si forgetDevice es true, también borrar credenciales guest
-        if (forgetDevice) {
-          localStorage.removeItem(GUEST_CREDENTIALS_KEY)
-        }
-      }
-      
-      // Redirigir a la página de acceso
-      window.location.href = '/acceso'
-    } catch (error) {
-      console.error('Error al cerrar sesión:', error)
-      // Forzar redirección aunque falle
-      window.location.href = '/acceso'
+    
+    // Limpiar cache adicional si se pide olvidar dispositivo
+    if (forgetDevice && typeof window !== 'undefined') {
+      localStorage.removeItem('mc_guest_credentials')
     }
+    
+    // Usar el logout del provider que limpia todo
+    await logout()
   }
 
   return (

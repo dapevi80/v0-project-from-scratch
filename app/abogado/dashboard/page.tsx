@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
@@ -8,6 +8,7 @@ import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Progress } from '@/components/ui/progress'
 import { createClient } from '@/lib/supabase/client'
+import { useAuth } from '@/lib/auth/auth-provider'
 import { useInactivityLogout } from '@/hooks/use-inactivity-logout'
 import { type UserRole } from '@/lib/types'
 import confetti from 'canvas-confetti'
@@ -63,6 +64,7 @@ interface LawyerData {
 
 export default function AbogadoDashboardPage() {
   const router = useRouter()
+  const { user, profile: authProfile, loading: authLoading, role: authRole } = useAuth()
   const [loading, setLoading] = useState(true)
   const [data, setData] = useState<LawyerData | null>(null)
   const [showCelebration, setShowCelebration] = useState(false)
@@ -72,31 +74,30 @@ export default function AbogadoDashboardPage() {
     userRole: (data?.profile?.role as UserRole) || null,
     enabled: !loading && !!data
   })
-  
-  useEffect(() => {
-    loadData()
-  }, [])
 
-  async function loadData() {
-    const supabase = createClient()
-    
-    const { data: { user } } = await supabase.auth.getUser()
+  // Redirigir si no es abogado
+  useEffect(() => {
+    if (authLoading) return
     
     if (!user) {
       router.replace('/acceso')
       return
     }
-
-    const { data: profile } = await supabase
-      .from('profiles')
-      .select('id, full_name, email, phone, role, verification_status, celebration_shown, downgrade_reason, upgrade_at, upgrade_type')
-      .eq('id', user.id)
-      .single()
-
-    if (!profile || (profile.role !== 'lawyer' && profile.role !== 'guestlawyer' && profile.role !== 'admin' && profile.role !== 'superadmin')) {
+    
+    if (authRole !== 'lawyer' && authRole !== 'guestlawyer' && authRole !== 'admin' && authRole !== 'superadmin') {
       router.replace('/dashboard')
       return
     }
+    
+    // Cargar datos adicionales del abogado
+    loadLawyerData()
+  }, [authLoading, user, authRole, router])
+
+  const loadLawyerData = useCallback(async () => {
+    if (!user || !authProfile) return
+    
+    const supabase = createClient()
+    const profile = authProfile
 
     const { data: lawyerProfile } = await supabase
       .from('lawyer_profiles')
@@ -192,7 +193,7 @@ export default function AbogadoDashboardPage() {
     })
 
     setLoading(false)
-  }
+  }, [user, authProfile])
 
   if (loading) {
     return (
@@ -260,7 +261,7 @@ export default function AbogadoDashboardPage() {
       description: 'Centro de operaciones',
       icon: (
         <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-          <path strokeLinecap="round" strokeLinejoin="round" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
+          <path strokeLinecap="round" strokeLinejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
         </svg>
       ),
       color: 'from-indigo-500 to-purple-600',
@@ -273,7 +274,7 @@ export default function AbogadoDashboardPage() {
       description: 'Solicitudes con IA',
       icon: (
         <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-          <path strokeLinecap="round" strokeLinejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+          <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
         </svg>
       ),
       color: 'from-green-500 to-emerald-600',
