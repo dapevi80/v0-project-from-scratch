@@ -64,6 +64,9 @@ export function OCRScanner({ onClose, onComplete, initialImages }: OCRScannerPro
   const [copied, setCopied] = useState(false)
   const [savingProgress, setSavingProgress] = useState('')
   const [enhancement, setEnhancement] = useState({ brightness: 0, contrast: 0 })
+  const [editableText, setEditableText] = useState('')
+  const [aiSummary, setAiSummary] = useState('')
+  const [isGeneratingSummary, setIsGeneratingSummary] = useState(false)
   
   // Estados para recorte inteligente
   const [documentBounds, setDocumentBounds] = useState<DocumentBounds | null>(null)
@@ -280,13 +283,14 @@ export function OCRScanner({ onClose, onComplete, initialImages }: OCRScannerPro
         const x = (pageWidth - imgWidth) / 2
         pdf.addImage(page.imageUrl, 'JPEG', x, margin, imgWidth, imgHeight)
         
-        // Agregar texto OCR si existe
-        if (page.ocrResult?.text) {
+        // Agregar texto editado si existe (usa el texto editado por el usuario)
+        const pageText = editableText || page.ocrResult?.text
+        if (pageText && i === 0) { // Solo en la primera página para evitar duplicados
           const textY = margin + imgHeight + 5
           pdf.setFontSize(8)
           pdf.setTextColor(100, 100, 100)
           
-          const lines = pdf.splitTextToSize(page.ocrResult.text, maxWidth)
+          const lines = pdf.splitTextToSize(pageText, maxWidth)
           const maxLines = Math.floor((pageHeight - textY - margin) / 4)
           const displayLines = lines.slice(0, maxLines)
           
@@ -321,7 +325,9 @@ export function OCRScanner({ onClose, onComplete, initialImages }: OCRScannerPro
         metadata: {
           pagesCount: pages.length,
           hasOCR: pages.some(p => p.ocrResult),
-          createdAt: new Date().toISOString()
+          createdAt: new Date().toISOString(),
+          textoEditado: editableText || undefined,
+          resumenIA: aiSummary || undefined
         }
       })
       
@@ -341,6 +347,48 @@ export function OCRScanner({ onClose, onComplete, initialImages }: OCRScannerPro
   const handleEnhance = async (type: 'brightness' | 'contrast', value: number) => {
     setEnhancement(prev => ({ ...prev, [type]: prev[type] + value }))
   }
+
+  // Generar resumen con IA para documentos largos
+  const generateAISummary = async (text: string) => {
+    if (!text || text.length < 100) {
+      setAiSummary('')
+      return
+    }
+    
+    setIsGeneratingSummary(true)
+    try {
+      const response = await fetch('/api/summarize-document', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ text: text.slice(0, 3000) }) // Limitar texto enviado
+      })
+      
+      if (response.ok) {
+        const data = await response.json()
+        setAiSummary(data.summary || '')
+      }
+    } catch (error) {
+      console.error('Error generando resumen:', error)
+    } finally {
+      setIsGeneratingSummary(false)
+    }
+  }
+
+  // Cuando cambia a modo review, preparar texto editable y resumen
+  const prepareReview = useCallback(() => {
+    const allText = pages
+      .map(p => p.ocrResult?.text || '')
+      .filter(Boolean)
+      .join('\n\n--- Página siguiente ---\n\n')
+    
+    setExtractedText(allText)
+    setEditableText(allText)
+    
+    // Generar resumen solo si es documento largo (no INE)
+    if (allText.length > 200) {
+      generateAISummary(allText)
+    }
+  }, [pages])
 
   // ===== FUNCIONES DE RECORTE INTELIGENTE =====
   
@@ -978,11 +1026,33 @@ export function OCRScanner({ onClose, onComplete, initialImages }: OCRScannerPro
             <button onClick={() => setStep('scan')} className="p-1.5 hover:bg-muted rounded-lg">
               <ChevronLeft className="w-4 h-4" />
             </button>
-            <span className="text-xs font-medium">Revisar documento</span>
+            <span className="text-xs font-medium">Revisa y corrige</span>
             <button onClick={onClose} className="p-1.5 hover:bg-muted rounded-lg">
               <X className="w-4 h-4" />
             </button>
           </div>
+          
+          {/* Resumen IA (solo para documentos largos) */}
+          {(aiSummary || isGeneratingSummary) && (
+            <div className="p-2 bg-gradient-to-r from-blue-50 to-indigo-50 border-b">
+              <div className="flex items-start gap-2">
+                <div className="w-5 h-5 rounded-full bg-blue-500 flex items-center justify-center shrink-0 mt-0.5">
+                  <Sparkles className="w-3 h-3 text-white" />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="text-[10px] font-medium text-blue-700 mb-0.5">Resumen del documento</p>
+                  {isGeneratingSummary ? (
+                    <div className="flex items-center gap-1 text-xs text-blue-600">
+                      <Loader2 className="w-3 h-3 animate-spin" />
+                      Analizando...
+                    </div>
+                  ) : (
+                    <p className="text-xs text-blue-800 font-medium leading-snug">{aiSummary}</p>
+                  )}
+                </div>
+              </div>
+            </div>
+          )}
           
           {/* Toggle entre imagen y texto */}
           <div className="flex border-b">
@@ -996,13 +1066,13 @@ export function OCRScanner({ onClose, onComplete, initialImages }: OCRScannerPro
               Vista previa
             </button>
             <button
-              onClick={() => setShowText(true)}
+              onClick={() => { setShowText(true); prepareReview() }}
               className={`flex-1 py-2 text-xs font-medium transition-colors ${
                 showText ? 'bg-blue-50 text-blue-600 border-b-2 border-blue-500' : 'text-muted-foreground'
               }`}
             >
               <FileText className="w-3 h-3 inline mr-1" />
-              Texto extraído
+              Editar texto
             </button>
           </div>
           
@@ -1026,25 +1096,29 @@ export function OCRScanner({ onClose, onComplete, initialImages }: OCRScannerPro
                 ))}
               </div>
             ) : (
-              // Texto extraído
-              <div className="p-3">
-                <div className="flex items-center justify-between mb-2">
-                  <span className="text-xs text-muted-foreground">
-                    {extractedText.length} caracteres
+              // Texto editable
+              <div className="p-3 space-y-2">
+                <div className="flex items-center justify-between">
+                  <span className="text-[10px] text-muted-foreground">
+                    Puedes editar el texto antes de guardar
                   </span>
                   <button
                     onClick={handleCopyText}
-                    className="text-xs text-blue-600 hover:underline flex items-center gap-1"
+                    className="text-[10px] text-blue-600 hover:underline flex items-center gap-1"
                   >
                     {copied ? <Check className="w-3 h-3" /> : <Copy className="w-3 h-3" />}
                     {copied ? 'Copiado' : 'Copiar'}
                   </button>
                 </div>
-                <div className="bg-muted/50 rounded-lg p-3 min-h-[200px]">
-                  <p className="text-xs whitespace-pre-wrap leading-relaxed">
-                    {extractedText || 'No se extrajo texto'}
-                  </p>
-                </div>
+                <textarea
+                  value={editableText}
+                  onChange={(e) => setEditableText(e.target.value)}
+                  className="w-full min-h-[200px] p-3 text-xs rounded-lg border bg-white resize-none focus:ring-2 focus:ring-blue-200 focus:border-blue-400 outline-none"
+                  placeholder="El texto extraído aparecerá aquí. Puedes corregirlo antes de guardar."
+                />
+                <p className="text-[9px] text-muted-foreground">
+                  {editableText.length} caracteres • Las correcciones se guardarán en el PDF
+                </p>
               </div>
             )}
           </div>
@@ -1056,10 +1130,10 @@ export function OCRScanner({ onClose, onComplete, initialImages }: OCRScannerPro
               className="w-full gap-2 bg-gradient-to-r from-green-500 to-emerald-600"
             >
               <Download className="w-4 h-4" />
-              Guardar PDF en Bóveda
+              Guardar en Bóveda
             </Button>
             <p className="text-[10px] text-muted-foreground text-center">
-              {pages.length} página{pages.length > 1 ? 's' : ''} • El texto OCR se incluirá en el PDF
+              {pages.length} página{pages.length > 1 ? 's' : ''} • El texto editado se incluirá
             </p>
           </div>
         </div>
