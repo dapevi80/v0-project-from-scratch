@@ -2,35 +2,14 @@
 
 import { useState, useEffect } from 'react'
 import Link from 'next/link'
+import { useRouter } from 'next/navigation'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Progress } from '@/components/ui/progress'
-import { 
-  User,
-  Shield,
-  Clock,
-  CheckCircle2,
-  AlertCircle,
-  Calculator,
-  FileText,
-  Scale,
-  Lock,
-  ChevronRight,
-  CreditCard,
-  Wallet,
-  TrendingUp,
-  Phone,
-  Mail,
-  MapPin,
-  ExternalLink,
-  Download,
-  Share2,
-  QrCode,
-  Key,
-  FileSignature
-} from 'lucide-react'
 import { getGuestLawyerDashboard } from './actions'
+import { AyudaUrgenteButton } from '@/components/ayuda-urgente-button'
+import { CryptoWallet } from '@/components/wallet/crypto-wallet'
 import { CedulaDigitalModal } from '@/components/abogado/cedula-digital-modal'
 import { EfirmaConfig } from '@/components/abogado/efirma-config'
 import { LawyerCelebration } from '@/components/lawyer-celebration'
@@ -38,6 +17,7 @@ import { DowngradeAlert } from '@/components/downgrade-alert'
 import { AccountLimitsBanner } from '@/components/account-limits-banner'
 
 export default function GuestLawyerDashboardPage() {
+  const router = useRouter()
   const [loading, setLoading] = useState(true)
   const [data, setData] = useState<Awaited<ReturnType<typeof getGuestLawyerDashboard>>['data']>(null)
   const [error, setError] = useState<string | null>(null)
@@ -57,7 +37,6 @@ export default function GuestLawyerDashboardPage() {
     } else {
       setData(result.data)
       
-      // Verificar si hay celebracion pendiente
       if (result.data?.celebrationPending && result.data?.verificationProgress?.verificado) {
         setCelebrationType(result.data?.wasReactivation ? 'reactivation' : 'verification_approved')
         setShowCelebration(true)
@@ -68,18 +47,25 @@ export default function GuestLawyerDashboardPage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-slate-50 flex items-center justify-center">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-slate-900" />
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <div className="text-center space-y-4">
+          <div className="w-8 h-8 rounded-full bg-primary flex items-center justify-center mx-auto animate-pulse">
+            <span className="text-destructive font-bold text-sm">!m!</span>
+          </div>
+          <p className="text-muted-foreground">Cargando...</p>
+        </div>
       </div>
     )
   }
 
   if (error || !data) {
     return (
-      <div className="min-h-screen bg-slate-50 p-4">
+      <div className="min-h-screen bg-background p-4">
         <Card className="max-w-md mx-auto mt-20">
           <CardContent className="p-6 text-center">
-            <AlertCircle className="w-12 h-12 text-destructive mx-auto mb-4" />
+            <svg className="w-12 h-12 text-destructive mx-auto mb-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+            </svg>
             <h2 className="text-lg font-semibold mb-2">Error de acceso</h2>
             <p className="text-muted-foreground mb-4">{error}</p>
             <Button asChild>
@@ -94,296 +80,391 @@ export default function GuestLawyerDashboardPage() {
   const { profile, lawyerProfile, verificationProgress, stats } = data
 
   const verificationSteps = [
-    { key: 'perfil', label: 'Perfil completo', done: verificationProgress.perfilCompleto },
-    { key: 'cedula', label: 'Cedula profesional', done: verificationProgress.cedulaSubida },
-    { key: 'id', label: 'Identificacion oficial', done: verificationProgress.idSubida },
-    { key: 'review', label: 'Revision admin', done: verificationProgress.enRevision },
-    { key: 'verified', label: 'Verificado', done: verificationProgress.verificado },
+    { key: 'perfilCompleto', label: 'Perfil', done: verificationProgress.perfilCompleto },
+    { key: 'cedulaSubida', label: 'Cedula', done: verificationProgress.cedulaSubida },
+    { key: 'idSubida', label: 'INE', done: verificationProgress.idSubida },
+    { key: 'enRevision', label: 'Revision', done: verificationProgress.enRevision },
+    { key: 'verificado', label: 'Verificado', done: verificationProgress.verificado },
   ]
 
   const completedSteps = verificationSteps.filter(s => s.done).length
   const progressPercent = (completedSteps / verificationSteps.length) * 100
 
-  const getStatusBadge = () => {
-    if (verificationProgress.verificado) {
-      return <Badge className="bg-green-100 text-green-700">Verificado</Badge>
+  // Herramientas gratuitas
+  const freeTools = [
+    { 
+      name: 'Calculadora', 
+      href: '/calculadora', 
+      description: 'Liquidaciones',
+      icon: (
+        <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+          <path strokeLinecap="round" strokeLinejoin="round" d="M9 7h6m0 10v-3m-3 3h.01M9 17h.01M9 14h.01M12 14h.01M15 11h.01M12 11h.01M9 11h.01M7 21h10a2 2 0 002-2V5a2 2 0 00-2-2H7a2 2 0 00-2 2v14a2 2 0 002 2z" />
+        </svg>
+      ),
+      color: 'bg-emerald-50 text-emerald-600'
+    },
+    { 
+      name: 'Boveda', 
+      href: '/boveda', 
+      description: 'Documentos',
+      icon: (
+        <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+          <path strokeLinecap="round" strokeLinejoin="round" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+        </svg>
+      ),
+      color: 'bg-blue-50 text-blue-600'
+    },
+    { 
+      name: 'Guia LFT', 
+      href: '/como-funciona', 
+      description: 'Ley Federal',
+      icon: (
+        <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+          <path strokeLinecap="round" strokeLinejoin="round" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
+        </svg>
+      ),
+      color: 'bg-purple-50 text-purple-600'
     }
-    if (verificationProgress.enRevision) {
-      return <Badge className="bg-blue-100 text-blue-700">En revision</Badge>
+  ]
+
+  // Herramientas para abogados (bloqueadas para guestlawyer)
+  const lawyerTools = [
+    { 
+      name: 'AutoCCL', 
+      description: 'Solicitudes con IA',
+      icon: (
+        <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+          <path strokeLinecap="round" strokeLinejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+        </svg>
+      ),
+      badge: 'IA',
+      locked: true,
+      reason: 'Requiere verificacion'
+    },
+    { 
+      name: 'Marketplace', 
+      description: 'Tomar casos',
+      icon: (
+        <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+          <path strokeLinecap="round" strokeLinejoin="round" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
+        </svg>
+      ),
+      locked: true,
+      reason: 'Requiere verificacion'
+    },
+    { 
+      name: 'Mis Casos', 
+      description: 'Gestion de casos',
+      icon: (
+        <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+          <path strokeLinecap="round" strokeLinejoin="round" d="M3 6l3 1m0 0l-3 9a5.002 5.002 0 006.001 0M6 7l3 9M6 7l6-2m6 2l3-1m-3 1l-3 9a5.002 5.002 0 006.001 0M18 7l3 9m-3-9l-6-2m0-2v2m0 16V5m0 16H9m3 0h3" />
+        </svg>
+      ),
+      locked: true,
+      reason: 'Requiere verificacion'
+    },
+    { 
+      name: 'Cedula Digital', 
+      description: 'Tu identificacion',
+      icon: (
+        <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+          <path strokeLinecap="round" strokeLinejoin="round" d="M10 6H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V8a2 2 0 00-2-2h-5m-4 0V5a2 2 0 114 0v1m-4 0a2 2 0 104 0m-5 8a2 2 0 100-4 2 2 0 000 4zm0 0c1.306 0 2.417.835 2.83 2M9 14a3.001 3.001 0 00-2.83 2M15 11h3m-3 4h2" />
+        </svg>
+      ),
+      locked: false,
+      action: () => setShowCedula(true),
+      badge: 'Preview'
     }
-    return <Badge className="bg-amber-100 text-amber-700">Pendiente</Badge>
-  }
+  ]
 
   return (
-    <div className="min-h-screen bg-slate-50">
-      {/* Header minimalista */}
-      <header className="bg-white border-b">
-        <div className="container mx-auto px-4 py-4">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <div 
-                className="w-12 h-12 rounded-full bg-slate-100 flex items-center justify-center cursor-pointer hover:bg-slate-200 transition-colors"
-                onClick={() => setShowCedula(true)}
-              >
-                {lawyerProfile?.photo_url ? (
-                  <img src={lawyerProfile.photo_url || "/placeholder.svg"} alt="" className="w-full h-full rounded-full object-cover" />
-                ) : (
-                  <User className="w-6 h-6 text-slate-600" />
-                )}
-              </div>
-              <div>
-                <h1 className="font-semibold text-slate-900">{profile.full_name}</h1>
-                <p className="text-xs text-slate-500">
-                  {lawyerProfile?.cedula_profesional || 'Cedula pendiente'}
-                </p>
-              </div>
+    <div className="min-h-screen bg-background">
+      {/* Header */}
+      <header className="border-b bg-card sticky top-0 z-40">
+        <div className="container mx-auto px-3 sm:px-4 py-3 flex items-center justify-between">
+          <Link href="/" className="flex items-center gap-2">
+            <div className="w-8 h-8 rounded-full bg-primary flex items-center justify-center flex-shrink-0">
+              <span className="text-destructive font-bold text-sm">!m!</span>
             </div>
-            <div className="flex items-center gap-2">
-              {getStatusBadge()}
-            </div>
+            <span className="text-base sm:text-lg font-semibold hidden xs:inline">mecorrieron.mx</span>
+          </Link>
+          
+          <div className="flex items-center gap-2">
+            <AyudaUrgenteButton />
+            <Button variant="ghost" size="sm" asChild>
+              <Link href="/perfil">Mi perfil</Link>
+            </Button>
           </div>
         </div>
       </header>
 
-      <main className="container mx-auto px-4 py-6 space-y-6 max-w-4xl">
-        {/* Banner de limites de cuenta */}
-        <AccountLimitsBanner
-          role="guestlawyer"
-          casosActuales={stats.casosActivos}
-          calculosActuales={stats.calculosActivos || 0}
-          maxCasos={data.limites?.maxCasos || 1}
-          maxCalculos={data.limites?.maxCalculos || 3}
-          showUpgradeButton={false}
+      {/* Celebracion */}
+      {showCelebration && (
+        <LawyerCelebration
+          userId={profile.id}
+          upgradeType={celebrationType}
+          userName={profile.full_name}
+          onClose={() => setShowCelebration(false)}
         />
+      )}
 
-        {/* Alerta de downgrade si aplica */}
-        {data.wasDowngraded && (
-          <DowngradeAlert userId={profile.id} />
-        )}
+      <main className="container mx-auto px-3 sm:px-4 py-4 sm:py-8">
+        <div className="max-w-4xl mx-auto space-y-6">
 
-        {/* Estado de verificacion */}
-        <Card className="border-slate-200">
-          <CardHeader className="pb-2">
-            <div className="flex items-center justify-between">
-              <CardTitle className="text-base font-medium text-slate-700">Estado de Verificacion</CardTitle>
-              <span className="text-sm text-slate-500">{completedSteps}/{verificationSteps.length}</span>
-            </div>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <Progress value={progressPercent} className="h-2" />
-            
-            <div className="grid grid-cols-5 gap-2">
-              {verificationSteps.map((step, i) => (
-                <div key={step.key} className="flex flex-col items-center gap-1">
-                  <div className={`w-8 h-8 rounded-full flex items-center justify-center ${
-                    step.done 
-                      ? 'bg-green-100 text-green-600' 
-                      : 'bg-slate-100 text-slate-400'
-                  }`}>
-                    {step.done ? (
-                      <CheckCircle2 className="w-4 h-4" />
-                    ) : (
-                      <span className="text-xs font-medium">{i + 1}</span>
-                    )}
-                  </div>
-                  <span className="text-xs text-center text-slate-500 leading-tight">{step.label}</span>
+          {/* Perfil Card */}
+          <Card>
+            <CardContent className="p-4 sm:p-6">
+              <div className="flex items-start gap-4">
+                <div 
+                  className="w-14 h-14 sm:w-16 sm:h-16 rounded-full bg-gradient-to-br from-amber-400 to-orange-500 flex items-center justify-center text-white text-xl font-bold flex-shrink-0 cursor-pointer hover:scale-105 transition-transform"
+                  onClick={() => setShowCedula(true)}
+                >
+                  {lawyerProfile?.photo_url ? (
+                    <img src={lawyerProfile.photo_url || "/placeholder.svg"} alt="" className="w-full h-full rounded-full object-cover" />
+                  ) : (
+                    profile.full_name?.charAt(0).toUpperCase() || 'A'
+                  )}
                 </div>
-              ))}
-            </div>
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <h1 className="text-lg sm:text-xl font-semibold text-foreground truncate">
+                      {profile.full_name}
+                    </h1>
+                    <Badge className="bg-amber-100 text-amber-700 text-xs">
+                      <svg className="w-3 h-3 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                      </svg>
+                      En verificacion
+                    </Badge>
+                  </div>
+                  <p className="text-sm text-muted-foreground mt-0.5">
+                    {lawyerProfile?.cedula_profesional || 'Cedula pendiente de verificacion'}
+                  </p>
+                  <p className="text-xs text-muted-foreground">{profile.email}</p>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
 
-            {!verificationProgress.verificado && (
-              <Button asChild size="sm" className="w-full">
+          {/* Limites de cuenta */}
+          <AccountLimitsBanner
+            role="guestlawyer"
+            casosActuales={stats.casosActivos}
+            calculosActuales={stats.calculosActivos || 0}
+            maxCasos={data.limites?.maxCasos || 1}
+            maxCalculos={data.limites?.maxCalculos || 3}
+            showUpgradeButton={false}
+          />
+
+          {/* Alerta de downgrade */}
+          {data.wasDowngraded && (
+            <DowngradeAlert userId={profile.id} />
+          )}
+
+          {/* Progreso de verificacion */}
+          <Card className="border-amber-200 bg-gradient-to-br from-amber-50 to-orange-50">
+            <CardHeader className="pb-2">
+              <div className="flex items-center justify-between">
+                <CardTitle className="text-base font-medium flex items-center gap-2">
+                  <svg className="w-5 h-5 text-amber-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
+                  </svg>
+                  Verificacion de Abogado
+                </CardTitle>
+                <span className="text-sm text-muted-foreground">{completedSteps}/{verificationSteps.length}</span>
+              </div>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <Progress value={progressPercent} className="h-2" />
+              
+              <div className="grid grid-cols-5 gap-1 sm:gap-2">
+                {verificationSteps.map((step, i) => (
+                  <div key={step.key} className="flex flex-col items-center gap-1">
+                    <div className={`w-8 h-8 sm:w-10 sm:h-10 rounded-full flex items-center justify-center ${
+                      step.done 
+                        ? 'bg-green-100 text-green-600' 
+                        : 'bg-white text-muted-foreground border'
+                    }`}>
+                      {step.done ? (
+                        <svg className="w-4 h-4 sm:w-5 sm:h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                          <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                        </svg>
+                      ) : (
+                        <span className="text-xs font-medium">{i + 1}</span>
+                      )}
+                    </div>
+                    <span className="text-xs text-center text-muted-foreground leading-tight">{step.label}</span>
+                  </div>
+                ))}
+              </div>
+
+              <div className="bg-white/80 rounded-lg p-3 text-sm text-muted-foreground">
+                <p>
+                  <strong className="text-foreground">Siguiente paso:</strong>{' '}
+                  {!verificationProgress.perfilCompleto && 'Completa tu perfil con tus datos personales.'}
+                  {verificationProgress.perfilCompleto && !verificationProgress.cedulaSubida && 'Sube una foto de tu cedula profesional.'}
+                  {verificationProgress.cedulaSubida && !verificationProgress.idSubida && 'Sube tu identificacion oficial (INE/Pasaporte).'}
+                  {verificationProgress.idSubida && !verificationProgress.enRevision && 'Envia tu solicitud para revision.'}
+                  {verificationProgress.enRevision && !verificationProgress.verificado && 'Tu solicitud esta siendo revisada por un administrador.'}
+                  {verificationProgress.verificado && 'Tu cuenta esta verificada.'}
+                </p>
+              </div>
+
+              <Button asChild className="w-full bg-amber-600 hover:bg-amber-700">
                 <Link href="/oficina-virtual/verificacion">
-                  Completar verificacion
-                  <ChevronRight className="w-4 h-4 ml-1" />
+                  {verificationProgress.enRevision ? 'Ver estado de solicitud' : 'Continuar verificacion'}
+                  <svg className="w-4 h-4 ml-2" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
+                  </svg>
                 </Link>
               </Button>
-            )}
-          </CardContent>
-        </Card>
+            </CardContent>
+          </Card>
 
-        {/* Stats minimalistas */}
-        <div className="grid grid-cols-3 gap-3">
-          <Card className="border-slate-200">
-            <CardContent className="p-4 text-center">
-              <p className="text-2xl font-bold text-slate-900">${stats.ingresosMes.toLocaleString()}</p>
-              <p className="text-xs text-slate-500">Ingresos mes</p>
-            </CardContent>
-          </Card>
-          <Card className="border-slate-200">
-            <CardContent className="p-4 text-center">
-              <p className="text-2xl font-bold text-slate-900">{stats.casosActivos}</p>
-              <p className="text-xs text-slate-500">Casos activos</p>
-            </CardContent>
-          </Card>
-          <Card className="border-slate-200">
-            <CardContent className="p-4 text-center">
-              <p className="text-2xl font-bold text-slate-900">{stats.casosCompletados}</p>
-              <p className="text-xs text-slate-500">Completados</p>
-            </CardContent>
-          </Card>
-        </div>
-
-        {/* Herramientas Gratuitas */}
-        <section>
-          <h2 className="text-sm font-medium text-slate-500 mb-3 uppercase tracking-wide">
-            Herramientas Gratuitas
-          </h2>
+          {/* Stats */}
           <div className="grid grid-cols-3 gap-3">
-            <Link href="/calculadora">
-              <Card className="border-slate-200 hover:border-slate-400 transition-colors cursor-pointer h-full">
-                <CardContent className="p-4 flex flex-col items-center text-center gap-2">
-                  <div className="w-10 h-10 rounded-lg bg-emerald-50 flex items-center justify-center">
-                    <Calculator className="w-5 h-5 text-emerald-600" />
-                  </div>
-                  <span className="text-sm font-medium text-slate-700">Calculadora</span>
-                  <span className="text-xs text-slate-400">Liquidaciones</span>
-                </CardContent>
-              </Card>
-            </Link>
-            
-            <Link href="/legal">
-              <Card className="border-slate-200 hover:border-slate-400 transition-colors cursor-pointer h-full">
-                <CardContent className="p-4 flex flex-col items-center text-center gap-2">
-                  <div className="w-10 h-10 rounded-lg bg-blue-50 flex items-center justify-center">
-                    <FileText className="w-5 h-5 text-blue-600" />
-                  </div>
-                  <span className="text-sm font-medium text-slate-700">Documentos</span>
-                  <span className="text-xs text-slate-400">Legales</span>
-                </CardContent>
-              </Card>
-            </Link>
-            
-            <Link href="/como-funciona">
-              <Card className="border-slate-200 hover:border-slate-400 transition-colors cursor-pointer h-full">
-                <CardContent className="p-4 flex flex-col items-center text-center gap-2">
-                  <div className="w-10 h-10 rounded-lg bg-purple-50 flex items-center justify-center">
-                    <Scale className="w-5 h-5 text-purple-600" />
-                  </div>
-                  <span className="text-sm font-medium text-slate-700">Guia LFT</span>
-                  <span className="text-xs text-slate-400">Ley Federal</span>
-                </CardContent>
-              </Card>
-            </Link>
-          </div>
-        </section>
-
-        {/* Herramientas para Abogados */}
-        <section>
-          <div className="flex items-center justify-between mb-3">
-            <h2 className="text-sm font-medium text-slate-500 uppercase tracking-wide">
-              Herramientas para Abogados
-            </h2>
-            {getStatusBadge()}
-          </div>
-          
-          <div className="grid grid-cols-2 gap-3">
-            {/* AutoCCL */}
-            <Card className={`border-slate-200 ${!verificationProgress.verificado ? 'opacity-60' : 'hover:border-blue-400'} transition-colors`}>
-              <CardContent className="p-4">
-                <div className="flex items-start justify-between mb-3">
-                  <div className="w-10 h-10 rounded-lg bg-blue-50 flex items-center justify-center">
-                    <Scale className="w-5 h-5 text-blue-600" />
-                  </div>
-                  {!verificationProgress.verificado && (
-                    <Lock className="w-4 h-4 text-slate-400" />
-                  )}
-                </div>
-                <h3 className="font-medium text-slate-700 mb-1">AutoCCL</h3>
-                <p className="text-xs text-slate-400 mb-3">Solicitudes automaticas al CCL</p>
-                {verificationProgress.verificado ? (
-                  <Button asChild size="sm" className="w-full">
-                    <Link href="/oficina-virtual/ccl">Abrir</Link>
-                  </Button>
-                ) : (
-                  <Button size="sm" disabled className="w-full">
-                    Requiere verificacion
-                  </Button>
-                )}
+            <Card>
+              <CardContent className="p-3 sm:p-4 text-center">
+                <p className="text-xl sm:text-2xl font-bold text-foreground">{stats.casosActivos}</p>
+                <p className="text-xs text-muted-foreground">Casos activos</p>
               </CardContent>
             </Card>
-
-            {/* Marketplace */}
-            <Card className={`border-slate-200 ${!verificationProgress.verificado ? 'opacity-60' : 'hover:border-amber-400'} transition-colors`}>
-              <CardContent className="p-4">
-                <div className="flex items-start justify-between mb-3">
-                  <div className="w-10 h-10 rounded-lg bg-amber-50 flex items-center justify-center">
-                    <CreditCard className="w-5 h-5 text-amber-600" />
-                  </div>
-                  {!verificationProgress.verificado && (
-                    <Lock className="w-4 h-4 text-slate-400" />
-                  )}
-                </div>
-                <h3 className="font-medium text-slate-700 mb-1">Marketplace</h3>
-                <p className="text-xs text-slate-400 mb-3">Casos de trabajadores</p>
-                {verificationProgress.verificado ? (
-                  <Button asChild size="sm" variant="outline" className="w-full bg-transparent">
-                    <Link href="/oficina-virtual/marketplace">Ver casos</Link>
-                  </Button>
-                ) : (
-                  <Button size="sm" disabled className="w-full">
-                    Requiere verificacion
-                  </Button>
-                )}
+            <Card>
+              <CardContent className="p-3 sm:p-4 text-center">
+                <p className="text-xl sm:text-2xl font-bold text-foreground">{stats.calculosActivos || 0}</p>
+                <p className="text-xs text-muted-foreground">Calculos</p>
               </CardContent>
             </Card>
-
-            {/* Oficina Virtual */}
-            <Card className={`border-slate-200 ${!verificationProgress.verificado ? 'opacity-60' : 'hover:border-purple-400'} transition-colors`}>
-              <CardContent className="p-4">
-                <div className="flex items-start justify-between mb-3">
-                  <div className="w-10 h-10 rounded-lg bg-purple-50 flex items-center justify-center">
-                    <TrendingUp className="w-5 h-5 text-purple-600" />
-                  </div>
-                  {!verificationProgress.verificado && (
-                    <Lock className="w-4 h-4 text-slate-400" />
-                  )}
-                </div>
-                <h3 className="font-medium text-slate-700 mb-1">Mis Casos</h3>
-                <p className="text-xs text-slate-400 mb-3">Gestion de casos activos</p>
-                {verificationProgress.verificado ? (
-                  <Button asChild size="sm" variant="outline" className="w-full bg-transparent">
-                    <Link href="/oficina-virtual">Gestionar</Link>
-                  </Button>
-                ) : (
-                  <Button size="sm" disabled className="w-full">
-                    Requiere verificacion
-                  </Button>
-                )}
-              </CardContent>
-            </Card>
-
-            {/* Wallet / Cedula Digital */}
-            <Card className="border-slate-200 hover:border-green-400 transition-colors cursor-pointer" onClick={() => setShowCedula(true)}>
-              <CardContent className="p-4">
-                <div className="flex items-start justify-between mb-3">
-                  <div className="w-10 h-10 rounded-lg bg-green-50 flex items-center justify-center">
-                    <Wallet className="w-5 h-5 text-green-600" />
-                  </div>
-                  <Badge variant="outline" className="text-xs">Nuevo</Badge>
-                </div>
-                <h3 className="font-medium text-slate-700 mb-1">Cedula Digital</h3>
-                <p className="text-xs text-slate-400 mb-3">Tu identificacion profesional</p>
-                <Button size="sm" variant="outline" className="w-full bg-transparent">
-                  Ver cedula
-                </Button>
+            <Card>
+              <CardContent className="p-3 sm:p-4 text-center">
+                <p className="text-xl sm:text-2xl font-bold text-muted-foreground">0</p>
+                <p className="text-xs text-muted-foreground">Creditos CCL</p>
               </CardContent>
             </Card>
           </div>
-        </section>
 
-        {/* Firma Electronica */}
-        <section>
-          <h2 className="text-sm font-medium text-slate-500 mb-3 uppercase tracking-wide">
-            Firma Electronica
-          </h2>
-          <EfirmaConfig 
+          {/* Herramientas Gratuitas */}
+          <div>
+            <div className="flex items-center gap-2 mb-4">
+              <h3 className="text-lg font-semibold">Herramientas Gratuitas</h3>
+              <Badge variant="secondary" className="text-xs">Sin costo</Badge>
+            </div>
+            <div className="grid grid-cols-3 gap-3">
+              {freeTools.map((tool) => (
+                <Link key={tool.name} href={tool.href}>
+                  <Card className="hover:border-primary hover:shadow-md transition-all cursor-pointer h-full">
+                    <CardContent className="p-3 sm:p-4 flex flex-col items-center text-center gap-2">
+                      <div className={`w-10 h-10 rounded-lg ${tool.color} flex items-center justify-center`}>
+                        {tool.icon}
+                      </div>
+                      <p className="font-medium text-foreground text-xs sm:text-sm">{tool.name}</p>
+                      <p className="text-xs text-muted-foreground hidden sm:block">{tool.description}</p>
+                    </CardContent>
+                  </Card>
+                </Link>
+              ))}
+            </div>
+          </div>
+
+          {/* Herramientas para Abogados */}
+          <div>
+            <div className="flex items-center gap-2 mb-4">
+              <h3 className="text-lg font-semibold">Herramientas para Abogados</h3>
+              <Badge variant="outline" className="text-xs">
+                <svg className="w-3 h-3 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+                </svg>
+                Verifica tu cuenta
+              </Badge>
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              {lawyerTools.map((tool) => (
+                <Card 
+                  key={tool.name}
+                  className={`${tool.locked ? 'opacity-50 border-dashed' : 'hover:shadow-md cursor-pointer'} transition-all h-full`}
+                  onClick={tool.action}
+                >
+                  <CardContent className="p-4">
+                    <div className="flex items-start gap-3">
+                      <div className={`w-12 h-12 rounded-lg ${tool.locked ? 'bg-muted' : 'bg-gradient-to-br from-blue-500 to-indigo-600'} flex items-center justify-center ${tool.locked ? 'text-muted-foreground' : 'text-white'} flex-shrink-0`}>
+                        {tool.locked ? (
+                          <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                            <path strokeLinecap="round" strokeLinejoin="round" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+                          </svg>
+                        ) : (
+                          tool.icon
+                        )}
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <h4 className={`font-medium text-sm ${tool.locked ? 'text-muted-foreground' : 'text-foreground'}`}>
+                            {tool.name}
+                          </h4>
+                          {tool.badge && (
+                            <Badge variant={tool.locked ? 'outline' : 'secondary'} className="text-xs">
+                              {tool.badge}
+                            </Badge>
+                          )}
+                        </div>
+                        <p className="text-xs text-muted-foreground mt-0.5">{tool.description}</p>
+                        {tool.locked && tool.reason && (
+                          <p className="text-xs text-amber-600 mt-1">{tool.reason}</p>
+                        )}
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+          </div>
+
+          {/* Firma Electronica */}
+          <div>
+            <h3 className="text-lg font-semibold mb-4">Firma Electronica</h3>
+            <EfirmaConfig 
+              userId={profile.id}
+              hasEfirma={data.efirmaStatus?.configured || false}
+              efirmaStatus={data.efirmaStatus?.status}
+              onUpdate={loadData}
+            />
+          </div>
+
+          {/* Crypto Wallet */}
+          <CryptoWallet 
             userId={profile.id}
-            hasEfirma={data.efirmaStatus?.configured || false}
-            efirmaStatus={data.efirmaStatus?.status}
-            onUpdate={loadData}
+            isVerified={false}
           />
-        </section>
+
+          {/* CTA Verificacion */}
+          <Card className="border-amber-300 bg-gradient-to-r from-amber-50 via-orange-50 to-yellow-50">
+            <CardContent className="p-6 text-center">
+              <div className="w-16 h-16 rounded-full bg-amber-100 flex items-center justify-center mx-auto mb-4">
+                <svg className="w-8 h-8 text-amber-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M13 10V3L4 14h7v7l9-11h-7z" />
+                </svg>
+              </div>
+              <h3 className="text-lg font-semibold text-foreground mb-2">
+                Desbloquea todo el potencial de mecorrieron.mx
+              </h3>
+              <p className="text-sm text-muted-foreground mb-4">
+                Como abogado verificado tendras acceso a casos ilimitados, creditos CCL para generar solicitudes con IA, y el marketplace de trabajadores.
+              </p>
+              <div className="flex flex-col sm:flex-row gap-2 justify-center">
+                <Button asChild className="bg-amber-600 hover:bg-amber-700">
+                  <Link href="/oficina-virtual/verificacion">
+                    Verificar mi cuenta
+                  </Link>
+                </Button>
+                <Button variant="outline" asChild className="bg-transparent">
+                  <Link href="/como-funciona">
+                    Ver beneficios
+                  </Link>
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+
+        </div>
       </main>
 
       {/* Modal Cedula Digital */}
@@ -392,16 +473,6 @@ export default function GuestLawyerDashboardPage() {
           profile={profile}
           lawyerProfile={lawyerProfile}
           onClose={() => setShowCedula(false)}
-        />
-      )}
-      
-      {/* Celebracion de verificacion */}
-      {showCelebration && (
-        <LawyerCelebration
-          userId={profile.id}
-          upgradeType={celebrationType}
-          userName={profile.full_name}
-          onClose={() => setShowCelebration(false)}
         />
       )}
     </div>
