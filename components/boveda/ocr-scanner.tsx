@@ -1,8 +1,8 @@
 'use client'
 
 import React from "react"
-
 import { useState, useRef, useCallback } from 'react'
+import { AIAssistant } from './ai-assistant'
 import { Button } from '@/components/ui/button'
 import { Slider } from '@/components/ui/slider'
 import { 
@@ -50,8 +50,8 @@ import {
 } from '@/lib/ocr-scanner'
 import { subirDocumento, type CategoriaDocumento } from '@/app/boveda/actions'
 import jsPDF from 'jspdf'
-import { QualityGauge } from '@/components/quality-gauge'
-import { AILegalAssistant } from '@/components/ai-legal-assistant'
+import { QualityGauge } from './quality-gauge'
+
 
 interface OCRScannerProps {
   onClose: () => void
@@ -1421,12 +1421,11 @@ export function OCRScanner({ onClose, onComplete, initialImages }: OCRScannerPro
       )}
       
       {/* Asistente Legal IA - disponible en todos los pasos */}
-      <AILegalAssistant
+      <AIAssistant
         isOpen={showAIAssistant}
         onClose={() => setShowAIAssistant(false)}
-        documentContext={step === 'pdf-review' ? editableText : extractedText}
+        documentText={step === 'pdf-review' ? editableText : extractedText}
         documentName={step === 'pdf-review' ? (documentName || pdfFile?.name || 'Documento PDF') : `Documento escaneado (${pages.length} páginas)`}
-        mode="document"
       />
     </div>
   )

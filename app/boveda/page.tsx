@@ -58,7 +58,7 @@ import {
 } from './actions'
 import { AyudaUrgenteButton } from '@/components/ayuda-urgente-button'
 import { CedulaDigital } from '@/components/cedula-digital'
-import { AILegalAssistant, FloatingAIButton } from '@/components/ai-legal-assistant'
+import { AIAssistant, AIAssistantButton } from '@/components/boveda/ai-assistant'
 import { AyudaUrgenteFlow } from '@/components/ayuda-urgente-flow'
 import { LogoutButton } from '@/app/dashboard/logout-button'
 
@@ -1354,13 +1354,12 @@ export default function BovedaPage() {
         </Dialog>
         
         {/* Botón flotante de asistente IA */}
-        <FloatingAIButton onClick={() => setShowAIAssistant(true)} />
+        <AIAssistantButton onClick={() => setShowAIAssistant(true)} />
         
         {/* Asistente Legal IA */}
-        <AILegalAssistant
+        <AIAssistant
           isOpen={showAIAssistant}
           onClose={() => setShowAIAssistant(false)}
-          mode="general"
         />
       </div>
     </div>
