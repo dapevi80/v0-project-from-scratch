@@ -43,6 +43,13 @@ export default function AccesoPage() {
       // Limpiar el parametro de la URL sin recargar
       window.history.replaceState({}, '', '/acceso')
     }
+    // Abrir tab de registro si viene con parametro tab=registro
+    const tab = searchParams.get('tab')
+    if (tab === 'registro') {
+      setActiveTab('registro')
+      // Limpiar parametro de URL
+      window.history.replaceState({}, '', '/acceso')
+    }
   }, [searchParams])
   
   // Login state

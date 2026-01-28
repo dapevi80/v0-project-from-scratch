@@ -1,6 +1,9 @@
 "use client"
 
-import React, { useState, useRef, useEffect } from "react"
+import Link from "next/link"
+
+import React, { useState, useRef, useEffect, useCallback } from "react"
+import { useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import {
   X,
@@ -16,12 +19,52 @@ import {
   UserPlus,
   ChevronDown,
 } from "lucide-react"
-import Link from "next/link"
 
 interface Message {
   id: string
   role: "user" | "assistant"
   content: string
+}
+
+// Metricas para analisis de rendimiento de agentes
+interface ChatMetrics {
+  sessionId: string
+  assistant: string
+  totalMessages: number
+  faqResponses: number
+  aiResponses: number
+  fallbackResponses: number
+  avgResponseTime: number
+  ctaClicks: number
+  conversationDuration: number
+  startTime: number
+}
+
+// Guardar metricas en localStorage para analisis SEO futuro
+function saveMetrics(metrics: ChatMetrics) {
+  try {
+    const stored = localStorage.getItem('chat_metrics') || '[]'
+    const allMetrics = JSON.parse(stored)
+    allMetrics.push({
+      ...metrics,
+      endTime: Date.now(),
+      conversationDuration: Date.now() - metrics.startTime
+    })
+    // Mantener solo las ultimas 100 sesiones
+    if (allMetrics.length > 100) allMetrics.shift()
+    localStorage.setItem('chat_metrics', JSON.stringify(allMetrics))
+  } catch (e) {
+    console.error('Error saving metrics:', e)
+  }
+}
+
+// Obtener metricas para dashboard futuro
+export function getChatMetrics(): ChatMetrics[] {
+  try {
+    return JSON.parse(localStorage.getItem('chat_metrics') || '[]')
+  } catch {
+    return []
+  }
 }
 
 interface AIAssistantProps {
@@ -268,6 +311,7 @@ function shouldShowAppButton(messageId: string, messages: Message[]): boolean {
 }
 
 export function AIAssistant({ isOpen, onClose, documentText, documentName }: AIAssistantProps) {
+  const router = useRouter()
   const [currentAssistant, setCurrentAssistant] = useState<AssistantType>('lia')
   const [messages, setMessages] = useState<Message[]>([])
   const [inputValue, setInputValue] = useState("")
@@ -276,9 +320,36 @@ export function AIAssistant({ isOpen, onClose, documentText, documentName }: AIA
   const [showCTA, setShowCTA] = useState(false)
   const [showPicker, setShowPicker] = useState(false)
   
+  // Metricas de la sesion
+  const [metrics, setMetrics] = useState<ChatMetrics>({
+    sessionId: `session-${Date.now()}`,
+    assistant: 'lia',
+    totalMessages: 0,
+    faqResponses: 0,
+    aiResponses: 0,
+    fallbackResponses: 0,
+    avgResponseTime: 0,
+    ctaClicks: 0,
+    conversationDuration: 0,
+    startTime: Date.now()
+  })
+  
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const inputRef = useRef<HTMLInputElement>(null)
   const assistant = ASSISTANTS[currentAssistant]
+  
+  // Navegar a registro de invitado - rapido y directo
+  const goToGuestRegister = useCallback(() => {
+    // Guardar metricas con click en CTA
+    setMetrics(prev => {
+      const updated = { ...prev, ctaClicks: prev.ctaClicks + 1 }
+      saveMetrics(updated)
+      return updated
+    })
+    // Cerrar modal y navegar inmediatamente a la pagina de acceso con tab de registro
+    onClose()
+    window.location.href = '/acceso?tab=registro'
+  }, [onClose])
 
   useEffect(() => {
     if (messages.length > 0) {
@@ -294,7 +365,18 @@ export function AIAssistant({ isOpen, onClose, documentText, documentName }: AIA
     setMessages([])
     setFaqCount(0)
     setShowCTA(false)
+    // Actualizar asistente en metricas
+    setMetrics(prev => ({ ...prev, assistant: currentAssistant }))
   }, [currentAssistant])
+  
+  // Guardar metricas al cerrar o desmontar
+  useEffect(() => {
+    return () => {
+      if (metrics.totalMessages > 0) {
+        saveMetrics(metrics)
+      }
+    }
+  }, [metrics])
 
   useEffect(() => {
     if (faqCount >= 2 && !showCTA) {
@@ -311,10 +393,14 @@ export function AIAssistant({ isOpen, onClose, documentText, documentName }: AIA
 
   const sendMessage = async (text: string) => {
     if (!text.trim() || isLoading) return
+    const startTime = Date.now()
 
     const userMessage: Message = { id: `user-${Date.now()}`, role: "user", content: text }
     setMessages(prev => [...prev, userMessage])
     setInputValue("")
+    
+    // Actualizar metricas
+    setMetrics(prev => ({ ...prev, totalMessages: prev.totalMessages + 1, assistant: currentAssistant }))
     
     // Contar preguntas no-FAQ del usuario
     const nonFaqQuestions = messages.filter(m => m.role === "user").length + 1
@@ -324,9 +410,10 @@ export function AIAssistant({ isOpen, onClose, documentText, documentName }: AIA
     
     if (faqResponse) {
       setIsLoading(true)
-      await new Promise(r => setTimeout(r, 300))
+      await new Promise(r => setTimeout(r, 250))
       setMessages(prev => [...prev, { id: `assistant-${Date.now()}`, role: "assistant", content: faqResponse }])
       setFaqCount(prev => prev + 1)
+      setMetrics(prev => ({ ...prev, faqResponses: prev.faqResponses + 1 }))
       setIsLoading(false)
       return
     }
@@ -334,9 +421,10 @@ export function AIAssistant({ isOpen, onClose, documentText, documentName }: AIA
     // Si ya hizo 2+ preguntas no-FAQ, usar respuesta generica que dirige a la app
     if (nonFaqQuestions >= 2) {
       setIsLoading(true)
-      await new Promise(r => setTimeout(r, 400))
+      await new Promise(r => setTimeout(r, 300))
       const fallback = FALLBACK_RESPONSES[currentAssistant]
       setMessages(prev => [...prev, { id: `assistant-${Date.now()}`, role: "assistant", content: fallback }])
+      setMetrics(prev => ({ ...prev, fallbackResponses: prev.fallbackResponses + 1 }))
       setIsLoading(false)
       return
     }
@@ -355,16 +443,24 @@ export function AIAssistant({ isOpen, onClose, documentText, documentName }: AIA
       })
 
       const data = await response.json()
+      const responseTime = Date.now() - startTime
+      
       // Agregar pregunta persuasiva al final de la respuesta de la IA
       const followups = FOLLOWUP_QUESTIONS[currentAssistant]
       const randomFollowup = followups[Math.floor(Math.random() * followups.length)]
       const contentWithFollowup = `${data.content || "No tengo esa informacion."}\n\n**${randomFollowup}**`
       
       setMessages(prev => [...prev, { id: `assistant-${Date.now()}`, role: "assistant", content: contentWithFollowup }])
+      setMetrics(prev => ({ 
+        ...prev, 
+        aiResponses: prev.aiResponses + 1,
+        avgResponseTime: (prev.avgResponseTime + responseTime) / 2
+      }))
     } catch {
       // En caso de error, usar respuesta generica
       const fallback = FALLBACK_RESPONSES[currentAssistant]
       setMessages(prev => [...prev, { id: `assistant-${Date.now()}`, role: "assistant", content: fallback }])
+      setMetrics(prev => ({ ...prev, fallbackResponses: prev.fallbackResponses + 1 }))
     } finally {
       setIsLoading(false)
     }
@@ -457,12 +553,14 @@ export function AIAssistant({ isOpen, onClose, documentText, documentName }: AIA
                 </div>
                 {/* Boton Abrir App para respuestas del asistente */}
                 {shouldShowAppButton(msg.id, messages) && (
-                  <Link href="/?tab=register&guest=true" onClick={onClose}>
-                    <Button size="sm" className="w-full bg-emerald-500 hover:bg-emerald-600 text-white gap-1.5 text-xs rounded-xl">
-                      <ArrowRight className="w-3.5 h-3.5" />
-                      Abrir App - Crear cuenta gratis
-                    </Button>
-                  </Link>
+                  <Button 
+                    size="sm" 
+                    onClick={goToGuestRegister}
+                    className="w-full bg-emerald-500 hover:bg-emerald-600 text-white gap-1.5 text-xs rounded-xl"
+                  >
+                    <ArrowRight className="w-3.5 h-3.5" />
+                    Abrir App
+                  </Button>
                 )}
               </div>
             </div>
@@ -490,15 +588,17 @@ export function AIAssistant({ isOpen, onClose, documentText, documentName }: AIA
             <div className="bg-gradient-to-r from-emerald-50 to-blue-50 border border-emerald-200 rounded-xl p-3">
               <div className="flex items-center gap-2 mb-2">
                 <Sparkles className="w-4 h-4 text-emerald-600" />
-                <span className="font-medium text-emerald-800 text-sm">El tiempo corre - 60 dias</span>
+                <span className="font-medium text-emerald-800 text-sm">60 dias para actuar</span>
               </div>
-              <p className="text-xs text-slate-600 mb-2">Ya tienes la info. Ahora actua antes de que sea tarde.</p>
-              <Link href="/?tab=register&guest=true" onClick={onClose}>
-                <Button size="sm" className="w-full bg-gradient-to-r from-emerald-500 to-emerald-600 hover:from-emerald-600 hover:to-emerald-700 text-white gap-1.5 text-xs">
-                  <UserPlus className="w-3.5 h-3.5" />
-                  Crear cuenta de invitado
-                </Button>
-              </Link>
+              <p className="text-xs text-slate-600 mb-2">Ya tienes la info. Actua ahora.</p>
+              <Button 
+                size="sm" 
+                onClick={goToGuestRegister}
+                className="w-full bg-gradient-to-r from-emerald-500 to-emerald-600 hover:from-emerald-600 hover:to-emerald-700 text-white gap-1.5 text-xs"
+              >
+                <UserPlus className="w-3.5 h-3.5" />
+                Entrar a la App
+              </Button>
             </div>
           )}
 
