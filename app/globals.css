@@ -333,4 +333,16 @@
   .lft-reference {
     @apply text-xs text-primary/80 font-medium;
   }
+  
+  /* Animación de escaneo para OCR/INE Scanner */
+  .animate-scan {
+    animation: scan 2s ease-in-out infinite;
+  }
+}
+
+/* Keyframes para animación de escaneo */
+@keyframes scan {
+  0% { top: 0; }
+  50% { top: 100%; }
+  100% { top: 0; }
 }

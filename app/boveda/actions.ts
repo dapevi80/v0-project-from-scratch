@@ -516,3 +516,226 @@ export async function obtenerEstadisticas() {
     estadisticas
   }
 }
+
+// Interfaz para datos de INE extraídos por OCR
+export interface DatosINEExtraidos {
+  curp?: string
+  claveElector?: string
+  numeroINE?: string
+  nombre?: string
+  apellidoPaterno?: string
+  apellidoMaterno?: string
+  nombreCompleto?: string
+  fechaNacimiento?: string
+  sexo?: 'H' | 'M'
+  estadoNacimiento?: string
+  domicilio?: {
+    calle?: string
+    numeroExterior?: string
+    numeroInterior?: string
+    colonia?: string
+    codigoPostal?: string
+    municipio?: string
+    estado?: string
+    domicilioCompleto?: string
+  }
+  vigencia?: string
+  seccion?: string
+  confianza: number
+}
+
+// Actualizar perfil del usuario con datos extraídos de la INE
+export async function actualizarPerfilConINE(datosINE: DatosINEExtraidos) {
+  const supabase = await createClient()
+  
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) {
+    return { success: false, error: 'No autenticado', requiresAuth: true }
+  }
+  
+  // Preparar datos para actualizar
+  const updateData: Record<string, string | null | boolean> = {}
+  
+  // Datos de identificación
+  if (datosINE.curp) {
+    updateData.curp = datosINE.curp.toUpperCase()
+  }
+  
+  if (datosINE.claveElector) {
+    updateData.numero_identificacion = datosINE.claveElector
+    updateData.tipo_identificacion = 'ine'
+  }
+  
+  // Nombre completo (solo si no tiene uno ya)
+  if (datosINE.nombreCompleto) {
+    // Verificar si ya tiene nombre
+    const { data: profile } = await supabase
+      .from('profiles')
+      .select('full_name')
+      .eq('id', user.id)
+      .single()
+    
+    if (!profile?.full_name) {
+      updateData.full_name = datosINE.nombreCompleto
+    }
+  }
+  
+  // Fecha de nacimiento
+  if (datosINE.fechaNacimiento) {
+    updateData.fecha_nacimiento = datosINE.fechaNacimiento
+  }
+  
+  // Sexo
+  if (datosINE.sexo) {
+    updateData.sexo = datosINE.sexo
+  }
+  
+  // Estado de nacimiento
+  if (datosINE.estadoNacimiento) {
+    updateData.estado_nacimiento = datosINE.estadoNacimiento
+  }
+  
+  // Domicilio (si está presente en la INE)
+  if (datosINE.domicilio) {
+    if (datosINE.domicilio.calle) {
+      updateData.calle = datosINE.domicilio.calle
+    }
+    if (datosINE.domicilio.numeroExterior) {
+      updateData.numero_exterior = datosINE.domicilio.numeroExterior
+    }
+    if (datosINE.domicilio.numeroInterior) {
+      updateData.numero_interior = datosINE.domicilio.numeroInterior
+    }
+    if (datosINE.domicilio.colonia) {
+      updateData.colonia = datosINE.domicilio.colonia
+    }
+    if (datosINE.domicilio.codigoPostal) {
+      updateData.codigo_postal = datosINE.domicilio.codigoPostal
+    }
+    if (datosINE.domicilio.municipio) {
+      updateData.ciudad = datosINE.domicilio.municipio // Usamos ciudad para municipio
+    }
+    if (datosINE.domicilio.estado) {
+      updateData.estado = datosINE.domicilio.estado
+    }
+  }
+  
+  // Si no hay nada que actualizar
+  if (Object.keys(updateData).length === 0) {
+    return { success: true, message: 'No hay datos nuevos para actualizar' }
+  }
+  
+  // Actualizar perfil
+  const { error: updateError } = await supabase
+    .from('profiles')
+    .update(updateData)
+    .eq('id', user.id)
+  
+  if (updateError) {
+    console.error('Error actualizando perfil:', updateError)
+    return { success: false, error: updateError.message }
+  }
+  
+  revalidatePath('/perfil')
+  revalidatePath('/boveda')
+  
+  return { 
+    success: true, 
+    message: 'Perfil actualizado con datos de la INE',
+    datosActualizados: Object.keys(updateData)
+  }
+}
+
+// Obtener datos del perfil para validar con INE
+export async function obtenerDatosPerfilParaValidacion() {
+  const supabase = await createClient()
+  
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) {
+    return { success: false, error: 'No autenticado', requiresAuth: true }
+  }
+  
+  const { data: profile, error } = await supabase
+    .from('profiles')
+    .select(`
+      full_name,
+      curp,
+      fecha_nacimiento,
+      sexo,
+      calle,
+      numero_exterior,
+      numero_interior,
+      colonia,
+      codigo_postal,
+      ciudad,
+      estado
+    `)
+    .eq('id', user.id)
+    .single()
+  
+  if (error) {
+    return { success: false, error: error.message }
+  }
+  
+  return { 
+    success: true, 
+    perfil: profile 
+  }
+}
+
+// Actualizar caso con dirección del trabajador (para formularios CCL)
+export async function actualizarCasoConDireccionTrabajador(
+  casoId: string, 
+  direccion: {
+    calle?: string
+    numeroExterior?: string
+    numeroInterior?: string
+    colonia?: string
+    codigoPostal?: string
+    municipio?: string
+    estado?: string
+  }
+) {
+  const supabase = await createClient()
+  
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) {
+    return { success: false, error: 'No autenticado', requiresAuth: true }
+  }
+  
+  // Construir dirección completa
+  const direccionCompleta = [
+    direccion.calle,
+    direccion.numeroExterior ? `#${direccion.numeroExterior}` : null,
+    direccion.numeroInterior ? `Int. ${direccion.numeroInterior}` : null,
+    direccion.colonia ? `Col. ${direccion.colonia}` : null,
+    direccion.codigoPostal ? `C.P. ${direccion.codigoPostal}` : null,
+    direccion.municipio,
+    direccion.estado
+  ].filter(Boolean).join(', ')
+  
+  // Actualizar el caso con la dirección del trabajador
+  const { error } = await supabase
+    .from('calculos_liquidacion')
+    .update({
+      direccion_trabajador: direccionCompleta,
+      calle_trabajador: direccion.calle,
+      numero_ext_trabajador: direccion.numeroExterior,
+      numero_int_trabajador: direccion.numeroInterior,
+      colonia_trabajador: direccion.colonia,
+      cp_trabajador: direccion.codigoPostal,
+      municipio_trabajador: direccion.municipio,
+      estado_trabajador: direccion.estado
+    })
+    .eq('id', casoId)
+    .eq('user_id', user.id)
+  
+  if (error) {
+    console.error('Error actualizando caso:', error)
+    return { success: false, error: error.message }
+  }
+  
+  revalidatePath('/casos')
+  
+  return { success: true, message: 'Dirección del trabajador actualizada en el caso' }
+}

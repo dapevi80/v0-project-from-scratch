@@ -41,13 +41,16 @@ import { DocumentUploader } from '@/components/boveda/document-uploader'
 import { CalculoPDFViewer } from '@/components/boveda/calculo-pdf-viewer'
 import { DocumentoCard } from '@/components/boveda/documento-card'
 import { OCRScanner } from '@/components/boveda/ocr-scanner'
+import { INEScanner } from '@/components/boveda/ine-scanner'
 import {
   obtenerDocumentos,
   obtenerCalculos,
   eliminarDocumento,
   obtenerEstadisticas,
   obtenerUrlDocumento,
-  obtenerUrlPorPath // Declare obtenerUrlPorPath here
+  obtenerUrlPorPath,
+  actualizarPerfilConINE,
+  type DatosINEExtraidos
 } from './actions'
 import { AyudaUrgenteButton } from '@/components/ayuda-urgente-button'
 import { CedulaDigital } from '@/components/cedula-digital'
@@ -158,6 +161,8 @@ export default function BovedaPage() {
   const [showRecorder, setShowRecorder] = useState(false)
   const [showUploader, setShowUploader] = useState(false)
   const [showScanner, setShowScanner] = useState(false)
+  const [showINEScanner, setShowINEScanner] = useState<'frente' | 'reverso' | null>(null)
+  const [ineDataExtraido, setIneDataExtraido] = useState<DatosINEExtraidos | null>(null)
   const [uploaderCategoria, setUploaderCategoria] = useState<string | undefined>(undefined)
   const [loadingDocUrl, setLoadingDocUrl] = useState<string | null>(null)
   
@@ -768,12 +773,13 @@ export default function BovedaPage() {
                         </div>
                       </div>
                     ) : (
-                      <Button variant="outline" className="w-full justify-start h-auto py-2 sm:py-3 bg-transparent text-sm" onClick={() => {
-                        setUploaderCategoria('ine_frente')
-                        setShowUploader(true)
-                      }}>
-                        <Plus className="w-4 h-4 mr-2 flex-shrink-0" />
-                        Subir frente
+                      <Button 
+                        variant="outline" 
+                        className="w-full justify-start h-auto py-2 sm:py-3 bg-gradient-to-r from-blue-50 to-indigo-50 border-blue-200 hover:from-blue-100 hover:to-indigo-100 text-sm" 
+                        onClick={() => setShowINEScanner('frente')}
+                      >
+                        <ScanLine className="w-4 h-4 mr-2 flex-shrink-0 text-blue-600" />
+                        <span className="text-blue-700">Escanear frente (OCR)</span>
                       </Button>
                     )}
                     {/* Reverso */}
@@ -810,16 +816,46 @@ export default function BovedaPage() {
                         </div>
                       </div>
                     ) : (
-                      <Button variant="outline" className="w-full justify-start h-auto py-2 sm:py-3 bg-transparent text-sm" onClick={() => {
-                        setUploaderCategoria('ine_reverso')
-                        setShowUploader(true)
-                      }}>
-                        <Plus className="w-4 h-4 mr-2 flex-shrink-0" />
-                        Subir reverso
+                      <Button 
+                        variant="outline" 
+                        className="w-full justify-start h-auto py-2 sm:py-3 bg-gradient-to-r from-indigo-50 to-purple-50 border-indigo-200 hover:from-indigo-100 hover:to-purple-100 text-sm" 
+                        onClick={() => setShowINEScanner('reverso')}
+                      >
+                        <ScanLine className="w-4 h-4 mr-2 flex-shrink-0 text-indigo-600" />
+                        <span className="text-indigo-700">Escanear reverso (CURP)</span>
                       </Button>
                     )}
                   </div>
                 </div>
+                
+                {/* Info de datos extraidos */}
+                {ineDataExtraido && (
+                  <div className="p-3 bg-green-50 border border-green-200 rounded-lg">
+                    <div className="flex items-start gap-2">
+                      <CheckCircle className="w-4 h-4 text-green-600 mt-0.5 shrink-0" />
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-medium text-green-700">Datos extraidos de la INE</p>
+                        <div className="mt-1 space-y-0.5 text-xs text-green-600">
+                          {ineDataExtraido.curp && (
+                            <p><span className="font-medium">CURP:</span> {ineDataExtraido.curp}</p>
+                          )}
+                          {ineDataExtraido.nombreCompleto && (
+                            <p><span className="font-medium">Nombre:</span> {ineDataExtraido.nombreCompleto}</p>
+                          )}
+                          {ineDataExtraido.fechaNacimiento && (
+                            <p><span className="font-medium">Nacimiento:</span> {new Date(ineDataExtraido.fechaNacimiento).toLocaleDateString('es-MX')}</p>
+                          )}
+                          {ineDataExtraido.domicilio?.domicilioCompleto && (
+                            <p><span className="font-medium">Domicilio:</span> {ineDataExtraido.domicilio.domicilioCompleto}</p>
+                          )}
+                        </div>
+                        <p className="text-[10px] text-green-500 mt-1">
+                          Estos datos se usarán para llenar formularios del CCL
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                )}
                 
                 {/* Pasaporte */}
                 <div className="p-3 sm:p-4 rounded-lg border bg-muted/30">
@@ -1022,6 +1058,34 @@ export default function BovedaPage() {
                 loadData() // Refrescar bóveda automáticamente
               }}
             />
+          </DialogContent>
+        </Dialog>
+        
+        {/* Modal: Escáner inteligente de INE */}
+        <Dialog open={showINEScanner !== null} onOpenChange={(open) => !open && setShowINEScanner(null)}>
+          <DialogContent className="w-[95vw] max-w-[400px] p-0 gap-0 overflow-hidden max-h-[85vh] [&>button]:hidden">
+            {showINEScanner && (
+              <INEScanner 
+                lado={showINEScanner}
+                datosExistentes={ineDataExtraido || undefined}
+                onClose={() => setShowINEScanner(null)}
+                onComplete={async (result) => {
+                  setShowINEScanner(null)
+                  
+                  // Guardar datos extraídos
+                  const newData = result.ineData as DatosINEExtraidos
+                  setIneDataExtraido(prev => prev ? { ...prev, ...newData } : newData)
+                  
+                  // Actualizar perfil con los datos de la INE
+                  if (newData.curp || newData.nombreCompleto || newData.domicilio) {
+                    await actualizarPerfilConINE(newData)
+                  }
+                  
+                  // Refrescar datos
+                  loadData()
+                }}
+              />
+            )}
           </DialogContent>
         </Dialog>
         
