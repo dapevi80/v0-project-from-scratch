@@ -509,22 +509,22 @@ export default function LeadsTinderPage() {
                       {/* Honorarios estimados */}
                       <div className="bg-slate-50 border border-slate-200 rounded-xl p-4">
                         <div className="flex justify-between items-center mb-2">
-                          <span className="text-xs text-slate-500">Honorarios estimados (25%)</span>
+                          <span className="text-xs text-slate-500">Honorarios conciliacion (25%)</span>
                           <span className="font-semibold text-slate-700">
                             {formatCurrency((currentLead.indemnizacion_estimada || 0) * 0.25)}
                           </span>
                         </div>
                         <div className="flex justify-between items-center mb-2">
-                          <span className="text-xs text-slate-500">Comision plataforma (10%)</span>
+                          <span className="text-xs text-slate-500">Comision plataforma (10% del caso)</span>
                           <span className="font-medium text-red-500 text-sm">
-                            -{formatCurrency((currentLead.indemnizacion_estimada || 0) * 0.25 * 0.10)}
+                            -{formatCurrency((currentLead.indemnizacion_estimada || 0) * 0.10)}
                           </span>
                         </div>
                         <div className="border-t border-slate-200 pt-2 mt-2">
                           <div className="flex justify-between items-center">
-                            <span className="text-xs font-medium text-slate-600">Honorarios netos est.</span>
+                            <span className="text-xs font-medium text-slate-600">Tu ganancia neta (15%)</span>
                             <span className="font-bold text-emerald-600">
-                              {formatCurrency((currentLead.indemnizacion_estimada || 0) * 0.25 * 0.90)}
+                              {formatCurrency((currentLead.indemnizacion_estimada || 0) * 0.15)}
                             </span>
                           </div>
                         </div>
