@@ -323,6 +323,25 @@ export default function AdminDashboardPage() {
             <>
               <h2 className="text-sm font-medium text-slate-500 px-1 mt-6">Super Admin</h2>
               
+              {/* Diagnostico CCL */}
+              <Card className="hover:shadow-md transition-shadow border-2 border-cyan-200">
+                <CardContent className="p-4">
+                  <Link href="/admin/ccl-diagnostico" className="flex items-center gap-4">
+                    <div className="w-12 h-12 rounded-lg bg-gradient-to-br from-cyan-500 to-teal-600 flex items-center justify-center">
+                      <FileText className="w-6 h-6 text-white" />
+                    </div>
+                    <div className="flex-1">
+                      <div className="flex items-center gap-2">
+                        <h3 className="font-medium text-slate-800">Diagnostico CCL</h3>
+                        <Badge className="bg-cyan-100 text-cyan-700 text-xs">Nuevo</Badge>
+                      </div>
+                      <p className="text-xs text-slate-500">Prueba automatizada de 33 portales CCL</p>
+                    </div>
+                    <ChevronRight className="w-5 h-5 text-slate-400" />
+                  </Link>
+                </CardContent>
+              </Card>
+              
               {/* Configuracion */}
               <Card className="hover:shadow-md transition-shadow">
                 <CardContent className="p-4">
