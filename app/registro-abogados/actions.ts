@@ -117,6 +117,15 @@ export async function registrarGuestAbogado(datos: GuestAbogadoFormData) {
     console.error('Error creando solicitud:', solicitudError?.message)
   }
   
+  // Registrar en arbol de referidos si tiene codigo
+  if (datos.codigoReferido) {
+    await supabase
+      .rpc('registrar_referido', { 
+        p_nuevo_user_id: authData.user.id, 
+        p_codigo_referido: datos.codigoReferido 
+      })
+  }
+  
   revalidatePath('/admin/solicitudes-abogados')
   return { error: null, success: true, userId: authData.user.id }
 }

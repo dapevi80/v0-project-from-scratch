@@ -100,6 +100,7 @@ export default function AbogadoDashboardPage() {
 
   const lawyerTools = [
     { name: 'Mis Casos', href: '/abogado/casos', emoji: '⚖️', description: 'Gestiona y toma casos', available: true, highlight: true },
+    { name: 'Mis Referidos', href: '/abogado/referidos', emoji: '🔗', description: 'Tu red de comisiones', available: true },
     { name: 'AutoCCL', href: '/oficina-virtual/ccl', emoji: '📝', description: 'Genera solicitudes CCL', available: isVerified, badge: isGuestLawyer ? 'Verificate' : undefined },
     { name: 'Marketplace', href: '/oficina-virtual/casos', emoji: '🛒', description: 'Casos disponibles', available: isVerified, badge: isGuestLawyer ? 'Verificate' : undefined },
     { name: 'Leads', href: '/oficina-virtual/leads', emoji: '👥', description: 'Clientes potenciales', available: isVerified, badge: isGuestLawyer ? 'Verificate' : undefined }
