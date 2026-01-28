@@ -91,7 +91,7 @@ const QUICK_QUESTIONS = [
   { icon: Calculator, text: "Calcular liquidacion", color: "bg-blue-50 text-blue-600 border-blue-200" },
   { icon: FileText, text: "Iniciar conciliacion", color: "bg-emerald-50 text-emerald-600 border-emerald-200" },
   { icon: Scale, text: "Despido sin causa", color: "bg-amber-50 text-amber-600 border-amber-200" },
-  { icon: HelpCircle, text: "Plazo para demandar", color: "bg-purple-50 text-purple-600 border-purple-200" },
+  { icon: HelpCircle, text: "Ayuda con la app", color: "bg-slate-50 text-slate-600 border-slate-200" },
 ]
 
 // FAQ por asistente - Con urgencia de 60 dias y pregunta persuasiva
@@ -131,7 +131,18 @@ Ya tienes todo para empezar. **Quieres calcular tu liquidacion ahora mismo?**`,
 
 Entre mas rapido actues, mejor resultado.
 
-**Empezamos con tu calculo ahora?**`
+**Empezamos con tu calculo ahora?**`,
+    "Ayuda con la app": `**Te explico como usar la app:**
+
+**Mi Boveda** - Guarda tus documentos de forma segura (recibos, contratos, INE)
+
+**Calculadora** - Calcula tu liquidacion en segundos
+
+**Mis Casos** - Administra tu proceso de conciliacion
+
+**Buro de Empresas** - Comenta sobre tu empresa en modo anonimo
+
+**Que seccion te gustaria explorar primero?**`
   },
   mandu: {
     "Calcular liquidacion": `*bosteza* Salario y fechas... la app hace todo.
@@ -151,7 +162,15 @@ Entre mas rapido actues, mejor resultado.
 **Calculamos tu lana? No me cuesta nada... solo siestas.**`,
     "Plazo para demandar": `*bosteza* 60 dias para negociar. Un año limite.
 
-**Hacemos numeros? Sera rapido, como mi siesta #47...**`
+**Hacemos numeros? Sera rapido, como mi siesta #47...**`,
+    "Ayuda con la app": `*abre un ojo perezosamente*
+
+**Boveda** - Tus papeles seguros... como mi cama...
+**Calculadora** - Numeros... rapido... zzz
+**Mis Casos** - Tu proceso... yo vigilo mientras duermo
+**Buro** - Habla de tu empresa... anonimamente...
+
+*se estira* **Cual exploramos? Prometo no dormirme... mucho...**`
   },
   bora: {
     "Calcular liquidacion": `*suspira* Ay mijo... Salario y fechas. Ya.
@@ -171,7 +190,17 @@ Entre mas rapido actues, mejor resultado.
 **Calculamos de una vez? Esta gata vieja no tiene paciencia.**`,
     "Plazo para demandar": `*te observa* 60 dias para negociar. Un año limite.
 
-**Vas a actuar o seguiras preguntando? Porque yo tengo sueño.**`
+**Vas a actuar o seguiras preguntando? Porque yo tengo sueño.**`,
+    "Ayuda con la app": `*te mira por encima de sus lentes*
+
+Ay mijo, es facil:
+
+**Boveda** - Guarda tus papeles. No los pierdas.
+**Calculadora** - Saca cuentas. Sin excusas.
+**Mis Casos** - Tu proceso legal. Organizado.
+**Buro** - Denuncia a tu empresa. Anonimo.
+
+*suspira* **Por donde empezamos? No tengo toda la vida... bueno, si tengo.**`
   },
   licperez: {
     "Calcular liquidacion": `*se acomoda lentamente* Mmm... liquidacion...
@@ -201,7 +230,17 @@ Documentos... cita... audiencia... paso a paso...
 
 *se estira muy lento* El tiempo pasa... incluso para un perezoso...
 
-**Empezamos? Prometo ser... eficiente... a mi manera...**`
+**Empezamos? Prometo ser... eficiente... a mi manera...**`,
+    "Ayuda con la app": `*parpadea lentamente*
+
+Veamos... despacio... pero seguro...
+
+**Boveda**... tus documentos... seguros... como yo en mi rama...
+**Calculadora**... matematicas... sin prisa...
+**Mis Casos**... tu proceso... paso... a... paso...
+**Buro**... opiniones... anonimas... tranquilo...
+
+*se acomoda* **Cual te interesa...? Tenemos... todo el tiempo... del mundo...**`
   }
 }
 
@@ -310,6 +349,7 @@ function findFAQResponse(question: string, assistant: AssistantType): string | n
   if (q.includes("concilia") || q.includes("reclamo")) return responses["Iniciar conciliacion"]
   if (q.includes("despid") && q.includes("causa")) return responses["Despido sin causa"]
   if (q.includes("tiempo") || q.includes("plazo") || q.includes("demandar")) return responses["Plazo para demandar"]
+  if (q.includes("ayuda") || q.includes("como funciona") || q.includes("usar") || q.includes("app") || q.includes("tutorial")) return responses["Ayuda con la app"]
   
   return null
 }
