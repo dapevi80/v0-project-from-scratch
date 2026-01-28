@@ -12,6 +12,8 @@ import {
   ChevronRight
 } from 'lucide-react'
 import { actualizarUbicacionCaso } from '@/app/casos/actions'
+import { subirDocumento } from '@/app/boveda/actions'
+import { generateNotifierGuidePDF, pdfBlobToBase64 } from '@/lib/generate-notifier-guide-pdf'
 
 interface LocationPickerProps {
   onSave: (locationData: LocationData) => void
@@ -33,6 +35,7 @@ export function LocationPicker({ onSave, onClose, casoId }: LocationPickerProps)
   const [userLocation, setUserLocation] = useState<{ lat: number; lng: number } | null>(null)
   const [selectedLocation, setSelectedLocation] = useState<{ lat: number; lng: number } | null>(null)
   const [loadingLocation, setLoadingLocation] = useState(false)
+  const [savingMessage, setSavingMessage] = useState('Guardando ubicacion...')
 
   // Obtener ubicacion del usuario como punto de partida
   useEffect(() => {
@@ -57,27 +60,53 @@ export function LocationPicker({ onSave, onClose, casoId }: LocationPickerProps)
     }
   }, [])
 
-  // Guardar ubicacion
+  // Guardar ubicacion y generar PDF
   const handleSave = async () => {
     if (!selectedLocation) return
     
     setStep('saving')
+    setSavingMessage('Guardando ubicacion...')
     
+    const timestamp = new Date().toISOString()
     const locationData: LocationData = {
       lat: selectedLocation.lat,
       lng: selectedLocation.lng,
       streetViewUrl: `https://www.google.com/maps/@?api=1&map_action=pano&viewpoint=${selectedLocation.lat},${selectedLocation.lng}`,
       mapsUrl: `https://www.google.com/maps?q=${selectedLocation.lat},${selectedLocation.lng}`,
-      timestamp: new Date().toISOString()
+      timestamp
     }
     
     try {
+      // 1. Actualizar el caso con la ubicacion
       await actualizarUbicacionCaso(casoId || null, locationData)
+      
+      // 2. Generar PDF "Guia para Notificador"
+      setSavingMessage('Generando guia PDF...')
+      const pdfBlob = await generateNotifierGuidePDF({
+        lat: selectedLocation.lat,
+        lng: selectedLocation.lng,
+        timestamp
+      })
+      
+      // 3. Guardar PDF en la boveda
+      setSavingMessage('Guardando guia en boveda...')
+      const pdfBase64 = await pdfBlobToBase64(pdfBlob)
+      await subirDocumento({
+        archivo: pdfBase64,
+        nombre: 'Guia para Notificador - Ubicacion del trabajo',
+        nombreOriginal: `guia_notificador_${Date.now()}.pdf`,
+        categoria: 'foto_lugar',
+        mimeType: 'application/pdf',
+        tamanioBytes: pdfBlob.size,
+        metadata: locationData
+      })
+      
       setStep('saved')
       setTimeout(() => {
         onSave(locationData)
       }, 1500)
-    } catch {
+    } catch (error) {
+      console.error('Error guardando ubicacion:', error)
       setStep('streetview')
     }
   }
@@ -292,7 +321,8 @@ export function LocationPicker({ onSave, onClose, casoId }: LocationPickerProps)
             <div className="absolute inset-0 border-4 border-green-200 rounded-full" />
             <div className="absolute inset-0 border-4 border-green-500 rounded-full border-t-transparent animate-spin" />
           </div>
-          <p className="font-medium mt-4">Guardando ubicacion...</p>
+          <p className="font-medium mt-4">{savingMessage}</p>
+          <p className="text-xs text-muted-foreground mt-1">Creando guia para notificador...</p>
         </div>
       )}
 
@@ -303,7 +333,8 @@ export function LocationPicker({ onSave, onClose, casoId }: LocationPickerProps)
             <CheckCircle className="w-8 h-8 text-white" />
           </div>
           <p className="font-bold text-green-600 mt-4 text-lg">Listo!</p>
-          <p className="text-sm text-muted-foreground">Ubicacion guardada</p>
+          <p className="text-sm text-muted-foreground text-center">Ubicacion guardada</p>
+          <p className="text-xs text-green-600 mt-1">Guia para notificador creada</p>
         </div>
       )}
     </div>
