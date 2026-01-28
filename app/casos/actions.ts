@@ -2,22 +2,7 @@
 
 import { createClient } from '@/lib/supabase/server'
 import { revalidatePath } from 'next/cache'
-
-// Re-export types and constants from helpers for backward compatibility
-export type { CalculoLiquidacion, Caso } from './helpers'
-export {
-  statusLabels,
-  statusColors,
-  prioridadLabels,
-  prioridadColors,
-  categoriaLabels,
-  categoriaColors,
-  formatCurrency,
-  formatDate,
-  calcularDiasRestantes,
-  calcularDiasPrescripcion,
-  calcularPorcentajeOferta
-} from './helpers'
+import type { CalculoLiquidacion, Caso } from './helpers'
 
 // Obtener calculos completos del usuario que pueden convertirse en casos
 export async function obtenerCalculosParaCasos() {

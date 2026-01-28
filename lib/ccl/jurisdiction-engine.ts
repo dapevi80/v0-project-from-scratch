@@ -1,5 +1,4 @@
 // Motor de Jurisdiccion CCL - Determina competencia federal/local y CCL correspondiente
-import 'server-only'
 import { createClient } from '@/lib/supabase/server'
 import { ESTADOS_MEXICO } from './constants'
 
