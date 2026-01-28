@@ -37,7 +37,8 @@ import {
   CheckCircle,
   ExternalLink,
   ScanLine,
-  Edit3
+  Edit3,
+  Sparkles
 } from 'lucide-react'
 import { AudioRecorder } from '@/components/boveda/audio-recorder'
 import { DocumentUploader } from '@/components/boveda/document-uploader'
@@ -54,12 +55,14 @@ import {
   obtenerUrlPorPath,
   actualizarPerfilConINE,
   renombrarDocumento,
+  obtenerTextoOCRDocumento,
   type DatosINEExtraidos
 } from './actions'
 import { AyudaUrgenteButton } from '@/components/ayuda-urgente-button'
 import { CedulaDigital } from '@/components/cedula-digital'
 import { AyudaUrgenteFlow } from '@/components/ayuda-urgente-flow'
 import { LogoutButton } from '@/app/dashboard/logout-button'
+import { openAIChatWithDocument } from '@/components/global-ai-assistant'
 
 // Declare types
 type CategoriaDocumento = 'calculo_liquidacion' | 'propuesta_empresa' | 'evidencia_foto' | 'evidencia_video' | 'evidencia_audio' | 'grabacion_audio' | 'contrato_laboral' | 'hoja_renuncia' | 'ine_frente' | 'ine_reverso' | 'pasaporte' | 'comprobante_domicilio' | 'cedula_profesional' | 'credencial_elector' | 'otro'
@@ -201,6 +204,7 @@ export default function BovedaPage() {
   const [visorTipo, setVisorTipo] = useState<string | null>(null)
   const [visorOpen, setVisorOpen] = useState(false)
   const [currentViewDoc, setCurrentViewDoc] = useState<DocumentoBoveda | null>(null)
+  const [currentDocText, setCurrentDocText] = useState<string | null>(null) // Texto OCR del documento actual
   const [calculoSeleccionado, setCalculoSeleccionado] = useState<CalculoLiquidacion | null>(null) // Declare setCalculoSeleccionado
   const [visorCalculoOpen, setVisorCalculoOpen] = useState(false) // Declare setVisorCalculoOpen
   
@@ -243,11 +247,17 @@ export default function BovedaPage() {
   
 // Ver documento
   const handleVerDocumento = async (doc: DocumentoBoveda) => {
-    const result = await obtenerUrlDocumento(doc.id)
-    if (result.success && result.url) {
-      setVisorUrl(result.url)
+    // Obtener URL y texto OCR en paralelo
+    const [urlResult, ocrResult] = await Promise.all([
+      obtenerUrlDocumento(doc.id),
+      obtenerTextoOCRDocumento(doc.id)
+    ])
+    
+    if (urlResult.success && urlResult.url) {
+      setVisorUrl(urlResult.url)
       setVisorTipo(doc.mime_type || 'application/pdf')
       setCurrentViewDoc(doc)
+      setCurrentDocText(ocrResult.success ? ocrResult.texto || null : null)
       setVisorOpen(true)
     }
   }
@@ -1129,7 +1139,7 @@ export default function BovedaPage() {
         </Dialog>
         
         {/* Modal: Visor de documentos */}
-        <Dialog open={visorOpen} onOpenChange={(open) => { setVisorOpen(open); if (!open) setCurrentViewDoc(null) }}>
+        <Dialog open={visorOpen} onOpenChange={(open) => { setVisorOpen(open); if (!open) { setCurrentViewDoc(null); setCurrentDocText(null) } }}>
           <DialogContent className="max-w-4xl w-[95vw] h-[90vh] p-0 overflow-hidden">
             <DialogHeader className="p-4 pb-2 border-b">
               <div className="flex items-center justify-between">
@@ -1145,19 +1155,39 @@ export default function BovedaPage() {
                     </p>
                   )}
                 </div>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  className="h-8 w-8 p-0 text-blue-600 shrink-0"
-                  onClick={() => {
-                    if (currentViewDoc) {
-                      setRenameDoc({ open: true, docId: currentViewDoc.id, currentName: currentViewDoc.nombre })
-                      setNewDocName(currentViewDoc.nombre)
-                    }
-                  }}
-                >
-                  <Edit3 className="w-4 h-4" />
-                </Button>
+                <div className="flex items-center gap-1 shrink-0">
+                  {/* Boton Resumen IA - abre el chat con el documento */}
+                  {currentDocText && (
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="h-8 gap-1.5 text-emerald-600 hover:bg-emerald-50"
+                      onClick={() => {
+                        if (currentViewDoc && currentDocText) {
+                          // Cerrar el visor y abrir el chat con el documento
+                          setVisorOpen(false)
+                          openAIChatWithDocument(currentDocText, currentViewDoc.nombre)
+                        }
+                      }}
+                    >
+                      <Sparkles className="w-4 h-4" />
+                      <span className="text-xs">Resumen IA</span>
+                    </Button>
+                  )}
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="h-8 w-8 p-0 text-blue-600"
+                    onClick={() => {
+                      if (currentViewDoc) {
+                        setRenameDoc({ open: true, docId: currentViewDoc.id, currentName: currentViewDoc.nombre })
+                        setNewDocName(currentViewDoc.nombre)
+                      }
+                    }}
+                  >
+                    <Edit3 className="w-4 h-4" />
+                  </Button>
+                </div>
               </div>
             </DialogHeader>
             <div className="flex-1 h-full bg-muted">

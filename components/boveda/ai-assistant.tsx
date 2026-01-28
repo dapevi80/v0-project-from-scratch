@@ -67,11 +67,23 @@ export function getChatMetrics(): ChatMetrics[] {
   }
 }
 
+interface UserProfile {
+  id?: string
+  email?: string
+  fullName?: string
+  role?: string
+  codigoUsuario?: string
+  isVerified?: boolean
+}
+
 interface AIAssistantProps {
   isOpen: boolean
   onClose: () => void
   documentText?: string
   documentName?: string
+  userProfile?: UserProfile
+  initialMessage?: string // Para enviar un mensaje inicial automaticamente (ej: resumen de documento)
+  assistantType?: 'lia' | 'mandu' | 'bora' | 'licperez'
 }
 
 // Preguntas prediseñadas
@@ -310,9 +322,18 @@ function shouldShowAppButton(messageId: string, messages: Message[]): boolean {
   return !messageId.includes("error") && !messageId.includes("cta")
 }
 
-export function AIAssistant({ isOpen, onClose, documentText, documentName }: AIAssistantProps) {
+export function AIAssistant({ 
+  isOpen, 
+  onClose, 
+  documentText, 
+  documentName, 
+  userProfile,
+  initialMessage,
+  assistantType = 'lia'
+}: AIAssistantProps) {
   const router = useRouter()
-  const [currentAssistant, setCurrentAssistant] = useState<AssistantType>('lia')
+  const [currentAssistant, setCurrentAssistant] = useState<AssistantType>(assistantType)
+  const [hasProcessedInitialMessage, setHasProcessedInitialMessage] = useState(false)
   const [messages, setMessages] = useState<Message[]>([])
   const [inputValue, setInputValue] = useState("")
   const [isLoading, setIsLoading] = useState(false)
@@ -392,6 +413,24 @@ export function AIAssistant({ isOpen, onClose, documentText, documentName }: AIA
     if (isOpen) setTimeout(() => inputRef.current?.focus(), 100)
   }, [isOpen])
 
+  // Procesar mensaje inicial (ej: resumen de documento)
+  useEffect(() => {
+    if (isOpen && initialMessage && !hasProcessedInitialMessage) {
+      setHasProcessedInitialMessage(true)
+      // Enviar automaticamente el mensaje inicial para analisis
+      setTimeout(() => {
+        analyzeDocument(initialMessage)
+      }, 500)
+    }
+  }, [isOpen, initialMessage, hasProcessedInitialMessage])
+
+  // Reset cuando se cierra
+  useEffect(() => {
+    if (!isOpen) {
+      setHasProcessedInitialMessage(false)
+    }
+  }, [isOpen])
+
   useEffect(() => {
     setMessages([])
     setFaqCount(0)
@@ -399,6 +438,62 @@ export function AIAssistant({ isOpen, onClose, documentText, documentName }: AIA
     // Actualizar asistente en metricas
     setMetrics(prev => ({ ...prev, assistant: currentAssistant }))
   }, [currentAssistant])
+  
+  // Funcion para analizar documento con IA
+  const analyzeDocument = async (docText: string) => {
+    setIsLoading(true)
+    
+    // Mensaje del sistema indicando que se esta analizando
+    const systemMessage: Message = {
+      id: `system-${Date.now()}`,
+      role: "assistant",
+      content: `**Analizando documento${documentName ? `: "${documentName}"` : ''}...**\n\n*Cruzando informacion con la Ley Federal del Trabajo...*`
+    }
+    setMessages([systemMessage])
+    
+    try {
+      const response = await fetch(assistant.api, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          messages: [{
+            role: "user",
+            content: `Analiza este documento laboral y dame un resumen con:
+1. Que tipo de documento es
+2. Puntos clave para el TRABAJADOR (que significa para el)
+3. Puntos clave para el ABOGADO (que debe revisar)
+4. Si hay algo urgente o problematico
+5. Recomendaciones
+
+Documento:
+${docText.slice(0, 4000)}`
+          }],
+          documentContext: docText,
+          documentName: documentName,
+          userProfile: userProfile,
+        }),
+      })
+
+      const data = await response.json()
+      
+      // Agregar el analisis como respuesta
+      setMessages([{
+        id: `analysis-${Date.now()}`,
+        role: "assistant",
+        content: data.content || "No pude analizar el documento. Intenta de nuevo."
+      }])
+      
+      setMetrics(prev => ({ ...prev, aiResponses: prev.aiResponses + 1 }))
+    } catch {
+      setMessages([{
+        id: `error-${Date.now()}`,
+        role: "assistant",
+        content: "Error al analizar el documento. Por favor intenta de nuevo."
+      }])
+    } finally {
+      setIsLoading(false)
+    }
+  }
   
   // Guardar metricas al cerrar o desmontar
   useEffect(() => {
@@ -504,6 +599,45 @@ export function AIAssistant({ isOpen, onClose, documentText, documentName }: AIA
       .replace(/\n/g, '<br/>')
   }
 
+  // Generar mensaje de bienvenida personalizado segun el perfil del usuario
+  const getPersonalizedWelcome = () => {
+    const base = assistant.welcomeMessage
+    
+    if (!userProfile?.id) {
+      // Usuario no logueado
+      return base
+    }
+    
+    const name = userProfile.fullName?.split(' ')[0] || 'amigo'
+    const isVerified = userProfile.isVerified
+    const role = userProfile.role
+    
+    // Personalizar segun el asistente
+    if (currentAssistant === 'lia') {
+      if (role === 'lawyer' || role === 'guestlawyer') {
+        return `Hola **${name}**! Soy Lia, tu asistente legal. Veo que eres abogado. Estoy aqui para ayudarte con analisis de documentos y casos. En que te ayudo?`
+      }
+      if (isVerified) {
+        return `Hola **${name}**! Que gusto verte de nuevo. Soy Lia, tu asistente legal. Los primeros **60 dias** son clave. En que te ayudo hoy?`
+      }
+      return `Hola **${name}**! Soy **Lia**, tu asistente legal. Los primeros **60 dias** son clave. En que te ayudo?`
+    }
+    
+    if (currentAssistant === 'mandu') {
+      return `*bosteza* Hola **${name}**... ya te vi entrar. Tienes **60 dias** para actuar. Que necesitas? *se estira*`
+    }
+    
+    if (currentAssistant === 'bora') {
+      return `*te mira* Ah, eres tu **${name}**. Vieja y sabia soy. **60 dias** tienes. Que quieres saber?`
+    }
+    
+    if (currentAssistant === 'licperez') {
+      return `*parpadea lentamente* Hola... **${name}**... soy el **Lic. Perez**... **60 dias** tienes... en que te ayudo... sin prisa?`
+    }
+    
+    return base
+  }
+
   if (!isOpen) return null
 
   return (
@@ -562,13 +696,13 @@ export function AIAssistant({ isOpen, onClose, documentText, documentName }: AIA
 
         {/* Messages */}
         <div className="flex-1 overflow-y-auto p-3 space-y-3">
-          {/* Welcome */}
+          {/* Welcome - personalizado si hay usuario logueado */}
           <div className="flex gap-2">
             <div className={`w-7 h-7 rounded-full overflow-hidden shrink-0 ${assistant.color}`}>
               <img src={assistant.avatar || "/placeholder.svg"} alt={assistant.name} className="w-full h-full object-cover" />
             </div>
             <div className="bg-slate-100 rounded-2xl rounded-tl-sm px-3 py-2 max-w-[85%]">
-              <p className="text-sm" dangerouslySetInnerHTML={{ __html: formatContent(assistant.welcomeMessage) }} />
+              <p className="text-sm" dangerouslySetInnerHTML={{ __html: formatContent(getPersonalizedWelcome()) }} />
             </div>
           </div>
 

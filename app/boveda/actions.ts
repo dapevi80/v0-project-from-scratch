@@ -483,6 +483,37 @@ export async function obtenerUrlDocumento(documentoId: string) {
   return { success: true, url: urlData.signedUrl }
 }
 
+// Obtener texto OCR de un documento (para analisis con IA)
+export async function obtenerTextoOCRDocumento(documentoId: string) {
+  const supabase = await createClient()
+  
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) {
+    return { success: false, error: 'No autenticado', requiresAuth: true }
+  }
+  
+  const { data: doc, error: fetchError } = await supabase
+    .from('documentos_boveda')
+    .select('nombre, metadata')
+    .eq('id', documentoId)
+    .eq('user_id', user.id)
+    .single()
+  
+  if (fetchError || !doc) {
+    return { success: false, error: 'Documento no encontrado' }
+  }
+  
+  // Obtener texto OCR de metadata
+  const metadata = doc.metadata as Record<string, unknown> | null
+  const textoOCR = metadata?.textoEditado as string || metadata?.resumenIA as string || null
+  
+  return { 
+    success: true, 
+    texto: textoOCR,
+    nombre: doc.nombre
+  }
+}
+
 // Obtener URL firmada por path directo (útil para cálculos)
 export async function obtenerUrlPorPath(archivoPath: string) {
   const supabase = await createClient()

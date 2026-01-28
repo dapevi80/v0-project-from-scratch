@@ -20,15 +20,42 @@ const SYSTEM_PROMPT = `Eres **Lía**, la asistente legal IA de "Me Corrieron". T
 
 export async function POST(request: NextRequest) {
   try {
-    const { messages, documentContext, documentName } = await request.json()
+    const { messages, documentContext, documentName, userProfile } = await request.json()
 
     if (!messages || !Array.isArray(messages)) {
       return Response.json({ error: 'Se requiere el array de mensajes' }, { status: 400 })
     }
 
     let systemPrompt = SYSTEM_PROMPT
+    
+    // Personalizar segun el perfil del usuario
+    if (userProfile) {
+      const userName = userProfile.fullName?.split(' ')[0] || ''
+      const isLawyer = userProfile.role === 'lawyer' || userProfile.role === 'guestlawyer'
+      
+      if (isLawyer) {
+        systemPrompt += `\n\n## CONTEXTO DEL USUARIO
+El usuario ${userName ? `"${userName}" ` : ''}es ABOGADO. Adapta tu lenguaje para ser más técnico y profesional. Puedes usar terminología legal avanzada.`
+      } else if (userName) {
+        systemPrompt += `\n\n## CONTEXTO DEL USUARIO
+El usuario se llama ${userName}. Dirígete a él por su nombre de forma amigable.`
+      }
+    }
     if (documentContext && documentName) {
-      systemPrompt += `\n\nDocumento actual: "${documentName}"\nContenido: ${documentContext.slice(0, 3000)}`
+      systemPrompt += `\n\n## MODO ANÁLISIS DE DOCUMENTO
+Estás analizando el documento: "${documentName}"
+
+INSTRUCCIONES PARA EL ANÁLISIS:
+1. Identifica el TIPO de documento (contrato, recibo, carta, acta, etc.)
+2. Resume los PUNTOS CLAVE para el TRABAJADOR (qué significa para él)
+3. Señala lo que un ABOGADO debe revisar
+4. Indica si hay algo URGENTE o problemático
+5. Da RECOMENDACIONES prácticas
+
+CONTENIDO DEL DOCUMENTO:
+${documentContext.slice(0, 4000)}
+
+Responde de forma estructurada y clara, usando negritas para los títulos de sección.`
     }
 
     const response = await fetch('https://api.x.ai/v1/chat/completions', {

@@ -2,10 +2,20 @@
 
 import React, { useState, useRef, useEffect, useCallback } from "react"
 import { Sparkles } from "lucide-react"
+import { createClient } from "@/lib/supabase/client"
 import { AIAssistant } from "./boveda/ai-assistant"
 
 type Position = { x: number; y: number }
 type Edge = 'left' | 'right'
+
+interface UserProfile {
+  id?: string
+  email?: string
+  fullName?: string
+  role?: string
+  codigoUsuario?: string
+  isVerified?: boolean
+}
 
 const BUBBLE_SIZE_IDLE = 44
 const BUBBLE_SIZE_NORMAL = 52
@@ -13,8 +23,17 @@ const BUBBLE_SIZE_HOVER = 58
 const EDGE_MARGIN = 12
 const STORAGE_KEY = 'ai-bubble-position'
 
+// Evento global para abrir el chat con un documento
+export const openAIChatWithDocument = (documentText: string, documentName?: string) => {
+  window.dispatchEvent(new CustomEvent('open-ai-chat', { 
+    detail: { documentText, documentName } 
+  }))
+}
+
 export function GlobalAIAssistant() {
   const [isOpen, setIsOpen] = useState(false)
+  const [userProfile, setUserProfile] = useState<UserProfile | undefined>()
+  const [documentToAnalyze, setDocumentToAnalyze] = useState<{ text: string; name?: string } | null>(null)
   const [isDragging, setIsDragging] = useState(false)
   const [isHovered, setIsHovered] = useState(false)
   const [position, setPosition] = useState<Position>({ x: -1, y: -1 })
@@ -36,6 +55,56 @@ export function GlobalAIAssistant() {
   useEffect(() => {
     setMounted(true)
   }, [])
+
+  // Cargar perfil del usuario logueado
+  useEffect(() => {
+    if (!mounted) return
+    
+    async function loadUserProfile() {
+      try {
+        const supabase = createClient()
+        const { data: { user } } = await supabase.auth.getUser()
+        
+        if (user) {
+          const { data: profile } = await supabase
+            .from('profiles')
+            .select('full_name, role, codigo_usuario, is_verified')
+            .eq('id', user.id)
+            .single()
+          
+          setUserProfile({
+            id: user.id,
+            email: user.email,
+            fullName: profile?.full_name,
+            role: profile?.role,
+            codigoUsuario: profile?.codigo_usuario,
+            isVerified: profile?.is_verified
+          })
+        }
+      } catch {
+        // Usuario no logueado
+      }
+    }
+    
+    loadUserProfile()
+  }, [mounted])
+
+  const resetIdle = useCallback(() => {
+    lastInteraction.current = Date.now()
+    setIsIdle(false)
+  }, [])
+
+  // Escuchar evento para abrir chat con documento
+  useEffect(() => {
+    const handleOpenWithDocument = (e: CustomEvent<{ documentText: string; documentName?: string }>) => {
+      setDocumentToAnalyze({ text: e.detail.documentText, name: e.detail.documentName })
+      setIsOpen(true)
+      resetIdle()
+    }
+    
+    window.addEventListener('open-ai-chat', handleOpenWithDocument as EventListener)
+    return () => window.removeEventListener('open-ai-chat', handleOpenWithDocument as EventListener)
+  }, [resetIdle])
 
   // Cargar posición guardada
   useEffect(() => {
@@ -81,11 +150,6 @@ export function GlobalAIAssistant() {
       if (idleTimer.current) clearInterval(idleTimer.current)
     }
   }, [isOpen, isHovered, isDragging])
-
-  const resetIdle = useCallback(() => {
-    lastInteraction.current = Date.now()
-    setIsIdle(false)
-  }, [])
 
   // Snap to edge más cercano
   const snapToEdge = useCallback((x: number, y: number) => {
@@ -288,7 +352,14 @@ export function GlobalAIAssistant() {
       {/* Asistente IA */}
       <AIAssistant
         isOpen={isOpen}
-        onClose={() => setIsOpen(false)}
+        onClose={() => {
+          setIsOpen(false)
+          setDocumentToAnalyze(null)
+        }}
+        userProfile={userProfile}
+        documentText={documentToAnalyze?.text}
+        documentName={documentToAnalyze?.name}
+        initialMessage={documentToAnalyze?.text}
         assistantType="lia"
       />
     </>
