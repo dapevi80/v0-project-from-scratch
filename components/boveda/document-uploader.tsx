@@ -1,11 +1,9 @@
 'use client'
 
-import { useEffect } from "react"
-
 import React from "react"
-import { useState, useRef, useCallback } from 'react'
+
+import { useEffect, useState, useRef, useCallback } from 'react'
 import { Button } from '@/components/ui/button'
-import { Badge } from '@/components/ui/badge'
 import { 
   Upload, 
   ImageIcon, 
@@ -13,30 +11,38 @@ import {
   FileText, 
   Music2,
   CreditCard,
-  MapPin,
   X,
   Loader2,
   CheckCircle,
   Camera,
-  ChevronDown,
   File,
-  AlertCircle
+  AlertCircle,
+  PenLine,
+  Home,
+  FileCheck
 } from 'lucide-react'
 import { subirDocumento, type CategoriaDocumento } from '@/app/boveda/actions'
 
-// Categorías simplificadas con iconos
+// Categorias minimalistas con iconos descriptivos
 const CATEGORIAS = [
-  { value: 'evidencia_foto', label: 'Fotos', icon: ImageIcon, accept: 'image/*' },
-  { value: 'evidencia_video', label: 'Videos', icon: Video, accept: 'video/*' },
-  { value: 'evidencia_audio', label: 'Audios', icon: Music2, accept: 'audio/*' },
-  { value: 'contrato_laboral', label: 'Contrato', icon: FileText, accept: 'image/*,application/pdf' },
-  { value: 'ine_frente', label: 'INE Frente', icon: CreditCard, accept: 'image/*,application/pdf' },
-  { value: 'ine_reverso', label: 'INE Reverso', icon: CreditCard, accept: 'image/*,application/pdf' },
-  { value: 'pasaporte', label: 'Pasaporte', icon: CreditCard, accept: 'image/*,application/pdf' },
-  { value: 'cedula_profesional', label: 'Cedula Prof.', icon: CreditCard, accept: 'image/*,application/pdf' },
-  { value: 'comprobante_domicilio', label: 'Domicilio', icon: MapPin, accept: 'image/*,application/pdf' },
-  { value: 'otro', label: 'Otro', icon: File, accept: '*' },
+  { value: 'contrato_laboral', label: 'Contrato', icon: PenLine },
+  { value: 'evidencia_foto', label: 'Fotos', icon: ImageIcon },
+  { value: 'evidencia_video', label: 'Video', icon: Video },
+  { value: 'evidencia_audio', label: 'Audio', icon: Music2 },
+  { value: 'ine_frente', label: 'INE', icon: CreditCard },
+  { value: 'pasaporte', label: 'Pasaporte', icon: FileCheck },
+  { value: 'comprobante_domicilio', label: 'Domicilio', icon: Home },
+  { value: 'otro', label: 'Otro', icon: File },
 ] as const
+
+// Detectar categoria automatica basada en tipo de archivo
+function detectarCategoria(mimeType: string): CategoriaDocumento {
+  if (mimeType.startsWith('image/')) return 'evidencia_foto'
+  if (mimeType.startsWith('video/')) return 'evidencia_video'
+  if (mimeType.startsWith('audio/')) return 'evidencia_audio'
+  if (mimeType === 'application/pdf') return 'otro'
+  return 'otro'
+}
 
 interface FileToUpload {
   file: File
@@ -53,23 +59,20 @@ interface DocumentUploaderProps {
 }
 
 export function DocumentUploader({ onUploaded, onClose, defaultCategoria }: DocumentUploaderProps) {
-  const [categoria, setCategoria] = useState<CategoriaDocumento>(defaultCategoria || 'evidencia_foto')
+  const [categoria, setCategoria] = useState<CategoriaDocumento>(defaultCategoria || 'otro')
   const [files, setFiles] = useState<FileToUpload[]>([])
   const [uploading, setUploading] = useState(false)
   const [dragActive, setDragActive] = useState(false)
-  const [showTips, setShowTips] = useState(false)
   
   const fileInputRef = useRef<HTMLInputElement>(null)
   const cameraInputRef = useRef<HTMLInputElement>(null)
   
-  // Actualizar categoría cuando cambie la prop
+  // Actualizar categoria cuando cambie la prop
   useEffect(() => {
     if (defaultCategoria) {
       setCategoria(defaultCategoria)
     }
   }, [defaultCategoria])
-  
-  const categoriaConfig = CATEGORIAS.find(c => c.value === categoria)
 
   const handleFileSelect = useCallback((selectedFiles: FileList | null) => {
     if (!selectedFiles) return
@@ -215,24 +218,44 @@ export function DocumentUploader({ onUploaded, onClose, defaultCategoria }: Docu
   }
 
   return (
-    <div className="bg-background rounded-xl shadow-lg border max-h-[90vh] overflow-hidden flex flex-col">
-      {/* Header fijo con botón cerrar */}
-      <div className="flex items-center justify-between p-4 border-b bg-background sticky top-0 z-10">
-        <h3 className="font-semibold text-lg">Subir Documento</h3>
-        <Button 
-          variant="ghost" 
-          size="icon" 
-          onClick={onClose}
-          className="h-8 w-8 rounded-full hover:bg-destructive/10"
-        >
-          <X className="w-5 h-5" />
+    <div 
+      className="bg-background rounded-xl shadow-lg border max-h-[90vh] overflow-hidden flex flex-col"
+      onDragEnter={handleDrag}
+      onDragLeave={handleDrag}
+      onDragOver={handleDrag}
+      onDrop={handleDrop}
+    >
+      {/* Header minimalista */}
+      <div className="flex items-center justify-between p-3 border-b">
+        <span className="font-medium text-sm">Subir archivo</span>
+        <Button variant="ghost" size="icon" onClick={onClose} className="h-7 w-7">
+          <X className="w-4 h-4" />
         </Button>
       </div>
       
-      {/* Contenido scrolleable */}
-      <div className="flex-1 overflow-y-auto p-4 space-y-4">
-        {/* Selector de categoría como chips */}
-        <div className="flex flex-wrap gap-2">
+      {/* Inputs ocultos */}
+      <input
+        ref={cameraInputRef}
+        type="file"
+        accept="image/*"
+        capture="environment"
+        onChange={(e) => handleFileSelect(e.target.files)}
+        className="hidden"
+      />
+      <input
+        ref={fileInputRef}
+        type="file"
+        multiple
+        accept="*/*"
+        onChange={(e) => handleFileSelect(e.target.files)}
+        className="hidden"
+      />
+      
+      {/* Contenido */}
+      <div className={`flex-1 overflow-y-auto p-4 ${dragActive ? 'bg-primary/5' : ''}`}>
+        
+        {/* Grid de categorias con iconos */}
+        <div className="grid grid-cols-4 gap-2 mb-4">
           {CATEGORIAS.map(cat => {
             const Icon = cat.icon
             const isSelected = categoria === cat.value
@@ -240,157 +263,81 @@ export function DocumentUploader({ onUploaded, onClose, defaultCategoria }: Docu
               <button
                 key={cat.value}
                 onClick={() => setCategoria(cat.value as CategoriaDocumento)}
-                className={`
-                  flex items-center gap-1.5 px-3 py-1.5 rounded-full text-sm transition-all
+                className={`flex flex-col items-center gap-1 p-2 rounded-lg transition-all text-center
                   ${isSelected 
-                    ? 'bg-primary text-primary-foreground' 
-                    : 'bg-muted hover:bg-muted/80 text-muted-foreground'
-                  }
-                `}
+                    ? 'bg-primary/10 text-primary border border-primary/30' 
+                    : 'hover:bg-muted text-muted-foreground'
+                  }`}
               >
-                <Icon className="w-3.5 h-3.5" />
-                {cat.label}
+                <Icon className="w-5 h-5" />
+                <span className="text-[10px] leading-tight">{cat.label}</span>
               </button>
             )
           })}
         </div>
 
-        {/* Acciones rápidas */}
-        <div className="grid grid-cols-2 gap-3">
-          <button
-            onClick={() => cameraInputRef.current?.click()}
-            className="flex flex-col items-center justify-center gap-2 p-4 rounded-xl bg-green-50 border-2 border-green-200 hover:bg-green-100 transition-colors"
-          >
-            <div className="w-12 h-12 rounded-full bg-green-100 flex items-center justify-center">
-              <Camera className="w-6 h-6 text-green-600" />
-            </div>
-            <span className="text-sm font-medium text-green-700">Tomar Foto</span>
-          </button>
-          <input
-            ref={cameraInputRef}
-            type="file"
-            accept="image/*"
-            capture="environment"
-            onChange={(e) => handleFileSelect(e.target.files)}
-            className="hidden"
-          />
-          
-          <button
+        {/* Zona de drop/seleccion - minimalista */}
+        {files.length === 0 ? (
+          <div 
+            className={`border-2 border-dashed rounded-xl p-8 text-center transition-all cursor-pointer
+              ${dragActive ? 'border-primary bg-primary/5' : 'border-muted-foreground/20'}`}
             onClick={() => fileInputRef.current?.click()}
-            className="flex flex-col items-center justify-center gap-2 p-4 rounded-xl bg-primary/5 border-2 border-primary/20 hover:bg-primary/10 transition-colors"
           >
-            <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center">
-              <Upload className="w-6 h-6 text-primary" />
+            <div className="flex justify-center gap-4 mb-3">
+              <button
+                onClick={(e) => { e.stopPropagation(); cameraInputRef.current?.click() }}
+                className="w-12 h-12 rounded-full bg-green-100 flex items-center justify-center hover:bg-green-200 transition-colors"
+              >
+                <Camera className="w-5 h-5 text-green-600" />
+              </button>
+              <button
+                onClick={(e) => { e.stopPropagation(); fileInputRef.current?.click() }}
+                className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center hover:bg-primary/20 transition-colors"
+              >
+                <Upload className="w-5 h-5 text-primary" />
+              </button>
             </div>
-            <span className="text-sm font-medium">Elegir Archivo</span>
-          </button>
-        </div>
-        
-        {/* Zona de drop minimalista */}
-        <div
-          className={`
-            border-2 border-dashed rounded-xl p-6 text-center cursor-pointer transition-all
-            ${dragActive 
-              ? 'border-primary bg-primary/5 scale-[1.02]' 
-              : 'border-muted-foreground/20 hover:border-primary/40'
-            }
-          `}
-          onDragEnter={handleDrag}
-          onDragLeave={handleDrag}
-          onDragOver={handleDrag}
-          onDrop={handleDrop}
-          onClick={() => fileInputRef.current?.click()}
-        >
-          <input
-            ref={fileInputRef}
-            type="file"
-            multiple
-            accept={categoriaConfig?.accept}
-            onChange={(e) => handleFileSelect(e.target.files)}
-            className="hidden"
-          />
-          <p className="text-sm text-muted-foreground">
-            Arrastra archivos aquí
-          </p>
-          <p className="text-xs text-muted-foreground/60 mt-1">Max 50 MB</p>
-        </div>
-        
-        {/* Lista de archivos */}
-        {files.length > 0 && (
+            <p className="text-xs text-muted-foreground">
+              {dragActive ? 'Suelta aqui' : 'Arrastra o selecciona'}
+            </p>
+          </div>
+        ) : (
+          /* Lista de archivos compacta */
           <div className="space-y-2">
             {files.map((fileObj, index) => (
-              <div 
-                key={index}
-                className="flex items-center gap-3 p-3 rounded-lg bg-muted/30 border"
-              >
+              <div key={index} className="flex items-center gap-2 p-2 rounded-lg bg-muted/30 border">
                 {fileObj.preview ? (
-                  <img 
-                    src={fileObj.preview || "/placeholder.svg"} 
-                    alt=""
-                    className="w-12 h-12 rounded-lg object-cover"
-                  />
+                  <img src={fileObj.preview || "/placeholder.svg"} alt="" className="w-10 h-10 rounded object-cover" />
                 ) : (
-                  <div className="w-12 h-12 rounded-lg bg-muted flex items-center justify-center">
-                    <File className="w-5 h-5 text-muted-foreground" />
+                  <div className="w-10 h-10 rounded bg-muted flex items-center justify-center">
+                    {fileObj.file.type.startsWith('video/') ? <Video className="w-4 h-4 text-muted-foreground" /> :
+                     fileObj.file.type.startsWith('audio/') ? <Music2 className="w-4 h-4 text-muted-foreground" /> :
+                     fileObj.file.type === 'application/pdf' ? <FileText className="w-4 h-4 text-red-500" /> :
+                     <File className="w-4 h-4 text-muted-foreground" />}
                   </div>
                 )}
-                
                 <div className="flex-1 min-w-0">
-                  <p className="text-sm font-medium truncate">{fileObj.file.name}</p>
-                  <p className="text-xs text-muted-foreground">{formatFileSize(fileObj.file.size)}</p>
+                  <p className="text-xs font-medium truncate">{fileObj.file.name}</p>
+                  <p className="text-[10px] text-muted-foreground">{formatFileSize(fileObj.file.size)}</p>
                 </div>
-                
                 {fileObj.status === 'pending' && (
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    className="h-8 w-8 shrink-0"
-                    onClick={() => removeFile(index)}
-                  >
-                    <X className="w-4 h-4" />
-                  </Button>
+                  <button onClick={() => removeFile(index)} className="p-1 hover:bg-muted rounded">
+                    <X className="w-3 h-3" />
+                  </button>
                 )}
-                {fileObj.status === 'uploading' && (
-                  <Loader2 className="w-5 h-5 animate-spin text-primary shrink-0" />
-                )}
-                {fileObj.status === 'success' && (
-                  <CheckCircle className="w-5 h-5 text-green-500 shrink-0" />
-                )}
-                {fileObj.status === 'error' && (
-                  <AlertCircle className="w-5 h-5 text-destructive shrink-0" />
-                )}
+                {fileObj.status === 'uploading' && <Loader2 className="w-4 h-4 animate-spin text-primary" />}
+                {fileObj.status === 'success' && <CheckCircle className="w-4 h-4 text-green-500" />}
+                {fileObj.status === 'error' && <AlertCircle className="w-4 h-4 text-destructive" />}
               </div>
             ))}
-          </div>
-        )}
-
-        {/* Tips colapsables */}
-        <button
-          onClick={() => setShowTips(!showTips)}
-          className="flex items-center justify-between w-full p-3 rounded-lg bg-muted/30 text-sm"
-        >
-          <span className="text-muted-foreground">Documentos sugeridos</span>
-          <ChevronDown className={`w-4 h-4 transition-transform ${showTips ? 'rotate-180' : ''}`} />
-        </button>
-        
-        {showTips && (
-          <div className="space-y-2 text-xs">
-            <div className="flex flex-wrap gap-1">
-              <Badge variant="outline" className="bg-background">Contrato</Badge>
-              <Badge variant="outline" className="bg-background">INE</Badge>
-              <Badge variant="outline" className="bg-background">Recibos</Badge>
-              <Badge variant="outline" className="bg-background">WhatsApp</Badge>
-            </div>
-            <div className="flex flex-wrap gap-1">
-              <Badge variant="outline" className="bg-primary/5 border-primary/20">Solicitud Conciliación</Badge>
-              <Badge variant="outline" className="bg-primary/5 border-primary/20">Notificación</Badge>
-              <Badge variant="outline" className="bg-amber-50 border-amber-200">Actas Audiencia</Badge>
-            </div>
-            <div className="flex flex-wrap gap-1">
-              <Badge variant="outline" className="bg-green-50 border-green-200">Convenio</Badge>
-              <Badge variant="outline" className="bg-green-50 border-green-200">Acta Pago</Badge>
-              <Badge variant="outline" className="bg-red-50 border-red-200">No Conciliación</Badge>
-            </div>
+            
+            {/* Boton agregar mas */}
+            <button
+              onClick={() => fileInputRef.current?.click()}
+              className="w-full p-2 border border-dashed rounded-lg text-xs text-muted-foreground hover:bg-muted/30 transition-colors"
+            >
+              + Agregar mas
+            </button>
           </div>
         )}
       </div>
