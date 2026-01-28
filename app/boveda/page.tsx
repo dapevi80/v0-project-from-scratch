@@ -640,12 +640,13 @@ export default function BovedaPage() {
                             size="sm"
                             className="flex-1 gap-2"
                             onClick={() => {
-                              setCalculoSeleccionado(calc)
-                              setVisorCalculoOpen(true)
+                              if (confirm('Vas a salir de la Bóveda para ver el detalle de tu caso. ¿Continuar?')) {
+                                window.location.href = `/casos/${calc.id}`
+                              }
                             }}
                           >
-                            <Eye className="w-4 h-4" />
-                            Ver Documentos
+                            <ExternalLink className="w-4 h-4" />
+                            Ver Caso
                           </Button>
                           <Button
                             variant="outline"
