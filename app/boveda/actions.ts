@@ -472,6 +472,25 @@ export async function obtenerUrlDocumento(documentoId: string) {
     return { success: false, error: 'Documento no encontrado' }
   }
   
+  // Verificar si el archivo existe en storage antes de crear URL firmada
+  const pathParts = doc.archivo_path.split('/')
+  const folderPath = pathParts.slice(0, -1).join('/')
+  const fileName = pathParts[pathParts.length - 1]
+  
+  const { data: files } = await supabase.storage
+    .from('boveda')
+    .list(folderPath, { search: fileName })
+  
+  if (!files || files.length === 0) {
+    // El archivo no existe en storage, marcar el documento como eliminado
+    await supabase
+      .from('documentos_boveda')
+      .update({ estado: 'archivo_perdido' })
+      .eq('id', documentoId)
+    
+    return { success: false, error: 'El archivo ya no existe en storage', notFound: true }
+  }
+  
   const { data: urlData, error: urlError } = await supabase.storage
     .from('boveda')
     .createSignedUrl(doc.archivo_path, 60 * 60) // 1 hora
@@ -526,6 +545,19 @@ export async function obtenerUrlPorPath(archivoPath: string) {
   // Verificar que el path pertenezca al usuario
   if (!archivoPath.startsWith(user.id)) {
     return { success: false, error: 'Acceso denegado' }
+  }
+  
+  // Primero verificar si el archivo existe en storage
+  const pathParts = archivoPath.split('/')
+  const folderPath = pathParts.slice(0, -1).join('/')
+  const fileName = pathParts[pathParts.length - 1]
+  
+  const { data: files, error: listError } = await supabase.storage
+    .from('boveda')
+    .list(folderPath, { search: fileName })
+  
+  if (listError || !files || files.length === 0) {
+    return { success: false, error: 'Archivo no encontrado en storage', notFound: true }
   }
   
   const { data: urlData, error: urlError } = await supabase.storage
