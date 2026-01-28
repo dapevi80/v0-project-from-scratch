@@ -32,6 +32,108 @@ export async function createOCRWorker() {
   return worker
 }
 
+// Limpiar y validar texto OCR - Filtrar basura y caracteres sin sentido
+export function cleanOCRText(text: string, words: Array<{ text: string; confidence: number }>): string {
+  if (!text) return ''
+  
+  // Filtrar palabras con baja confianza (menos del 40%)
+  const validWords = words.filter(w => w.confidence >= 40)
+  
+  // Patrones de texto basura comun en OCR
+  const garbagePatterns = [
+    /^[^a-zA-ZáéíóúñÁÉÍÓÚÑ0-9]+$/, // Solo simbolos
+    /^[|lI1]{3,}$/, // Lineas verticales confundidas
+    /^[-_=]{3,}$/, // Lineas horizontales
+    /^[.,:;]{3,}$/, // Puntuacion repetida
+    /^[0-9]{1}$/, // Numeros sueltos de 1 digito
+    /^.{1,2}$/, // Palabras muy cortas (1-2 chars) sin ser articulos comunes
+  ]
+  
+  // Articulos y palabras cortas validas en espanol
+  const validShortWords = ['a', 'y', 'o', 'u', 'e', 'el', 'la', 'de', 'en', 'no', 'si', 'al', 'del', 'un', 'una', 'por', 'con', 'sin', 'que', 'se', 'su', 'le', 'lo', 'me', 'te', 'mi', 'tu', 'es', 'ha', 'he']
+  
+  // Procesar linea por linea
+  const lines = text.split('\n')
+  const cleanedLines: string[] = []
+  
+  for (const line of lines) {
+    const words = line.trim().split(/\s+/)
+    const cleanedWords: string[] = []
+    
+    for (const word of words) {
+      const cleanWord = word.trim()
+      if (!cleanWord) continue
+      
+      // Verificar si es basura
+      let isGarbage = false
+      for (const pattern of garbagePatterns) {
+        if (pattern.test(cleanWord)) {
+          // Excepcion: palabras cortas validas
+          if (cleanWord.length <= 3 && validShortWords.includes(cleanWord.toLowerCase())) {
+            break
+          }
+          isGarbage = true
+          break
+        }
+      }
+      
+      if (!isGarbage) {
+        cleanedWords.push(cleanWord)
+      }
+    }
+    
+    // Solo agregar lineas con contenido valido (al menos 2 palabras o 1 palabra larga)
+    if (cleanedWords.length >= 2 || (cleanedWords.length === 1 && cleanedWords[0].length >= 4)) {
+      cleanedLines.push(cleanedWords.join(' '))
+    }
+  }
+  
+  return cleanedLines.join('\n')
+}
+
+// Detectar si el texto es mayormente basura o tiene contenido real
+export function isValidOCRText(text: string): { valid: boolean; score: number; reason: string } {
+  if (!text || text.length < 10) {
+    return { valid: false, score: 0, reason: 'Texto muy corto' }
+  }
+  
+  // Contar caracteres validos vs basura
+  const alphanumeric = (text.match(/[a-zA-ZáéíóúñÁÉÍÓÚÑ0-9]/g) || []).length
+  const total = text.length
+  const alphaRatio = alphanumeric / total
+  
+  // Contar palabras validas (3+ caracteres)
+  const words = text.split(/\s+/).filter(w => w.length >= 3)
+  const validWords = words.filter(w => /^[a-zA-ZáéíóúñÁÉÍÓÚÑ0-9]+$/.test(w))
+  const wordRatio = words.length > 0 ? validWords.length / words.length : 0
+  
+  // Detectar patrones de texto real (frases comunes en documentos legales)
+  const legalPatterns = [
+    /contrato/i, /trabajador/i, /empresa/i, /fecha/i, /firma/i,
+    /salario/i, /pago/i, /prestacion/i, /despido/i, /renuncia/i,
+    /finiquito/i, /liquidacion/i, /jornada/i, /horario/i,
+    /conciliacion/i, /demanda/i, /audiencia/i, /citatorio/i,
+    /nombre/i, /domicilio/i, /telefono/i, /curp/i, /rfc/i
+  ]
+  
+  let patternMatches = 0
+  for (const pattern of legalPatterns) {
+    if (pattern.test(text)) patternMatches++
+  }
+  const patternScore = Math.min(1, patternMatches / 3)
+  
+  // Calcular score final (0-100)
+  const score = Math.round((alphaRatio * 30) + (wordRatio * 40) + (patternScore * 30))
+  
+  if (score >= 50) {
+    return { valid: true, score, reason: 'Texto legible' }
+  } else if (score >= 30) {
+    return { valid: true, score, reason: 'Texto parcialmente legible' }
+  } else {
+    return { valid: false, score, reason: 'Calidad insuficiente - intenta mejorar la imagen' }
+  }
+}
+
 // Procesar imagen con OCR
 export async function processImageOCR(
   imageSource: string | File | Blob,
@@ -48,14 +150,21 @@ export async function processImageOCR(
   try {
     const { data } = await worker.recognize(imageSource)
     
+    // Limpiar texto de basura
+    const rawText = data.text || ''
+    const rawWords = (data.words || []).map(w => ({
+      text: w.text || '',
+      confidence: w.confidence || 0,
+      bbox: w.bbox || { x0: 0, y0: 0, x1: 0, y1: 0 }
+    }))
+    
+    const cleanedText = cleanOCRText(rawText, rawWords)
+    const validation = isValidOCRText(cleanedText)
+    
     return {
-      text: data.text || '',
-      confidence: data.confidence || 0,
-      words: (data.words || []).map(w => ({
-        text: w.text || '',
-        confidence: w.confidence || 0,
-        bbox: w.bbox || { x0: 0, y0: 0, x1: 0, y1: 0 }
-      }))
+      text: cleanedText,
+      confidence: validation.score, // Usar nuestro score en lugar del de Tesseract
+      words: rawWords.filter(w => w.confidence >= 40)
     }
   } catch (error) {
     console.error('Error en OCR:', error)
@@ -69,34 +178,111 @@ export async function processImageOCR(
   }
 }
 
-// Mejorar calidad de imagen para OCR
+// Mejorar calidad de imagen para OCR - Tecnicas avanzadas
 export function enhanceImageForOCR(canvas: HTMLCanvasElement): HTMLCanvasElement {
   const ctx = canvas.getContext('2d')
   if (!ctx) return canvas
   
   const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height)
   const data = imageData.data
+  const width = canvas.width
+  const height = canvas.height
   
-  // Convertir a escala de grises y aumentar contraste
+  // Paso 1: Convertir a escala de grises
+  const grayscale = new Uint8Array(width * height)
   for (let i = 0; i < data.length; i += 4) {
-    const gray = 0.299 * data[i] + 0.587 * data[i + 1] + 0.114 * data[i + 2]
+    grayscale[i / 4] = Math.round(0.299 * data[i] + 0.587 * data[i + 1] + 0.114 * data[i + 2])
+  }
+  
+  // Paso 2: Calcular umbral con metodo Otsu (mejor que umbral fijo)
+  const threshold = calculateOtsuThreshold(grayscale)
+  
+  // Paso 3: Aplicar reduccion de ruido (filtro mediano simplificado)
+  const denoised = applyMedianFilter(grayscale, width, height)
+  
+  // Paso 4: Binarizacion adaptativa con Otsu
+  for (let i = 0; i < denoised.length; i++) {
+    // Umbral adaptativo: usar Otsu como base pero ajustar localmente
+    const value = denoised[i]
+    const finalValue = value > threshold ? 255 : 0
     
-    // Aumentar contraste
-    const contrast = 1.5
-    const factor = (259 * (contrast * 100 + 255)) / (255 * (259 - contrast * 100))
-    const newGray = Math.max(0, Math.min(255, factor * (gray - 128) + 128))
-    
-    // Binarización simple para texto
-    const threshold = 128
-    const finalValue = newGray > threshold ? 255 : 0
-    
-    data[i] = finalValue
-    data[i + 1] = finalValue
-    data[i + 2] = finalValue
+    const idx = i * 4
+    data[idx] = finalValue
+    data[idx + 1] = finalValue
+    data[idx + 2] = finalValue
   }
   
   ctx.putImageData(imageData, 0, 0)
   return canvas
+}
+
+// Metodo Otsu para calcular umbral optimo automaticamente
+function calculateOtsuThreshold(pixels: Uint8Array): number {
+  // Histograma
+  const histogram = new Array(256).fill(0)
+  for (const pixel of pixels) {
+    histogram[pixel]++
+  }
+  
+  const total = pixels.length
+  let sum = 0
+  for (let i = 0; i < 256; i++) {
+    sum += i * histogram[i]
+  }
+  
+  let sumB = 0
+  let wB = 0
+  let wF = 0
+  let maxVariance = 0
+  let threshold = 0
+  
+  for (let t = 0; t < 256; t++) {
+    wB += histogram[t]
+    if (wB === 0) continue
+    
+    wF = total - wB
+    if (wF === 0) break
+    
+    sumB += t * histogram[t]
+    
+    const mB = sumB / wB
+    const mF = (sum - sumB) / wF
+    
+    const variance = wB * wF * (mB - mF) * (mB - mF)
+    
+    if (variance > maxVariance) {
+      maxVariance = variance
+      threshold = t
+    }
+  }
+  
+  return threshold
+}
+
+// Filtro mediano para reducir ruido (sal y pimienta)
+function applyMedianFilter(pixels: Uint8Array, width: number, height: number): Uint8Array {
+  const result = new Uint8Array(pixels.length)
+  
+  for (let y = 0; y < height; y++) {
+    for (let x = 0; x < width; x++) {
+      const neighbors: number[] = []
+      
+      // Recoger vecinos 3x3
+      for (let dy = -1; dy <= 1; dy++) {
+        for (let dx = -1; dx <= 1; dx++) {
+          const nx = Math.max(0, Math.min(width - 1, x + dx))
+          const ny = Math.max(0, Math.min(height - 1, y + dy))
+          neighbors.push(pixels[ny * width + nx])
+        }
+      }
+      
+      // Ordenar y tomar mediana
+      neighbors.sort((a, b) => a - b)
+      result[y * width + x] = neighbors[4] // Mediana de 9 elementos
+    }
+  }
+  
+  return result
 }
 
 // Aplicar filtro de mejora visual (no destructivo)

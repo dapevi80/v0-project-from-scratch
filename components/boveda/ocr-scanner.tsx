@@ -194,10 +194,10 @@ export function OCRScanner({ onClose, onComplete, initialImages }: OCRScannerPro
         setExtractedText(data.text || '')
         setEditableText(data.text || '')
         
-        // Solo generar resumen si calidad >= 98%
-        if (quality >= 98 && data.summary) {
+        // Generar resumen si calidad >= 50% (bajado de 98%)
+        if (quality >= 50 && data.summary) {
           setAiSummary(data.summary)
-        } else {
+        } else if (quality < 50) {
           setShowRetryPrompt(true)
         }
         setStep('pdf-review')
@@ -231,7 +231,7 @@ export function OCRScanner({ onClose, onComplete, initialImages }: OCRScannerPro
         mimeType: 'application/pdf',
         tamanioBytes: pdfFile.size,
         metadata: {
-          resumenIA: ocrQuality >= 98 ? aiSummary : undefined,
+          resumenIA: ocrQuality >= 50 ? aiSummary : undefined,
           calidadOCR: ocrQuality,
           tipoDocumento: 'pdf_subido',
           fechaProcesado: new Date().toISOString()
