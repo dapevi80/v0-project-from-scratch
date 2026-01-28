@@ -33,6 +33,7 @@ const CATEGORIAS = [
   { value: 'ine_frente', label: 'INE Frente', icon: CreditCard, accept: 'image/*,application/pdf' },
   { value: 'ine_reverso', label: 'INE Reverso', icon: CreditCard, accept: 'image/*,application/pdf' },
   { value: 'pasaporte', label: 'Pasaporte', icon: CreditCard, accept: 'image/*,application/pdf' },
+  { value: 'cedula_profesional', label: 'Cedula Prof.', icon: CreditCard, accept: 'image/*,application/pdf' },
   { value: 'comprobante_domicilio', label: 'Domicilio', icon: MapPin, accept: 'image/*,application/pdf' },
   { value: 'otro', label: 'Otro', icon: File, accept: '*' },
 ] as const

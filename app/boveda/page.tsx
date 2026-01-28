@@ -49,9 +49,10 @@ import {
 import { AyudaUrgenteButton } from '@/components/ayuda-urgente-button'
 import { CedulaDigital } from '@/components/cedula-digital'
 import { AyudaUrgenteFlow } from '@/components/ayuda-urgente-flow'
+import { LogoutButton } from '@/app/dashboard/logout-button'
 
 // Declare types
-type CategoriaDocumento = 'calculo_liquidacion' | 'propuesta_empresa' | 'evidencia_foto' | 'evidencia_video' | 'evidencia_audio' | 'grabacion_audio' | 'contrato_laboral' | 'hoja_renuncia' | 'ine_frente' | 'ine_reverso' | 'pasaporte' | 'comprobante_domicilio' | 'otro'
+type CategoriaDocumento = 'calculo_liquidacion' | 'propuesta_empresa' | 'evidencia_foto' | 'evidencia_video' | 'evidencia_audio' | 'grabacion_audio' | 'contrato_laboral' | 'hoja_renuncia' | 'ine_frente' | 'ine_reverso' | 'pasaporte' | 'comprobante_domicilio' | 'cedula_profesional' | 'credencial_elector' | 'otro'
 type DocumentoBoveda = {
   id: string
   nombre: string
@@ -87,6 +88,8 @@ const CATEGORIAS_CONFIG: Record<CategoriaDocumento, { label: string; icon: typeo
   ine_frente: { label: 'INE Frente', icon: CreditCard, color: 'text-slate-600' },
   ine_reverso: { label: 'INE Reverso', icon: CreditCard, color: 'text-slate-600' },
   pasaporte: { label: 'Pasaporte', icon: CreditCard, color: 'text-slate-600' },
+  credencial_elector: { label: 'Credencial de Elector', icon: CreditCard, color: 'text-slate-600' },
+  cedula_profesional: { label: 'Cedula Profesional', icon: CreditCard, color: 'text-blue-600' },
   comprobante_domicilio: { label: 'Comprobante Domicilio', icon: MapPin, color: 'text-teal-600' },
   otro: { label: 'Otros', icon: FileText, color: 'text-muted-foreground' },
 }
@@ -244,7 +247,7 @@ export default function BovedaPage() {
   
   return (
     <div className="min-h-screen bg-background">
-      {/* Header principal con logo y ayuda */}
+      {/* Header principal con logo, ayuda y cerrar sesion */}
       <header className="border-b bg-card sticky top-0 z-50">
         <div className="container max-w-6xl mx-auto px-3 sm:px-4 py-3 flex items-center justify-between">
           {/* Logo - lleva al dashboard */}
@@ -255,8 +258,11 @@ export default function BovedaPage() {
             <span className="text-base sm:text-lg font-semibold hidden xs:inline">mecorrieron.mx</span>
           </Link>
           
-          {/* Botón de ayuda urgente */}
-          <AyudaUrgenteButton />
+          {/* Acciones: ayuda urgente y cerrar sesion */}
+          <div className="flex items-center gap-2">
+            <AyudaUrgenteButton />
+            <LogoutButton />
+          </div>
         </div>
       </header>
       
@@ -821,23 +827,101 @@ export default function BovedaPage() {
                   )}
                 </div>
                 
-                {/* Comprobante domicilio */}
-                <div className="p-4 rounded-lg border bg-muted/30">
-                  <div className="flex items-center gap-3 mb-3">
-                    <MapPin className="w-5 h-5 text-teal-600" />
+                {/* Cedula Profesional (para abogados) */}
+                <div className="p-3 sm:p-4 rounded-lg border bg-muted/30">
+                  <div className="flex items-center gap-2 mb-3">
+                    <CreditCard className="w-4 h-4 sm:w-5 sm:h-5 text-blue-600 flex-shrink-0" />
                     <div>
-                      <p className="font-medium">Comprobante de Domicilio</p>
-                      <p className="text-xs text-muted-foreground">Recibo de luz, agua, teléfono (máx 3 meses)</p>
+                      <p className="font-medium text-sm sm:text-base">Cedula Profesional</p>
+                      <p className="text-xs text-muted-foreground">Para abogados verificados</p>
+                    </div>
+                  </div>
+                  {documentosPorCategoria.cedula_profesional?.[0] ? (
+                    <div className="flex items-center justify-between p-2 sm:p-3 rounded bg-green-500/10 border border-green-500/30">
+                      <div className="flex items-center gap-2">
+                        <CheckCircle className="w-4 h-4 text-green-600 flex-shrink-0" />
+                        <span className="text-sm font-medium">Cedula</span>
+                      </div>
+                      <div className="flex items-center gap-1">
+                        <Button 
+                          variant="ghost" 
+                          size="sm" 
+                          className="h-7 px-2 text-xs"
+                          disabled={loadingDocUrl === documentosPorCategoria.cedula_profesional[0].id}
+                          onClick={() => verDocumento(documentosPorCategoria.cedula_profesional[0].id)}
+                        >
+                          {loadingDocUrl === documentosPorCategoria.cedula_profesional[0].id ? (
+                            <Loader2 className="w-3 h-3 animate-spin" />
+                          ) : (
+                            <Eye className="w-3 h-3" />
+                          )}
+                        </Button>
+                        <Button 
+                          variant="ghost" 
+                          size="sm" 
+                          className="h-7 px-2 text-destructive hover:text-destructive hover:bg-destructive/10"
+                          onClick={() => handleEliminar(documentosPorCategoria.cedula_profesional[0].id)}
+                        >
+                          <Trash2 className="w-3 h-3" />
+                        </Button>
+                      </div>
+                    </div>
+                  ) : (
+                    <Button variant="outline" className="w-full justify-start h-auto py-2 sm:py-3 bg-transparent text-sm" onClick={() => {
+                      setUploaderCategoria('cedula_profesional')
+                      setShowUploader(true)
+                    }}>
+                      <Plus className="w-4 h-4 mr-2 flex-shrink-0" />
+                      Subir cedula profesional
+                    </Button>
+                  )}
+                </div>
+                
+                {/* Comprobante domicilio */}
+                <div className="p-3 sm:p-4 rounded-lg border bg-muted/30">
+                  <div className="flex items-center gap-2 mb-3">
+                    <MapPin className="w-4 h-4 sm:w-5 sm:h-5 text-teal-600 flex-shrink-0" />
+                    <div>
+                      <p className="font-medium text-sm sm:text-base">Comprobante de Domicilio</p>
+                      <p className="text-xs text-muted-foreground">Recibo de luz, agua, telefono (max 3 meses)</p>
                     </div>
                   </div>
                   {documentosPorCategoria.comprobante_domicilio?.[0] ? (
-                    <div className="p-3 rounded bg-green-500/10 border border-green-500/30 flex items-center justify-between">
-                      <span className="text-sm">Comprobante</span>
-                      <Badge variant="outline" className="text-green-600">Cargado</Badge>
+                    <div className="flex items-center justify-between p-2 sm:p-3 rounded bg-green-500/10 border border-green-500/30">
+                      <div className="flex items-center gap-2">
+                        <CheckCircle className="w-4 h-4 text-green-600 flex-shrink-0" />
+                        <span className="text-sm font-medium">Comprobante</span>
+                      </div>
+                      <div className="flex items-center gap-1">
+                        <Button 
+                          variant="ghost" 
+                          size="sm" 
+                          className="h-7 px-2 text-xs"
+                          disabled={loadingDocUrl === documentosPorCategoria.comprobante_domicilio[0].id}
+                          onClick={() => verDocumento(documentosPorCategoria.comprobante_domicilio[0].id)}
+                        >
+                          {loadingDocUrl === documentosPorCategoria.comprobante_domicilio[0].id ? (
+                            <Loader2 className="w-3 h-3 animate-spin" />
+                          ) : (
+                            <Eye className="w-3 h-3" />
+                          )}
+                        </Button>
+                        <Button 
+                          variant="ghost" 
+                          size="sm" 
+                          className="h-7 px-2 text-destructive hover:text-destructive hover:bg-destructive/10"
+                          onClick={() => handleEliminar(documentosPorCategoria.comprobante_domicilio[0].id)}
+                        >
+                          <Trash2 className="w-3 h-3" />
+                        </Button>
+                      </div>
                     </div>
                   ) : (
-                    <Button variant="outline" className="w-full bg-transparent" onClick={() => setShowUploader(true)}>
-                      <Plus className="w-4 h-4 mr-2" />
+                    <Button variant="outline" className="w-full justify-start h-auto py-2 sm:py-3 bg-transparent text-sm" onClick={() => {
+                      setUploaderCategoria('comprobante_domicilio')
+                      setShowUploader(true)
+                    }}>
+                      <Plus className="w-4 h-4 mr-2 flex-shrink-0" />
                       Subir comprobante
                     </Button>
                   )}

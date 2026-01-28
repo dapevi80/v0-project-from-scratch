@@ -18,7 +18,12 @@ export type CategoriaDocumento =
   | 'ine_reverso'
   | 'pasaporte'
   | 'comprobante_domicilio'
+  | 'cedula_profesional'
+  | 'credencial_elector'
   | 'otro'
+
+// Categorias que requieren verificacion
+const CATEGORIAS_VERIFICACION = ['ine_frente', 'ine_reverso', 'pasaporte', 'cedula_profesional', 'credencial_elector']
 
 export interface DocumentoBoveda {
   id: string
@@ -228,6 +233,22 @@ export async function subirDocumento(params: {
     if (docError) {
       console.error('Error insertando documento:', docError)
       return { success: false, error: docError.message }
+    }
+    
+    // Si es un documento de identificacion, actualizar estado del perfil a "pending" (por verificar)
+    if (CATEGORIAS_VERIFICACION.includes(params.categoria)) {
+      const { error: profileError } = await supabase
+        .from('profiles')
+        .update({ 
+          verification_status: 'pending',
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', user.id)
+      
+      if (profileError) {
+        console.error('Error actualizando estado de verificacion:', profileError)
+        // No retornamos error porque el documento ya se subio correctamente
+      }
     }
     
     revalidatePath('/boveda')
