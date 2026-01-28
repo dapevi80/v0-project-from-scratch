@@ -38,7 +38,10 @@ import {
   ExternalLink,
   ScanLine,
   Edit3,
-  Sparkles
+  Sparkles,
+  Briefcase,
+  ChevronRight,
+  Scale
 } from 'lucide-react'
 import { AudioRecorder } from '@/components/boveda/audio-recorder'
 import { DocumentUploader } from '@/components/boveda/document-uploader'
@@ -482,6 +485,22 @@ export default function BovedaPage() {
           </div>
         )}
         
+        {/* Banner: Ir a Mis Casos */}
+        <Link href="/casos" className="block mb-4">
+          <Card className="border-primary/20 bg-gradient-to-r from-primary/5 to-primary/10 hover:from-primary/10 hover:to-primary/15 transition-colors cursor-pointer">
+            <CardContent className="p-4 flex items-center gap-4">
+              <div className="w-12 h-12 rounded-full bg-primary/20 flex items-center justify-center flex-shrink-0">
+                <Briefcase className="w-6 h-6 text-primary" />
+              </div>
+              <div className="flex-1 min-w-0">
+                <h3 className="font-semibold text-sm sm:text-base">Mis Casos</h3>
+                <p className="text-xs text-muted-foreground">Ver tus casos de liquidacion y proceso de conciliacion</p>
+              </div>
+              <ChevronRight className="w-5 h-5 text-primary" />
+            </CardContent>
+          </Card>
+        </Link>
+
         {/* Contenido principal */}
         <Tabs value={activeTab} onValueChange={setActiveTab}>
           <TabsList className="grid w-full grid-cols-3 mb-4">
@@ -1327,7 +1346,7 @@ export default function BovedaPage() {
               <AlertDialogAction
                 onClick={() => {
                   if (confirmDialog.casoId) {
-                    window.location.href = `/casos/${confirmDialog.casoId}`
+                    window.location.href = `/caso/${confirmDialog.casoId}`
                   }
                 }}
                 className="flex-1 bg-blue-600 hover:bg-blue-700"

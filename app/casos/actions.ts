@@ -4,6 +4,130 @@ import { createClient } from '@/lib/supabase/server'
 import { revalidatePath } from 'next/cache'
 import type { CalculoLiquidacion, Caso } from './helpers'
 
+// Limites de casos y calculos por rol
+const ROLE_LIMITS = {
+  guest: { maxCasos: 0, maxCalculos: 1, canCreateCaso: false },
+  guestworker: { maxCasos: 0, maxCalculos: 3, canCreateCaso: false },
+  guestlawyer: { maxCasos: 0, maxCalculos: 10, canCreateCaso: false },
+  worker: { maxCasos: 1, maxCalculos: 3, canCreateCaso: true },
+  lawyer: { maxCasos: 50, maxCalculos: 100, canCreateCaso: true },
+  admin: { maxCasos: 50, maxCalculos: 100, canCreateCaso: true },
+  superadmin: { maxCasos: Infinity, maxCalculos: Infinity, canCreateCaso: true }
+}
+
+// Verificar limites de casos y calculos para un usuario
+export async function verificarLimitesUsuario() {
+  const supabase = await createClient()
+  
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return { error: 'No autenticado', data: null }
+  
+  const { data: profile } = await supabase
+    .from('profiles')
+    .select('role')
+    .eq('id', user.id)
+    .single()
+  
+  const role = (profile?.role || 'guest') as keyof typeof ROLE_LIMITS
+  const limits = ROLE_LIMITS[role] || ROLE_LIMITS.guest
+  
+  // Contar casos activos del usuario
+  const { count: casosActivos } = await supabase
+    .from('casos')
+    .select('*', { count: 'exact', head: true })
+    .eq('worker_id', user.id)
+    .eq('archivado', false)
+  
+  // Contar calculos del usuario
+  const { count: calculosActivos } = await supabase
+    .from('calculos_liquidacion')
+    .select('*', { count: 'exact', head: true })
+    .eq('user_id', user.id)
+  
+  const puedeCrearCaso = limits.canCreateCaso && (casosActivos || 0) < limits.maxCasos
+  const puedeCrearCalculo = (calculosActivos || 0) < limits.maxCalculos
+  
+  return {
+    error: null,
+    data: {
+      role,
+      casosActivos: casosActivos || 0,
+      calculosActivos: calculosActivos || 0,
+      maxCasos: limits.maxCasos,
+      maxCalculos: limits.maxCalculos,
+      canCreateCaso: limits.canCreateCaso,
+      puedeCrearCaso,
+      puedeCrearCalculo,
+      necesitaVerificacion: role.startsWith('guest')
+    }
+  }
+}
+
+// Obtener caso por ID de calculo
+export async function obtenerCasoPorCalculo(calculoId: string) {
+  const supabase = await createClient()
+
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return { error: 'No autenticado', data: null }
+
+  const { data: caso, error } = await supabase
+    .from('casos')
+    .select('id, folio, status, categoria')
+    .eq('calculo_id', calculoId)
+    .eq('worker_id', user.id)
+    .single()
+
+  if (error || !caso) {
+    return { error: null, data: null, existeCaso: false }
+  }
+
+  return { error: null, data: caso, existeCaso: true }
+}
+
+// Verificar acceso a la seccion de casos
+export async function verificarAccesoCasos() {
+  const supabase = await createClient()
+  
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return { error: 'No autenticado', tieneAcceso: false, razon: 'no_auth' }
+  
+  const { data: profile } = await supabase
+    .from('profiles')
+    .select('role, is_verified')
+    .eq('id', user.id)
+    .single()
+  
+  const role = profile?.role || 'guest'
+  
+  // Usuarios guest no tienen acceso a casos
+  if (role === 'guest' || role === 'guestworker') {
+    return { 
+      error: null, 
+      tieneAcceso: false, 
+      razon: 'guest_no_access',
+      mensaje: 'Para acceder a tus casos necesitas verificar tu cuenta como trabajador.'
+    }
+  }
+  
+  // Usuarios lawyer guest no tienen acceso completo
+  if (role === 'guestlawyer') {
+    return { 
+      error: null, 
+      tieneAcceso: false, 
+      razon: 'lawyer_not_verified',
+      mensaje: 'Tu cuenta de abogado esta pendiente de verificacion.'
+    }
+  }
+  
+  // Worker verificado, lawyer, admin, superadmin tienen acceso
+  return { 
+    error: null, 
+    tieneAcceso: true, 
+    role,
+    esAbogado: ['lawyer', 'admin', 'superadmin'].includes(role)
+  }
+}
+
 // Obtener calculos completos del usuario que pueden convertirse en casos
 export async function obtenerCalculosParaCasos() {
   const supabase = await createClient()
@@ -782,6 +906,87 @@ export async function obtenerAbogados() {
   }
   
   return { error: null, data }
+}
+
+// Iniciar proceso de conciliacion para un caso (genera PDF guia y lo guarda en boveda)
+export async function iniciarConciliacionCaso(casoId: string) {
+  const supabase = await createClient()
+
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return { error: 'No autenticado', data: null }
+
+  // Obtener el caso con datos del calculo
+  const { data: caso, error: casoError } = await supabase
+    .from('casos')
+    .select(`
+      *,
+      calculo:calculos_liquidacion(*)
+    `)
+    .eq('id', casoId)
+    .eq('worker_id', user.id)
+    .single()
+
+  if (casoError || !caso) {
+    return { error: 'Caso no encontrado', data: null }
+  }
+
+  // Obtener datos del trabajador
+  const { data: trabajador } = await supabase
+    .from('profiles')
+    .select('*')
+    .eq('id', user.id)
+    .single()
+
+  // Generar nombre del documento
+  const fechaGeneracion = new Date().toISOString().split('T')[0]
+  const nombreDocumento = `Guia_Conciliacion_${caso.folio}_${fechaGeneracion}.pdf`
+
+  // Guardar referencia en la boveda del usuario
+  const { data: documento, error: docError } = await supabase
+    .from('documentos_boveda')
+    .insert({
+      user_id: user.id,
+      nombre: nombreDocumento,
+      categoria: 'guia_conciliacion',
+      mime_type: 'application/pdf',
+      caso_id: casoId,
+      metadata: {
+        tipo: 'guia_ccl',
+        caso_folio: caso.folio,
+        empresa: caso.empresa_nombre,
+        fecha_generacion: fechaGeneracion
+      }
+    })
+    .select()
+    .single()
+
+  if (docError) {
+    console.error('Error guardando documento:', docError)
+  }
+
+  // Actualizar el caso para indicar que se inicio conciliacion
+  await supabase
+    .from('casos')
+    .update({
+      categoria: 'conciliacion',
+      status: 'in_conciliation',
+      conciliacion_iniciada_at: new Date().toISOString()
+    })
+    .eq('id', casoId)
+
+  revalidatePath(`/caso/${casoId}`)
+  revalidatePath('/casos')
+  revalidatePath('/boveda')
+
+  return {
+    error: null,
+    data: {
+      caso,
+      trabajador,
+      documentoId: documento?.id,
+      pdfUrl: `/api/ccl/guia-caso-pdf?casoId=${casoId}`
+    }
+  }
 }
 
 // Crear caso desde verificacion de usuario guest con fechas de prescripcion automaticas
