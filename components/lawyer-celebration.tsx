@@ -58,7 +58,12 @@ export function LawyerCelebration({
     return () => clearTimeout(timer)
   }, [userId])
   
-  const mensaje = MENSAJES_CELEBRACION_ABOGADO[upgradeType]
+  const mensaje = MENSAJES_CELEBRACION_ABOGADO[upgradeType] || {
+    titulo: 'Felicidades',
+    mensaje: 'Tu cuenta ha sido actualizada exitosamente.',
+    icono: 'star',
+    color: 'blue'
+  }
   
   const getIcon = () => {
     switch (upgradeType) {

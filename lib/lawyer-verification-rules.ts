@@ -533,5 +533,11 @@ export const MENSAJES_CELEBRACION_ABOGADO = {
     mensaje: 'Tu cuenta ha sido reactivada. Ya puedes continuar usando todas las herramientas.',
     icono: 'refresh',
     color: 'green'
+  },
+  admin_promotion: {
+    titulo: 'Promocion a Administrador',
+    mensaje: 'Has sido promovido a administrador. Ahora puedes verificar abogados y gestionar la plataforma.',
+    icono: 'shield',
+    color: 'indigo'
   }
 } as const
