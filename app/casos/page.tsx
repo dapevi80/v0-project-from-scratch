@@ -34,7 +34,9 @@ import {
 import { 
   obtenerMisCasos, 
   obtenerEstadisticasCasos,
-  archivarCaso,
+  archivarCaso
+} from './actions'
+import {
   categoriaLabels,
   categoriaColors,
   formatCurrency,
@@ -42,7 +44,7 @@ import {
   calcularDiasPrescripcion,
   calcularPorcentajeOferta,
   type Caso
-} from './actions'
+} from './helpers'
 import { AyudaUrgenteButton } from '@/components/ayuda-urgente-button'
 
 // Iconos por categoria

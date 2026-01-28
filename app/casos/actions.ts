@@ -355,51 +355,6 @@ export async function obtenerEventos(casoId: string) {
   return { error: null, data }
 }
 
-// Formatear moneda
-export function formatCurrency(amount: number | null | undefined): string {
-  if (amount === null || amount === undefined) return '$0.00'
-  return new Intl.NumberFormat('es-MX', {
-    style: 'currency',
-    currency: 'MXN'
-  }).format(amount)
-}
-
-// Formatear fecha
-export function formatDate(date: string | null | undefined): string {
-  if (!date) return '-'
-  return new Date(date).toLocaleDateString('es-MX', {
-    day: 'numeric',
-    month: 'short',
-    year: 'numeric'
-  })
-}
-
-// Calcular dias restantes
-export function calcularDiasRestantes(fecha: string | null): number | null {
-  if (!fecha) return null
-  const hoy = new Date()
-  const fechaObj = new Date(fecha)
-  const diff = fechaObj.getTime() - hoy.getTime()
-  return Math.ceil(diff / (1000 * 60 * 60 * 24))
-}
-
-// Calcular dias de prescripcion
-export function calcularDiasPrescripcion(fechaLimite: string | null): number | null {
-  if (!fechaLimite) return null
-  const hoy = new Date()
-  hoy.setHours(0, 0, 0, 0)
-  const limite = new Date(fechaLimite)
-  limite.setHours(0, 0, 0, 0)
-  const diff = limite.getTime() - hoy.getTime()
-  return Math.ceil(diff / (1000 * 60 * 60 * 24))
-}
-
-// Calcular porcentaje de oferta vs estimado
-export function calcularPorcentajeOferta(oferta: number | null, estimado: number | null): number | null {
-  if (!oferta || !estimado || estimado === 0) return null
-  return Math.round((oferta / estimado) * 100)
-}
-
 // Crear caso (sin calculo vinculado)
 export async function crearCaso(datos: {
   empresa_nombre: string

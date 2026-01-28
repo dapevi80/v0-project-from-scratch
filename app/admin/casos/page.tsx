@@ -19,7 +19,9 @@ import {
   obtenerTodosLosCasos, 
   obtenerTodasLasCotizaciones,
   obtenerEstadisticasGlobales,
-  obtenerAbogados,
+  obtenerAbogados
+} from '@/app/casos/actions'
+import {
   statusLabels, 
   statusColors,
   prioridadLabels,
@@ -27,7 +29,7 @@ import {
   formatCurrency,
   formatDate,
   calcularDiasRestantes
-} from '@/app/casos/actions'
+} from '@/app/casos/helpers'
 
 export default function AdminCasosPage() {
   const router = useRouter()
