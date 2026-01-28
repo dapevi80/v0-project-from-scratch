@@ -205,14 +205,8 @@ export function DocumentUploader({ onUploaded, onClose, defaultCategoria }: Docu
     }
     
     setUploading(false)
-    
-    if (files.every(f => f.status === 'success')) {
-      setTimeout(() => {
-        setFiles([])
-        onUploaded?.()
-      }, 1000)
-    }
-  }, [files, categoria, onUploaded])
+    // El usuario cerrara manualmente con el boton "Guardar y cerrar"
+  }, [files, categoria])
 
   const formatFileSize = (bytes: number) => {
     if (bytes < 1024) return `${bytes} B`
@@ -401,31 +395,42 @@ export function DocumentUploader({ onUploaded, onClose, defaultCategoria }: Docu
         )}
       </div>
       
-      {/* Footer fijo con botón de subir */}
+      {/* Footer fijo con botones */}
       {files.length > 0 && (
-        <div className="p-4 border-t bg-background sticky bottom-0">
-          <Button
-            onClick={uploadFiles}
-            disabled={uploading || files.every(f => f.status === 'success')}
-            className="w-full h-12 text-base gap-2"
-          >
-            {uploading ? (
-              <>
-                <Loader2 className="w-5 h-5 animate-spin" />
-                Subiendo...
-              </>
-            ) : files.every(f => f.status === 'success') ? (
-              <>
-                <CheckCircle className="w-5 h-5" />
-                Completado
-              </>
-            ) : (
-              <>
-                <Upload className="w-5 h-5" />
-                Subir {files.length} {files.length === 1 ? 'archivo' : 'archivos'}
-              </>
-            )}
-          </Button>
+        <div className="p-4 border-t bg-background sticky bottom-0 space-y-2">
+          {files.every(f => f.status === 'success') ? (
+            // Todos los archivos subidos - mostrar boton Guardar para cerrar
+            <Button
+              onClick={() => {
+                setFiles([])
+                onUploaded?.()
+                onClose?.()
+              }}
+              className="w-full h-12 text-base gap-2 bg-green-600 hover:bg-green-700"
+            >
+              <CheckCircle className="w-5 h-5" />
+              Guardar y cerrar
+            </Button>
+          ) : (
+            // Archivos pendientes - mostrar boton Subir
+            <Button
+              onClick={uploadFiles}
+              disabled={uploading}
+              className="w-full h-12 text-base gap-2"
+            >
+              {uploading ? (
+                <>
+                  <Loader2 className="w-5 h-5 animate-spin" />
+                  Subiendo...
+                </>
+              ) : (
+                <>
+                  <Upload className="w-5 h-5" />
+                  Subir {files.length} {files.length === 1 ? 'archivo' : 'archivos'}
+                </>
+              )}
+            </Button>
+          )}
         </div>
       )}
     </div>

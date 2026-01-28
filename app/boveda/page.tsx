@@ -959,11 +959,12 @@ export default function BovedaPage() {
               onUploaded={() => {
                 setShowUploader(false)
                 setUploaderCategoria(undefined)
-                loadData()
+                loadData() // Refrescar boveda automaticamente
               }}
               onClose={() => {
                 setShowUploader(false)
                 setUploaderCategoria(undefined)
+                loadData() // Refrescar boveda al cerrar tambien
               }}
               defaultCategoria={uploaderCategoria}
             />
