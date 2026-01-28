@@ -1,5 +1,7 @@
 'use client'
 
+import React from "react"
+
 import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
@@ -23,9 +25,12 @@ import {
   Phone,
   DollarSign,
   TrendingUp,
-  Filter
+  Filter,
+  FileText,
+  Sparkles
 } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
+import { GenerarSolicitudModal } from '@/components/ccl/generar-solicitud-modal'
 
 interface CasoAbogado {
   id: string
@@ -87,6 +92,8 @@ export default function AbogadoCasosPage() {
   const [casos, setCasos] = useState<CasoAbogado[]>([])
   const [filtro, setFiltro] = useState('todos')
   const [busqueda, setBusqueda] = useState('')
+  const [showCCLModal, setShowCCLModal] = useState(false)
+  const [selectedCasoForCCL, setSelectedCasoForCCL] = useState<CasoAbogado | null>(null)
   const [stats, setStats] = useState({
     total: 0,
     activos: 0,
@@ -94,6 +101,13 @@ export default function AbogadoCasosPage() {
     juicio: 0,
     montoTotal: 0
   })
+  
+  const handleGenerarCCL = (caso: CasoAbogado, e: React.MouseEvent) => {
+    e.preventDefault() // Evitar navegacion al caso
+    e.stopPropagation()
+    setSelectedCasoForCCL(caso)
+    setShowCCLModal(true)
+  }
 
   useEffect(() => {
     loadCasos()
@@ -371,22 +385,35 @@ export default function AbogadoCasosPage() {
                             </div>
                           )}
 
-                          {/* Montos */}
-                          <div className="flex items-center gap-4 text-sm">
-                            <span className="flex items-center gap-1">
-                              <DollarSign className="w-4 h-4 text-green-600" />
-                              <span className="font-semibold text-green-600">
-                                {formatCurrency(caso.monto_estimado)}
-                              </span>
-                            </span>
-                            {caso.oferta_empresa && (
+                          {/* Montos y acciones */}
+                          <div className="flex items-center justify-between gap-4 text-sm">
+                            <div className="flex items-center gap-4">
                               <span className="flex items-center gap-1">
-                                <TrendingUp className="w-4 h-4 text-blue-600" />
-                                <span className="text-blue-600">
-                                  Oferta: {formatCurrency(caso.oferta_empresa)}
+                                <DollarSign className="w-4 h-4 text-green-600" />
+                                <span className="font-semibold text-green-600">
+                                  {formatCurrency(caso.monto_estimado)}
                                 </span>
                               </span>
-                            )}
+                              {caso.oferta_empresa && (
+                                <span className="flex items-center gap-1">
+                                  <TrendingUp className="w-4 h-4 text-blue-600" />
+                                  <span className="text-blue-600">
+                                    Oferta: {formatCurrency(caso.oferta_empresa)}
+                                  </span>
+                                </span>
+                              )}
+                            </div>
+                            
+                            {/* Boton Generar Solicitud CCL */}
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              className="gap-1 text-xs bg-gradient-to-r from-emerald-50 to-cyan-50 border-emerald-200 hover:from-emerald-100 hover:to-cyan-100 text-emerald-700"
+                              onClick={(e) => handleGenerarCCL(caso, e)}
+                            >
+                              <Sparkles className="w-3 h-3" />
+                              Solicitud CCL
+                            </Button>
                           </div>
                         </div>
 
@@ -400,6 +427,35 @@ export default function AbogadoCasosPage() {
           </div>
         )}
       </main>
+      
+      {/* Modal para generar solicitud CCL */}
+      <GenerarSolicitudModal
+        isOpen={showCCLModal}
+        onClose={() => {
+          setShowCCLModal(false)
+          setSelectedCasoForCCL(null)
+        }}
+        caso={selectedCasoForCCL ? {
+          id: selectedCasoForCCL.id,
+          worker_id: selectedCasoForCCL.trabajador?.id || '',
+          employer_name: selectedCasoForCCL.empresa_nombre,
+          employer_address: `${selectedCasoForCCL.ciudad}, ${selectedCasoForCCL.estado}`,
+          salary_daily: selectedCasoForCCL.monto_estimado ? selectedCasoForCCL.monto_estimado / 90 : undefined,
+          end_date: selectedCasoForCCL.fecha_limite_prescripcion ? 
+            new Date(new Date(selectedCasoForCCL.fecha_limite_prescripcion).getTime() - 60 * 24 * 60 * 60 * 1000).toISOString().split('T')[0] : undefined,
+          termination_type: selectedCasoForCCL.tipo_caso,
+          worker: selectedCasoForCCL.trabajador ? {
+            full_name: selectedCasoForCCL.trabajador.full_name,
+            email: selectedCasoForCCL.trabajador.email,
+            phone: selectedCasoForCCL.trabajador.phone,
+            estado: selectedCasoForCCL.estado
+          } : undefined
+        } : null}
+        onSuccess={(resultado) => {
+          console.log('Solicitud CCL generada:', resultado)
+          loadCasos() // Recargar casos
+        }}
+      />
     </div>
   )
 }
