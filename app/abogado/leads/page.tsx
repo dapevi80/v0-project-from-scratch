@@ -11,7 +11,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { 
   ArrowLeft, Search, MapPin, Building2, Calendar, Clock,
   ChevronRight, X, Heart, Lock, Coins, Eye, Filter,
-  Briefcase, Users, Sparkles, ChevronDown, User
+  Briefcase, Users, Sparkles, ChevronDown, User, Phone
 } from 'lucide-react'
 import Link from 'next/link'
 import {
@@ -84,7 +84,8 @@ export default function LeadsTinderPage() {
     total: 0,
     cercaDeTi: 0,
     calificados: 0,
-    sinCalificar: 0
+    sinCalificar: 0,
+    nacional: 0
   })
 
   // Modal desbloqueo
@@ -131,22 +132,36 @@ export default function LeadsTinderPage() {
 
     setCreditos(creditosData?.saldo_actual || 0)
 
-    // Obtener leads disponibles (cotizaciones sin caso asignado)
-    const { data: cotizaciones } = await supabase
+    // Primero obtener leads del estado del abogado
+    const { data: leadsLocales } = await supabase
       .from('cotizaciones')
       .select('*')
+      .eq('estado', profile.estado)
       .in('status', ['nueva', 'contactada'])
       .order('created_at', { ascending: false })
 
-    if (cotizaciones) {
-      setLeads(cotizaciones)
-      const cercaDeTi = cotizaciones.filter(l => l.estado === profile.estado).length
+    // Luego obtener leads de otros estados (para cuando no hay locales)
+    const { data: leadsNacionales } = await supabase
+      .from('cotizaciones')
+      .select('*')
+      .neq('estado', profile.estado || '')
+      .in('status', ['nueva', 'contactada'])
+      .order('created_at', { ascending: false })
+
+    // Combinar: primero locales, luego nacionales
+    const todosLeads = [...(leadsLocales || []), ...(leadsNacionales || [])]
+    
+    if (todosLeads.length > 0) {
+      setLeads(todosLeads)
+      const cercaDeTi = leadsLocales?.length || 0
+      const totalNacional = leadsNacionales?.length || 0
       setStats({
-        total: cotizaciones.length,
+        total: todosLeads.length,
         cercaDeTi,
-        calificados: cotizaciones.filter(l => l.status === 'contactada').length,
-        sinCalificar: cotizaciones.filter(l => l.status === 'nueva').length
-      })
+        calificados: todosLeads.filter(l => l.status === 'contactada').length,
+        sinCalificar: todosLeads.filter(l => l.status === 'nueva').length,
+        nacional: totalNacional
+      } as typeof stats & { nacional: number })
     }
 
     // Obtener mis casos asignados
@@ -339,28 +354,47 @@ export default function LeadsTinderPage() {
 
       <main className="max-w-lg mx-auto px-4 py-4">
         {/* Stats Cards */}
-        <div className="grid grid-cols-2 gap-3 mb-4">
+        <div className="grid grid-cols-3 gap-2 mb-4">
           <Card className="bg-gradient-to-br from-blue-500 to-indigo-600 text-white border-0">
-            <CardContent className="p-4">
-              <div className="flex items-center gap-2 mb-1">
-                <MapPin className="w-4 h-4 opacity-80" />
-                <span className="text-xs opacity-80">Cerca de ti</span>
+            <CardContent className="p-3">
+              <div className="flex items-center gap-1 mb-1">
+                <MapPin className="w-3 h-3 opacity-80" />
+                <span className="text-[10px] opacity-80">Tu Estado</span>
               </div>
-              <div className="text-2xl font-bold">{stats.cercaDeTi}</div>
-              <div className="text-xs opacity-70">{userEstado || 'Tu estado'}</div>
+              <div className="text-xl font-bold">{stats.cercaDeTi}</div>
+              <div className="text-[10px] opacity-70 truncate">{userEstado || 'Local'}</div>
+            </CardContent>
+          </Card>
+          <Card className="bg-gradient-to-br from-purple-500 to-pink-600 text-white border-0">
+            <CardContent className="p-3">
+              <div className="flex items-center gap-1 mb-1">
+                <Users className="w-3 h-3 opacity-80" />
+                <span className="text-[10px] opacity-80">Nacional</span>
+              </div>
+              <div className="text-xl font-bold">{stats.nacional}</div>
+              <div className="text-[10px] opacity-70">Otros estados</div>
             </CardContent>
           </Card>
           <Card className="bg-gradient-to-br from-emerald-500 to-teal-600 text-white border-0">
-            <CardContent className="p-4">
-              <div className="flex items-center gap-2 mb-1">
-                <Sparkles className="w-4 h-4 opacity-80" />
-                <span className="text-xs opacity-80">Disponibles</span>
+            <CardContent className="p-3">
+              <div className="flex items-center gap-1 mb-1">
+                <Sparkles className="w-3 h-3 opacity-80" />
+                <span className="text-[10px] opacity-80">Total</span>
               </div>
-              <div className="text-2xl font-bold">{stats.total}</div>
-              <div className="text-xs opacity-70">{stats.calificados} calificados</div>
+              <div className="text-xl font-bold">{stats.total}</div>
+              <div className="text-[10px] opacity-70">{stats.calificados} calif.</div>
             </CardContent>
           </Card>
         </div>
+        
+        {/* Indicador cuando se agotaron leads locales */}
+        {stats.cercaDeTi === 0 && stats.nacional > 0 && (
+          <div className="mb-4 p-3 bg-purple-50 border border-purple-200 rounded-lg">
+            <p className="text-sm text-purple-700 text-center">
+              No hay leads en {userEstado}. Mostrando casos de todo el pais para atencion a distancia.
+            </p>
+          </div>
+        )}
 
         {/* Tabs */}
         <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
@@ -397,78 +431,133 @@ export default function LeadsTinderPage() {
                   }`}
                 >
                   <CardContent className="p-0">
-                    {/* Header con empresa */}
-                    <div className="bg-gradient-to-r from-slate-800 to-slate-900 p-6 text-white">
-                      <div className="flex items-start justify-between">
-                        <div>
-                          <Badge className="bg-white/20 text-white mb-2">
-                            {currentLead.status === 'contactada' ? 'Calificado' : 'Nuevo'}
+                    {/* Header: Trabajador vs Empresa */}
+                    <div className={`p-5 text-white ${
+                      currentLead.estado !== userEstado 
+                        ? 'bg-gradient-to-r from-purple-700 to-indigo-800' 
+                        : 'bg-gradient-to-r from-slate-800 to-slate-900'
+                    }`}>
+                      <div className="flex items-center gap-2 mb-3">
+                        <Badge className="bg-white/20 text-white text-[10px]">
+                          {currentLead.status === 'contactada' ? 'Calificado' : 'Nuevo'}
+                        </Badge>
+                        {currentLead.estado !== userEstado && (
+                          <Badge className="bg-purple-400/30 text-purple-100 border border-purple-300/50 text-[10px]">
+                            A Distancia
                           </Badge>
-                          <h2 className="text-xl font-bold">{currentLead.empresa_nombre || 'Empresa no especificada'}</h2>
-                          <div className="flex items-center gap-2 mt-1 text-slate-300 text-sm">
-                            <MapPin className="w-4 h-4" />
-                            {currentLead.estado || 'Mexico'}
+                        )}
+                        <div className="flex items-center gap-1 ml-auto text-slate-400 text-xs">
+                          <MapPin className="w-3 h-3" />
+                          {currentLead.estado || 'MX'}
+                        </div>
+                      </div>
+                      
+                      {/* VS Layout */}
+                      <div className="flex items-center justify-between">
+                        <div className="text-center flex-1">
+                          <div className="w-12 h-12 rounded-full bg-white/10 flex items-center justify-center mx-auto mb-2">
+                            <User className="w-6 h-6 text-white/70" />
+                          </div>
+                          <div className="text-sm font-medium text-white/80">Trabajador</div>
+                          <div className="text-xs text-emerald-300 font-mono">#{currentLead.codigo_usuario || 'XXXXXX'}</div>
+                        </div>
+                        
+                        <div className="px-3">
+                          <div className="w-10 h-10 rounded-full bg-amber-500 flex items-center justify-center">
+                            <span className="text-white font-bold text-sm">VS</span>
                           </div>
                         </div>
-                        <div className="text-right">
-                          <div className="text-2xl font-bold text-emerald-400">
-                            {formatCurrency(currentLead.indemnizacion_estimada || 0)}
+                        
+                        <div className="text-center flex-1">
+                          <div className="w-12 h-12 rounded-full bg-white/10 flex items-center justify-center mx-auto mb-2">
+                            <Building2 className="w-6 h-6 text-white/70" />
                           </div>
-                          <div className="text-xs text-slate-400">Estimado</div>
+                          <div className="text-sm font-medium text-white truncate max-w-[120px]">
+                            {currentLead.empresa_nombre || 'Empresa'}
+                          </div>
+                          <div className="text-xs text-slate-400">Demandado</div>
                         </div>
                       </div>
                     </div>
 
-                    {/* Detalles visibles */}
-                    <div className="p-6 space-y-4">
-                      {/* Antiguedad - Visible */}
-                      <div className="flex items-center gap-3 p-3 bg-blue-50 rounded-lg">
-                        <Clock className="w-5 h-5 text-blue-600" />
-                        <div>
-                          <div className="text-xs text-blue-600 font-medium">Antiguedad</div>
-                          <div className="font-semibold text-slate-800">
+                    {/* Detalles del caso */}
+                    <div className="p-5 space-y-3">
+                      {/* Valor del caso */}
+                      <div className="bg-gradient-to-r from-emerald-50 to-teal-50 border border-emerald-200 rounded-xl p-4">
+                        <div className="text-xs text-emerald-600 font-medium mb-1">Valor del Caso (Conciliacion)</div>
+                        <div className="text-2xl font-bold text-emerald-700">
+                          {formatCurrency(currentLead.indemnizacion_estimada || 0)}
+                        </div>
+                      </div>
+                      
+                      {/* Info visible */}
+                      <div className="grid grid-cols-2 gap-2">
+                        <div className="p-3 bg-blue-50 rounded-lg">
+                          <div className="text-[10px] text-blue-600 font-medium">Antiguedad</div>
+                          <div className="font-semibold text-slate-800 text-sm">
                             {formatAntiguedad(currentLead.antiguedad_meses || 0)}
                           </div>
                         </div>
-                      </div>
-
-                      {/* Motivo - Parcialmente visible */}
-                      <div className="flex items-center gap-3 p-3 bg-amber-50 rounded-lg">
-                        <Briefcase className="w-5 h-5 text-amber-600" />
-                        <div>
-                          <div className="text-xs text-amber-600 font-medium">Motivo</div>
-                          <div className="font-semibold text-slate-800">
+                        <div className="p-3 bg-amber-50 rounded-lg">
+                          <div className="text-[10px] text-amber-600 font-medium">Motivo</div>
+                          <div className="font-semibold text-slate-800 text-sm truncate">
                             {currentLead.motivo_separacion || 'Despido'}
+                          </div>
+                        </div>
+                      </div>
+                      
+                      {/* Honorarios estimados */}
+                      <div className="bg-slate-50 border border-slate-200 rounded-xl p-4">
+                        <div className="flex justify-between items-center mb-2">
+                          <span className="text-xs text-slate-500">Honorarios estimados (30%)</span>
+                          <span className="font-semibold text-slate-700">
+                            {formatCurrency((currentLead.indemnizacion_estimada || 0) * 0.30)}
+                          </span>
+                        </div>
+                        <div className="flex justify-between items-center mb-2">
+                          <span className="text-xs text-slate-500">Comision plataforma (10%)</span>
+                          <span className="font-medium text-red-500 text-sm">
+                            -{formatCurrency((currentLead.indemnizacion_estimada || 0) * 0.30 * 0.10)}
+                          </span>
+                        </div>
+                        <div className="border-t border-slate-200 pt-2 mt-2">
+                          <div className="flex justify-between items-center">
+                            <span className="text-xs font-medium text-slate-600">Honorarios netos est.</span>
+                            <span className="font-bold text-emerald-600">
+                              {formatCurrency((currentLead.indemnizacion_estimada || 0) * 0.30 * 0.90)}
+                            </span>
                           </div>
                         </div>
                       </div>
 
                       {/* Datos bloqueados */}
-                      <div className="relative p-4 bg-slate-100 rounded-lg border-2 border-dashed border-slate-300">
-                        <div className="absolute inset-0 backdrop-blur-sm bg-white/60 rounded-lg flex flex-col items-center justify-center">
-                          <Lock className="w-8 h-8 text-slate-400 mb-2" />
-                          <span className="text-sm font-medium text-slate-500">Informacion bloqueada</span>
-                          <span className="text-xs text-slate-400">Desbloquea por ${COSTO_DESBLOQUEO} MXN</span>
+                      <div className="relative p-3 bg-slate-100 rounded-lg border-2 border-dashed border-slate-300">
+                        <div className="absolute inset-0 backdrop-blur-sm bg-white/70 rounded-lg flex flex-col items-center justify-center">
+                          <Lock className="w-6 h-6 text-slate-400 mb-1" />
+                          <span className="text-xs font-medium text-slate-500">Contacto bloqueado</span>
+                          <span className="text-[10px] text-slate-400">${COSTO_DESBLOQUEO} MXN para desbloquear</span>
                         </div>
-                        <div className="space-y-2 opacity-30 select-none">
+                        <div className="space-y-1 opacity-20 select-none text-sm">
                           <div className="flex items-center gap-2">
-                            <User className="w-4 h-4" />
+                            <User className="w-3 h-3" />
                             <span>**** **** ****</span>
                           </div>
                           <div className="flex items-center gap-2">
-                            <Building2 className="w-4 h-4" />
+                            <Phone className="w-3 h-3" />
                             <span>** ** ** ** **</span>
-                          </div>
-                          <div className="flex items-center gap-2">
-                            <Calendar className="w-4 h-4" />
-                            <span>**/**/****</span>
                           </div>
                         </div>
                       </div>
 
+                      {/* Disclaimer */}
+                      <p className="text-[9px] text-slate-400 text-center leading-tight px-2">
+                        Los valores mostrados son estimados y pueden variar segun la negociacion y arreglo con la empresa. 
+                        Estos datos son informativos y no garantizan comision alguna al abogado o despacho.
+                      </p>
+                      
                       {/* Contador */}
-                      <div className="text-center text-xs text-slate-400">
-                        {currentLeadIndex + 1} de {leads.length} leads disponibles
+                      <div className="text-center text-xs text-slate-400 pt-1">
+                        {currentLeadIndex + 1} de {leads.length} leads
                       </div>
                     </div>
                   </CardContent>
