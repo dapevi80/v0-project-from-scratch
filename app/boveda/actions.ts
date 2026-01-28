@@ -42,6 +42,8 @@ export type CategoriaDocumento =
   | 'sentencia'
   // Domicilio
   | 'comprobante_domicilio'
+  // Testigos
+  | 'testigos'
   // Otro
   | 'otro'
 

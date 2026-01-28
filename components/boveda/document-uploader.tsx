@@ -31,7 +31,8 @@ import {
   FileCheck2,
   Receipt,
   ChevronLeft,
-  ChevronRight
+  ChevronRight,
+  Users
 } from 'lucide-react'
 import { subirDocumento, type CategoriaDocumento } from '@/app/boveda/actions'
 import { LocationPicker, type LocationData } from './location-picker'
@@ -39,43 +40,46 @@ import { LocationPicker, type LocationData } from './location-picker'
 // Categorias expandidas organizadas por grupo
 const CATEGORIAS_SUGERIDAS = [
   // Documentos principales
-  { value: 'contrato_laboral', label: 'Contrato', icon: PenLine, color: 'bg-blue-100 text-blue-600' },
-  { value: 'hojas_firmadas', label: 'Hojas firmadas', icon: FileSignature, color: 'bg-amber-100 text-amber-600' },
-  { value: 'recibo_nomina', label: 'Nomina', icon: Receipt, color: 'bg-green-100 text-green-600' },
-  { value: 'recibo_dinero', label: 'Recibo', icon: DollarSign, color: 'bg-emerald-100 text-emerald-600' },
+  { value: 'contrato_laboral', label: 'Contrato laboral', shortLabel: 'Contrato', icon: PenLine, color: 'bg-blue-100 text-blue-600' },
+  { value: 'hojas_firmadas', label: 'Hojas en blanco firmadas', shortLabel: 'Firmadas', icon: FileSignature, color: 'bg-amber-100 text-amber-600' },
+  { value: 'recibo_nomina', label: 'Recibo de nomina', shortLabel: 'Nomina', icon: Receipt, color: 'bg-green-100 text-green-600' },
+  { value: 'recibo_dinero', label: 'Recibo de pago', shortLabel: 'Recibo', icon: DollarSign, color: 'bg-emerald-100 text-emerald-600' },
   
   // Evidencias multimedia
-  { value: 'evidencia_foto', label: 'Fotos', icon: ImageIcon, color: 'bg-purple-100 text-purple-600' },
-  { value: 'evidencia_video', label: 'Video', icon: Video, color: 'bg-pink-100 text-pink-600' },
-  { value: 'video_despido', label: 'Video despido', icon: Video, color: 'bg-red-100 text-red-600' },
-  { value: 'evidencia_audio', label: 'Audio', icon: Music2, color: 'bg-orange-100 text-orange-600' },
-  { value: 'grabacion_llamada', label: 'Llamada', icon: Phone, color: 'bg-cyan-100 text-cyan-600' },
+  { value: 'evidencia_foto', label: 'Fotos de evidencia', shortLabel: 'Fotos', icon: ImageIcon, color: 'bg-purple-100 text-purple-600' },
+  { value: 'evidencia_video', label: 'Video de evidencia', shortLabel: 'Video', icon: Video, color: 'bg-pink-100 text-pink-600' },
+  { value: 'video_despido', label: 'Video del despido', shortLabel: 'Despido', icon: Video, color: 'bg-red-100 text-red-600' },
+  { value: 'evidencia_audio', label: 'Grabacion de audio', shortLabel: 'Audio', icon: Music2, color: 'bg-orange-100 text-orange-600' },
+  { value: 'grabacion_llamada', label: 'Grabacion de llamada', shortLabel: 'Llamada', icon: Phone, color: 'bg-cyan-100 text-cyan-600' },
   
   // Identificaciones
-  { value: 'ine_frente', label: 'INE', icon: CreditCard, color: 'bg-slate-100 text-slate-600' },
-  { value: 'pasaporte', label: 'Pasaporte', icon: FileCheck, color: 'bg-indigo-100 text-indigo-600' },
+  { value: 'ine_frente', label: 'INE / Credencial', shortLabel: 'INE', icon: CreditCard, color: 'bg-slate-100 text-slate-600' },
+  { value: 'pasaporte', label: 'Pasaporte', shortLabel: 'Pasaporte', icon: FileCheck, color: 'bg-indigo-100 text-indigo-600' },
   
   // Proceso legal
-  { value: 'solicitud_conciliacion', label: 'Solicitud', icon: FileText, color: 'bg-sky-100 text-sky-600' },
-  { value: 'notificacion', label: 'Notificacion', icon: FileText, color: 'bg-violet-100 text-violet-600' },
-  { value: 'acuse', label: 'Acuse', icon: FileCheck2, color: 'bg-teal-100 text-teal-600' },
-  { value: 'expediente', label: 'Expediente', icon: FileText, color: 'bg-gray-100 text-gray-600' },
+  { value: 'solicitud_conciliacion', label: 'Solicitud de conciliacion', shortLabel: 'Solicitud', icon: FileText, color: 'bg-sky-100 text-sky-600' },
+  { value: 'notificacion', label: 'Notificacion oficial', shortLabel: 'Notificacion', icon: FileText, color: 'bg-violet-100 text-violet-600' },
+  { value: 'acuse', label: 'Acuse de recibo', shortLabel: 'Acuse', icon: FileCheck2, color: 'bg-teal-100 text-teal-600' },
+  { value: 'expediente', label: 'Expediente del caso', shortLabel: 'Expediente', icon: FileText, color: 'bg-gray-100 text-gray-600' },
   
   // Audiencia y conciliacion
-  { value: 'foto_lugar', label: 'Lugar trabajo', icon: Building2, color: 'bg-stone-100 text-stone-600' },
-  { value: 'acta_audiencia', label: 'Acta audiencia', icon: Scale, color: 'bg-amber-100 text-amber-700' },
-  { value: 'acta_conciliacion', label: 'Acta conciliacion', icon: FileCheck2, color: 'bg-green-100 text-green-700' },
-  { value: 'constancia_no_conciliacion', label: 'No conciliacion', icon: FileX, color: 'bg-red-100 text-red-700' },
+  { value: 'foto_lugar', label: 'Foto del lugar de trabajo', shortLabel: 'Lugar', icon: Building2, color: 'bg-stone-100 text-stone-600' },
+  { value: 'acta_audiencia', label: 'Acta de audiencia', shortLabel: 'Audiencia', icon: Scale, color: 'bg-amber-100 text-amber-700' },
+  { value: 'acta_conciliacion', label: 'Acta de conciliacion', shortLabel: 'Conciliacion', icon: FileCheck2, color: 'bg-green-100 text-green-700' },
+  { value: 'constancia_no_conciliacion', label: 'Constancia de no conciliacion', shortLabel: 'No concilio', icon: FileX, color: 'bg-red-100 text-red-700' },
   
   // Resolucion
-  { value: 'convenio', label: 'Convenio', icon: FileSignature, color: 'bg-emerald-100 text-emerald-700' },
-  { value: 'sentencia', label: 'Sentencia', icon: Gavel, color: 'bg-purple-100 text-purple-700' },
+  { value: 'convenio', label: 'Convenio', shortLabel: 'Convenio', icon: FileSignature, color: 'bg-emerald-100 text-emerald-700' },
+  { value: 'sentencia', label: 'Sentencia', shortLabel: 'Sentencia', icon: Gavel, color: 'bg-purple-100 text-purple-700' },
   
   // Domicilio
-  { value: 'comprobante_domicilio', label: 'Domicilio', icon: Home, color: 'bg-rose-100 text-rose-600' },
+  { value: 'comprobante_domicilio', label: 'Comprobante de domicilio', shortLabel: 'Domicilio', icon: Home, color: 'bg-rose-100 text-rose-600' },
+  
+  // Testigos
+  { value: 'testigos', label: 'Datos de testigos', shortLabel: 'Testigos', icon: Users, color: 'bg-blue-100 text-blue-700' },
   
   // Otro
-  { value: 'otro', label: 'Otro', icon: File, color: 'bg-gray-100 text-gray-500' },
+  { value: 'otro', label: 'Otro documento', shortLabel: 'Otro', icon: File, color: 'bg-gray-100 text-gray-500' },
 ] as const
 
 interface FileToUpload {
@@ -336,44 +340,55 @@ export function DocumentUploader({ onUploaded, onClose, defaultCategoria }: Docu
       />
       
       {/* Carrusel de sugerencias */}
-      <div className="relative border-b py-2">
-        <button 
-          onClick={() => scrollCarousel('left')}
-          className="absolute left-0 top-1/2 -translate-y-1/2 z-10 w-5 h-5 bg-background/90 rounded-full shadow-sm flex items-center justify-center hover:bg-muted"
-        >
-          <ChevronLeft className="w-3 h-3" />
-        </button>
+      <div className="border-b py-2">
+        {/* Titulo */}
+        <p className="text-[10px] text-muted-foreground text-center mb-2">Reune tus pruebas</p>
         
-        <div 
-          ref={carouselRef}
-          className="flex gap-1 px-6 overflow-x-auto scrollbar-hide scroll-smooth"
-          style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}
-        >
-          {CATEGORIAS_SUGERIDAS.map(cat => {
-            const Icon = cat.icon
-            const isSelected = categoria === cat.value
-            return (
-              <button
-                key={cat.value}
-                onClick={() => setCategoria(cat.value as CategoriaDocumento)}
-                className={`flex flex-col items-center gap-0.5 p-1 rounded-lg transition-all shrink-0 w-12
-                  ${isSelected ? `${cat.color} ring-1 ring-current` : 'hover:bg-muted/50'}`}
-              >
-                <div className={`w-6 h-6 rounded-full flex items-center justify-center ${isSelected ? 'bg-white/50' : cat.color}`}>
-                  <Icon className="w-3 h-3" />
-                </div>
-                <span className="text-[8px] leading-tight text-center truncate w-full">{cat.label}</span>
-              </button>
-            )
-          })}
+        {/* Carrusel con flechas */}
+        <div className="relative">
+          <button 
+            onClick={() => scrollCarousel('left')}
+            className="absolute left-0 top-1/2 -translate-y-1/2 z-10 w-5 h-5 bg-background/90 rounded-full shadow-sm flex items-center justify-center hover:bg-muted"
+          >
+            <ChevronLeft className="w-3 h-3" />
+          </button>
+          
+          <div 
+            ref={carouselRef}
+            className="flex gap-1 px-6 overflow-x-auto scrollbar-hide scroll-smooth"
+            style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}
+          >
+            {CATEGORIAS_SUGERIDAS.map(cat => {
+              const Icon = cat.icon
+              const isSelected = categoria === cat.value
+              return (
+                <button
+                  key={cat.value}
+                  onClick={() => setCategoria(cat.value as CategoriaDocumento)}
+                  className={`flex flex-col items-center gap-0.5 p-1.5 rounded-lg transition-all shrink-0 w-11
+                    ${isSelected ? `${cat.color} ring-1 ring-current` : 'hover:bg-muted/50'}`}
+                >
+                  <div className={`w-6 h-6 rounded-full flex items-center justify-center ${isSelected ? 'bg-white/50' : cat.color}`}>
+                    <Icon className="w-3 h-3" />
+                  </div>
+                  <span className="text-[8px] leading-tight text-center truncate w-full">{cat.shortLabel}</span>
+                </button>
+              )
+            })}
+          </div>
+          
+          <button 
+            onClick={() => scrollCarousel('right')}
+            className="absolute right-0 top-1/2 -translate-y-1/2 z-10 w-5 h-5 bg-background/90 rounded-full shadow-sm flex items-center justify-center hover:bg-muted"
+          >
+            <ChevronRight className="w-3 h-3" />
+          </button>
         </div>
         
-        <button 
-          onClick={() => scrollCarousel('right')}
-          className="absolute right-0 top-1/2 -translate-y-1/2 z-10 w-5 h-5 bg-background/90 rounded-full shadow-sm flex items-center justify-center hover:bg-muted"
-        >
-          <ChevronRight className="w-3 h-3" />
-        </button>
+        {/* Categoria seleccionada - titulo completo */}
+        {categoriaActual && (
+          <p className="text-xs font-medium text-center mt-2 text-foreground">{categoriaActual.label}</p>
+        )}
       </div>
       
       {/* Contenido */}
