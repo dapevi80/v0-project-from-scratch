@@ -73,7 +73,7 @@ interface UserProfile {
   fullName?: string
   role?: string
   codigoUsuario?: string
-  isVerified?: boolean
+  verificationStatus?: string
 }
 
 interface AIAssistantProps {
@@ -609,7 +609,7 @@ ${docText.slice(0, 4000)}`
     }
     
     const name = userProfile.fullName?.split(' ')[0] || 'amigo'
-    const isVerified = userProfile.isVerified
+    const isVerified = userProfile.verificationStatus === 'verified'
     const role = userProfile.role
     
     // Personalizar segun el asistente

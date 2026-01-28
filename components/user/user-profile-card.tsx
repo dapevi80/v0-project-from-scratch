@@ -24,6 +24,19 @@ import {
 import Link from 'next/link'
 import { generateRandomCode } from '@/lib/types'
 
+// Funcion para encriptar el codigo de referido (diferente al codigo de usuario)
+function encryptReferralCode(userCode: string): string {
+  // Crear un hash simple pero diferente del codigo original
+  const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789' // Sin I, O, 0, 1 para evitar confusion
+  let encrypted = ''
+  for (let i = 0; i < userCode.length; i++) {
+    const charCode = userCode.charCodeAt(i)
+    const offset = (charCode * 7 + i * 3) % chars.length
+    encrypted += chars[offset]
+  }
+  return encrypted
+}
+
 interface UserProfileCardProps {
   userId?: string
   email?: string
@@ -99,11 +112,13 @@ export function UserProfileCard({
 
   const localAnonymous = profile.isAnonymous
   const referralCode = profile.referralCode
+  // Codigo de referido encriptado (diferente al codigo de usuario)
+  const encryptedReferralCode = encryptReferralCode(referralCode)
   const displayName = profile.displayName
   const fullName = profile.fullName
 
   const handleCopyCode = async () => {
-    await navigator.clipboard.writeText(profile.referralCode)
+    await navigator.clipboard.writeText(encryptedReferralCode)
     setCopied(true)
     setTimeout(() => setCopied(false), 2000)
   }
@@ -121,8 +136,8 @@ export function UserProfileCard({
   const handleShareCode = async () => {
     const shareData = {
       title: 'mecorrieron.mx',
-      text: `Usa mi codigo de referido: ${profile.referralCode}`,
-      url: `https://mecorrieron.mx/registro?ref=${profile.referralCode}`
+      text: `Usa mi codigo de referido: ${encryptedReferralCode}`,
+      url: `https://mecorrieron.mx/registro?ref=${encryptedReferralCode}`
     }
     
     if (navigator.share) {
@@ -155,50 +170,44 @@ export function UserProfileCard({
   return (
     <Card className="overflow-hidden">
       <CardContent className="p-0">
-        {/* Header - Rojo en anónimo, Azul en público */}
+        {/* Header - Verde en anónimo, Azul en público */}
         <div className={`p-6 flex flex-col items-center ${
           localAnonymous 
-            ? 'bg-gradient-to-br from-red-800 to-red-900' 
+            ? 'bg-gradient-to-br from-emerald-800 to-emerald-950' 
             : 'bg-gradient-to-br from-slate-800 to-slate-900'
         }`}>
           {localAnonymous ? (
-            /* Modo Anónimo: Solo icono incógnito y código */
+            /* Modo Anónimo: Avatar verde con antifaz */
             <>
-              <div className="w-20 h-20 rounded-full bg-red-700/50 flex items-center justify-center border-4 border-red-600/50 shadow-lg">
-                <svg 
-                  viewBox="0 0 24 24" 
-                  fill="none" 
-                  className="w-12 h-12 text-red-300"
-                  stroke="currentColor" 
-                  strokeWidth="1.5"
-                >
-                  {/* Sombrero */}
-                  <path d="M3 14h18M5 14c0-4 3-7 7-7s7 3 7 7" strokeLinecap="round"/>
-                  {/* Gafas */}
-                  <circle cx="8.5" cy="14" r="2.5" fill="currentColor"/>
-                  <circle cx="15.5" cy="14" r="2.5" fill="currentColor"/>
-                  <path d="M11 14h2" strokeLinecap="round"/>
-                  {/* Nariz */}
-                  <path d="M12 17v2" strokeLinecap="round"/>
-                </svg>
+              <div className="w-24 h-24 rounded-full bg-emerald-700/30 flex items-center justify-center border-4 border-emerald-500/50 shadow-lg overflow-hidden">
+                <img 
+                  src="/avatars/anonymous-user.jpg" 
+                  alt="Usuario Anonimo" 
+                  className="w-full h-full object-cover"
+                />
               </div>
               
               {/* Texto Modo Anónimo */}
-              <p className="mt-4 text-sm text-red-200">Modo anonimo</p>
+              <p className="mt-4 text-sm text-emerald-200 font-medium">Modo Anonimo Activado</p>
               
-              {/* Código de 8 dígitos */}
-              <div className="mt-2 px-4 py-2 rounded-lg bg-red-700/40 border border-red-600/30">
+              {/* Código de usuario (visible en comentarios) */}
+              <div className="mt-2 px-4 py-2 rounded-lg bg-emerald-700/40 border border-emerald-500/30">
                 <span className="font-mono text-lg font-bold text-white tracking-wider">
                   {profile.referralCode}
                 </span>
               </div>
               
+              {/* Explicacion del modo anonimo */}
+              <p className="mt-3 text-xs text-emerald-200/80 text-center max-w-[280px] leading-relaxed">
+                Solo tu codigo sera visible cuando comentes en el Buro de Empresas
+              </p>
+              
               {/* Badge */}
               <Badge 
                 variant="secondary" 
-                className="mt-3 bg-red-700/50 text-red-200 border-red-600/50"
+                className="mt-3 bg-emerald-700/50 text-emerald-200 border-emerald-500/50"
               >
-                Usuario Invitado
+                Identidad Protegida
               </Badge>
             </>
           ) : (
@@ -271,13 +280,27 @@ export function UserProfileCard({
         {/* Contenido */}
         <div className="p-4 space-y-4">
           {/* Toggle anonimo/publico */}
-          <div className="flex items-center justify-between p-3 rounded-lg bg-muted/50">
+          <div className={`flex items-center justify-between p-3 rounded-lg ${
+            localAnonymous ? 'bg-emerald-50 border border-emerald-200' : 'bg-muted/50'
+          }`}>
             <div className="flex items-center gap-3">
-              <Shield className="w-5 h-5 text-muted-foreground" />
+              <div className={`w-10 h-10 rounded-full flex items-center justify-center ${
+                localAnonymous ? 'bg-emerald-100' : 'bg-muted'
+              }`}>
+                {localAnonymous ? (
+                  <EyeOff className="w-5 h-5 text-emerald-600" />
+                ) : (
+                  <Eye className="w-5 h-5 text-muted-foreground" />
+                )}
+              </div>
               <div>
-                <p className="text-sm font-medium">Perfil anonimo</p>
+                <p className="text-sm font-medium">
+                  {localAnonymous ? 'Modo Anonimo Activo' : 'Perfil Publico'}
+                </p>
                 <p className="text-xs text-muted-foreground">
-                  {localAnonymous ? 'Tu nombre real esta oculto' : 'Tu nombre es visible'}
+                  {localAnonymous 
+                    ? 'Comenta en el Buro de Empresas sin revelar tu identidad' 
+                    : 'Tu nombre y perfil son visibles para otros'}
                 </p>
               </div>
             </div>
@@ -289,14 +312,14 @@ export function UserProfileCard({
 
           <Separator />
 
-          {/* Codigo de referido */}
+          {/* Codigo de referido (encriptado, diferente al codigo de usuario) */}
           <div className="space-y-2">
             <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
               Tu codigo de referido
             </p>
             <div className="flex items-center gap-2">
               <div className="flex-1 px-4 py-3 rounded-lg bg-primary/10 border border-primary/20 font-mono text-lg font-bold text-primary text-center tracking-wider">
-                {profile.referralCode}
+                {encryptedReferralCode}
               </div>
               <Button
                 variant="outline"

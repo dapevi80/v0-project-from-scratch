@@ -14,7 +14,7 @@ interface UserProfile {
   fullName?: string
   role?: string
   codigoUsuario?: string
-  isVerified?: boolean
+  verificationStatus?: string
 }
 
 const BUBBLE_SIZE_IDLE = 44
@@ -68,7 +68,7 @@ export function GlobalAIAssistant() {
         if (user) {
           const { data: profile } = await supabase
             .from('profiles')
-            .select('full_name, role, codigo_usuario, is_verified')
+            .select('full_name, role, codigo_usuario, verification_status')
             .eq('id', user.id)
             .single()
           
@@ -78,7 +78,7 @@ export function GlobalAIAssistant() {
             fullName: profile?.full_name,
             role: profile?.role,
             codigoUsuario: profile?.codigo_usuario,
-            isVerified: profile?.is_verified
+            verificationStatus: profile?.verification_status
           })
         }
       } catch {

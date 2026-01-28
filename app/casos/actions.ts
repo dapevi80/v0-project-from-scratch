@@ -63,27 +63,6 @@ export async function verificarLimitesUsuario() {
   }
 }
 
-// Obtener caso por ID de calculo
-export async function obtenerCasoPorCalculo(calculoId: string) {
-  const supabase = await createClient()
-
-  const { data: { user } } = await supabase.auth.getUser()
-  if (!user) return { error: 'No autenticado', data: null }
-
-  const { data: caso, error } = await supabase
-    .from('casos')
-    .select('id, folio, status, categoria')
-    .eq('calculo_id', calculoId)
-    .eq('worker_id', user.id)
-    .single()
-
-  if (error || !caso) {
-    return { error: null, data: null, existeCaso: false }
-  }
-
-  return { error: null, data: caso, existeCaso: true }
-}
-
 // Verificar acceso a la seccion de casos
 export async function verificarAccesoCasos() {
   const supabase = await createClient()
