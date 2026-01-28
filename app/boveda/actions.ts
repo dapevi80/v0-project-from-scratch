@@ -417,6 +417,41 @@ export async function eliminarDocumento(documentoId: string) {
   return { success: true }
 }
 
+// Renombrar documento
+export async function renombrarDocumento(documentoId: string, nuevoNombre: string) {
+  const supabase = await createClient()
+  
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) {
+    return { success: false, error: 'No autenticado', requiresAuth: true }
+  }
+  
+  // Verificar que el documento pertenece al usuario
+  const { data: doc, error: fetchError } = await supabase
+    .from('documentos_boveda')
+    .select('id')
+    .eq('id', documentoId)
+    .eq('user_id', user.id)
+    .single()
+  
+  if (fetchError || !doc) {
+    return { success: false, error: 'Documento no encontrado' }
+  }
+  
+  // Actualizar nombre
+  const { error: updateError } = await supabase
+    .from('documentos_boveda')
+    .update({ nombre: nuevoNombre.trim() })
+    .eq('id', documentoId)
+  
+  if (updateError) {
+    return { success: false, error: updateError.message }
+  }
+  
+  revalidatePath('/boveda')
+  return { success: true }
+}
+
 // Obtener URL firmada para visualizar documento
 export async function obtenerUrlDocumento(documentoId: string) {
   const supabase = await createClient()
