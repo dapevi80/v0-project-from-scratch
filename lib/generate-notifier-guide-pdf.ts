@@ -203,12 +203,38 @@ export async function generateNotifierGuidePDF(data: NotifierGuideData): Promise
 // Convierte el PDF blob a base64 para guardarlo en Supabase
 export async function pdfBlobToBase64(blob: Blob): Promise<string> {
   return new Promise((resolve, reject) => {
-    const reader = new FileReader()
-    reader.onloadend = () => {
-      const dataUrl = reader.result as string
-      resolve(dataUrl.split(',')[1])
+    if (!blob || blob.size === 0) {
+      reject(new Error('Blob invalido o vacio'))
+      return
     }
-    reader.onerror = reject
-    reader.readAsDataURL(blob)
+    
+    const reader = new FileReader()
+    
+    reader.onloadend = () => {
+      try {
+        const dataUrl = reader.result as string
+        if (!dataUrl || !dataUrl.includes(',')) {
+          reject(new Error('Error al convertir blob a base64'))
+          return
+        }
+        resolve(dataUrl.split(',')[1])
+      } catch (error) {
+        reject(error)
+      }
+    }
+    
+    reader.onerror = () => {
+      reject(new Error('Error leyendo el blob del PDF'))
+    }
+    
+    reader.onabort = () => {
+      reject(new Error('Lectura del blob abortada'))
+    }
+    
+    try {
+      reader.readAsDataURL(blob)
+    } catch (error) {
+      reject(error)
+    }
   })
 }

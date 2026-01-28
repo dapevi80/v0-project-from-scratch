@@ -186,7 +186,10 @@ export function LocationPicker({ onSave, onClose, casoId }: LocationPickerProps)
       }, 1500)
     } catch (error) {
       console.error('Error guardando ubicacion:', error)
+      setSavingMessage('')
       setStep('streetview')
+      // Mostrar error al usuario
+      alert('Error al guardar. Por favor intenta de nuevo.')
     }
   }
 
