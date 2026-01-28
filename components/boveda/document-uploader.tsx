@@ -21,7 +21,6 @@ import {
   Home,
   FileCheck,
   MapPin,
-  Mic,
   Phone,
   DollarSign,
   FileSignature,
@@ -32,10 +31,10 @@ import {
   FileCheck2,
   Receipt,
   ChevronLeft,
-  ChevronRight,
-  Navigation
+  ChevronRight
 } from 'lucide-react'
 import { subirDocumento, type CategoriaDocumento } from '@/app/boveda/actions'
+import { LocationPicker, type LocationData } from './location-picker'
 
 // Categorias expandidas organizadas por grupo
 const CATEGORIAS_SUGERIDAS = [
@@ -99,8 +98,6 @@ export function DocumentUploader({ onUploaded, onClose, defaultCategoria }: Docu
   const [uploading, setUploading] = useState(false)
   const [dragActive, setDragActive] = useState(false)
   const [showLocationPicker, setShowLocationPicker] = useState(false)
-  const [location, setLocation] = useState<{ lat: number; lng: number; address?: string } | null>(null)
-  const [loadingLocation, setLoadingLocation] = useState(false)
   
   const fileInputRef = useRef<HTMLInputElement>(null)
   const cameraInputRef = useRef<HTMLInputElement>(null)
@@ -123,43 +120,15 @@ export function DocumentUploader({ onUploaded, onClose, defaultCategoria }: Docu
     }
   }
 
-  // Obtener ubicacion actual
-  const getCurrentLocation = () => {
-    setLoadingLocation(true)
-    if (navigator.geolocation) {
-      navigator.geolocation.getCurrentPosition(
-        async (position) => {
-          const { latitude, longitude } = position.coords
-          setLocation({ lat: latitude, lng: longitude })
-          setLoadingLocation(false)
-          setShowLocationPicker(true)
-        },
-        (error) => {
-          console.error('Error obteniendo ubicacion:', error)
-          setLoadingLocation(false)
-          alert('No se pudo obtener la ubicacion. Verifica los permisos.')
-        }
-      )
-    } else {
-      setLoadingLocation(false)
-      alert('Tu navegador no soporta geolocalizacion')
-    }
-  }
-
   // Guardar ubicacion como documento
-  const saveLocation = async () => {
-    if (!location) return
-    
-    const locationData = {
+  const handleSaveLocation = async (locationData: LocationData) => {
+    const docData = {
       type: 'ubicacion_trabajo',
-      coordinates: location,
-      timestamp: new Date().toISOString(),
-      googleMapsUrl: `https://www.google.com/maps?q=${location.lat},${location.lng}`,
-      streetViewUrl: `https://www.google.com/maps/@?api=1&map_action=pano&viewpoint=${location.lat},${location.lng}`
+      coordinates: { lat: locationData.lat, lng: locationData.lng },
+      ...locationData
     }
     
-    // Crear un archivo JSON con la ubicacion
-    const blob = new Blob([JSON.stringify(locationData, null, 2)], { type: 'application/json' })
+    const blob = new Blob([JSON.stringify(docData, null, 2)], { type: 'application/json' })
     const file = new File([blob], `ubicacion_trabajo_${Date.now()}.json`, { type: 'application/json' })
     
     const reader = new FileReader()
@@ -180,12 +149,11 @@ export function DocumentUploader({ onUploaded, onClose, defaultCategoria }: Docu
       categoria: 'foto_lugar' as CategoriaDocumento,
       mimeType: 'application/json',
       tamanioBytes: file.size,
-      metadata: locationData
+      metadata: docData
     })
     
     if (result.success) {
       setShowLocationPicker(false)
-      setLocation(null)
       onUploaded?.()
     }
   }
@@ -316,9 +284,19 @@ export function DocumentUploader({ onUploaded, onClose, defaultCategoria }: Docu
 
   const categoriaActual = CATEGORIAS_SUGERIDAS.find(c => c.value === categoria)
 
+  // Mostrar LocationPicker si esta activo
+  if (showLocationPicker) {
+    return (
+      <LocationPicker 
+        onSave={handleSaveLocation}
+        onClose={() => setShowLocationPicker(false)}
+      />
+    )
+  }
+
   return (
     <div 
-      className="bg-background rounded-xl shadow-lg border max-h-[90vh] overflow-hidden flex flex-col w-full max-w-md"
+      className="bg-background rounded-xl shadow-lg border max-h-[85vh] overflow-hidden flex flex-col w-full max-w-sm"
       onDragEnter={handleDrag}
       onDragLeave={handleDrag}
       onDragOver={handleDrag}
@@ -332,7 +310,7 @@ export function DocumentUploader({ onUploaded, onClose, defaultCategoria }: Docu
               <categoriaActual.icon className="w-3 h-3" />
             </div>
           )}
-          <span className="font-medium text-sm">{categoriaActual?.label || 'Subir archivo'}</span>
+          <span className="font-medium text-sm">{categoriaActual?.label || 'Subir'}</span>
         </div>
         <Button variant="ghost" size="icon" onClick={onClose} className="h-7 w-7">
           <X className="w-4 h-4" />
@@ -358,17 +336,17 @@ export function DocumentUploader({ onUploaded, onClose, defaultCategoria }: Docu
       />
       
       {/* Carrusel de sugerencias */}
-      <div className="relative border-b">
+      <div className="relative border-b py-2">
         <button 
           onClick={() => scrollCarousel('left')}
-          className="absolute left-0 top-1/2 -translate-y-1/2 z-10 w-6 h-6 bg-background/80 rounded-full shadow flex items-center justify-center hover:bg-muted"
+          className="absolute left-0 top-1/2 -translate-y-1/2 z-10 w-5 h-5 bg-background/90 rounded-full shadow-sm flex items-center justify-center hover:bg-muted"
         >
-          <ChevronLeft className="w-4 h-4" />
+          <ChevronLeft className="w-3 h-3" />
         </button>
         
         <div 
           ref={carouselRef}
-          className="flex gap-1 p-2 overflow-x-auto scrollbar-hide scroll-smooth"
+          className="flex gap-1 px-6 overflow-x-auto scrollbar-hide scroll-smooth"
           style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}
         >
           {CATEGORIAS_SUGERIDAS.map(cat => {
@@ -378,13 +356,13 @@ export function DocumentUploader({ onUploaded, onClose, defaultCategoria }: Docu
               <button
                 key={cat.value}
                 onClick={() => setCategoria(cat.value as CategoriaDocumento)}
-                className={`flex flex-col items-center gap-0.5 p-1.5 rounded-lg transition-all shrink-0 min-w-[52px]
-                  ${isSelected ? `${cat.color} ring-1 ring-current` : 'hover:bg-muted'}`}
+                className={`flex flex-col items-center gap-0.5 p-1 rounded-lg transition-all shrink-0 w-12
+                  ${isSelected ? `${cat.color} ring-1 ring-current` : 'hover:bg-muted/50'}`}
               >
-                <div className={`w-7 h-7 rounded-full flex items-center justify-center ${isSelected ? 'bg-white/50' : cat.color}`}>
-                  <Icon className="w-3.5 h-3.5" />
+                <div className={`w-6 h-6 rounded-full flex items-center justify-center ${isSelected ? 'bg-white/50' : cat.color}`}>
+                  <Icon className="w-3 h-3" />
                 </div>
-                <span className="text-[9px] leading-tight text-center max-w-[48px] truncate">{cat.label}</span>
+                <span className="text-[8px] leading-tight text-center truncate w-full">{cat.label}</span>
               </button>
             )
           })}
@@ -392,80 +370,46 @@ export function DocumentUploader({ onUploaded, onClose, defaultCategoria }: Docu
         
         <button 
           onClick={() => scrollCarousel('right')}
-          className="absolute right-0 top-1/2 -translate-y-1/2 z-10 w-6 h-6 bg-background/80 rounded-full shadow flex items-center justify-center hover:bg-muted"
+          className="absolute right-0 top-1/2 -translate-y-1/2 z-10 w-5 h-5 bg-background/90 rounded-full shadow-sm flex items-center justify-center hover:bg-muted"
         >
-          <ChevronRight className="w-4 h-4" />
+          <ChevronRight className="w-3 h-3" />
         </button>
       </div>
       
       {/* Contenido */}
       <div className={`flex-1 overflow-y-auto p-3 ${dragActive ? 'bg-primary/5' : ''}`}>
         
-        {/* Modal de ubicacion */}
-        {showLocationPicker && location && (
-          <div className="mb-3 p-3 rounded-lg border bg-muted/30">
-            <div className="flex items-center gap-2 mb-2">
-              <MapPin className="w-4 h-4 text-primary" />
-              <span className="text-sm font-medium">Ubicacion guardada</span>
-            </div>
-            <div className="text-xs text-muted-foreground mb-2">
-              Lat: {location.lat.toFixed(6)}, Lng: {location.lng.toFixed(6)}
-            </div>
-            <div className="flex gap-2">
-              <a 
-                href={`https://www.google.com/maps/@?api=1&map_action=pano&viewpoint=${location.lat},${location.lng}`}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="flex-1 text-center text-xs py-1.5 rounded bg-primary/10 text-primary hover:bg-primary/20"
-              >
-                Ver Street View
-              </a>
-              <button
-                onClick={saveLocation}
-                className="flex-1 text-xs py-1.5 rounded bg-green-600 text-white hover:bg-green-700"
-              >
-                Guardar ubicacion
-              </button>
-            </div>
-          </div>
-        )}
-
         {/* Zona de drop/seleccion */}
         {files.length === 0 ? (
           <div 
-            className={`border-2 border-dashed rounded-xl p-6 text-center transition-all
+            className={`border-2 border-dashed rounded-xl p-5 text-center transition-all
               ${dragActive ? 'border-primary bg-primary/5' : 'border-muted-foreground/20'}`}
           >
-            {/* Acciones rapidas */}
-            <div className="flex justify-center gap-3 mb-3">
+            {/* Acciones */}
+            <div className="flex justify-center gap-3 mb-2">
               <button
                 onClick={() => cameraInputRef.current?.click()}
-                className="w-11 h-11 rounded-full bg-green-100 flex items-center justify-center hover:bg-green-200 transition-colors"
+                className="w-10 h-10 rounded-full bg-green-100 flex items-center justify-center hover:bg-green-200 transition-colors"
                 title="Tomar foto"
               >
-                <Camera className="w-5 h-5 text-green-600" />
+                <Camera className="w-4 h-4 text-green-600" />
               </button>
               <button
                 onClick={() => fileInputRef.current?.click()}
-                className="w-11 h-11 rounded-full bg-primary/10 flex items-center justify-center hover:bg-primary/20 transition-colors"
+                className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center hover:bg-primary/20 transition-colors"
                 title="Elegir archivo"
               >
-                <Upload className="w-5 h-5 text-primary" />
+                <Upload className="w-4 h-4 text-primary" />
               </button>
               <button
-                onClick={getCurrentLocation}
-                disabled={loadingLocation}
-                className="w-11 h-11 rounded-full bg-orange-100 flex items-center justify-center hover:bg-orange-200 transition-colors disabled:opacity-50"
-                title="Guardar ubicacion"
+                onClick={() => setShowLocationPicker(true)}
+                className="w-10 h-10 rounded-full bg-orange-100 flex items-center justify-center hover:bg-orange-200 transition-colors"
+                title="Ubicacion trabajo"
               >
-                {loadingLocation ? (
-                  <Loader2 className="w-5 h-5 text-orange-600 animate-spin" />
-                ) : (
-                  <Navigation className="w-5 h-5 text-orange-600" />
-                )}
+                <MapPin className="w-4 h-4 text-orange-600" />
               </button>
             </div>
-            <p className="text-[11px] text-muted-foreground">
+            <p className="text-[10px] text-muted-foreground">
               {dragActive ? 'Suelta aqui' : 'Foto | Archivo | Ubicacion'}
             </p>
           </div>
@@ -475,33 +419,33 @@ export function DocumentUploader({ onUploaded, onClose, defaultCategoria }: Docu
             {files.map((fileObj, index) => (
               <div key={index} className="flex items-center gap-2 p-2 rounded-lg bg-muted/30 border">
                 {fileObj.preview ? (
-                  <img src={fileObj.preview || "/placeholder.svg"} alt="" className="w-9 h-9 rounded object-cover" />
+                  <img src={fileObj.preview || "/placeholder.svg"} alt="" className="w-8 h-8 rounded object-cover" />
                 ) : (
-                  <div className="w-9 h-9 rounded bg-muted flex items-center justify-center">
-                    {fileObj.file.type.startsWith('video/') ? <Video className="w-4 h-4 text-muted-foreground" /> :
-                     fileObj.file.type.startsWith('audio/') ? <Music2 className="w-4 h-4 text-muted-foreground" /> :
-                     fileObj.file.type === 'application/pdf' ? <FileText className="w-4 h-4 text-red-500" /> :
-                     <File className="w-4 h-4 text-muted-foreground" />}
+                  <div className="w-8 h-8 rounded bg-muted flex items-center justify-center">
+                    {fileObj.file.type.startsWith('video/') ? <Video className="w-3.5 h-3.5 text-muted-foreground" /> :
+                     fileObj.file.type.startsWith('audio/') ? <Music2 className="w-3.5 h-3.5 text-muted-foreground" /> :
+                     fileObj.file.type === 'application/pdf' ? <FileText className="w-3.5 h-3.5 text-red-500" /> :
+                     <File className="w-3.5 h-3.5 text-muted-foreground" />}
                   </div>
                 )}
                 <div className="flex-1 min-w-0">
-                  <p className="text-[11px] font-medium truncate">{fileObj.file.name}</p>
-                  <p className="text-[10px] text-muted-foreground">{formatFileSize(fileObj.file.size)}</p>
+                  <p className="text-[10px] font-medium truncate">{fileObj.file.name}</p>
+                  <p className="text-[9px] text-muted-foreground">{formatFileSize(fileObj.file.size)}</p>
                 </div>
                 {fileObj.status === 'pending' && (
-                  <button onClick={() => removeFile(index)} className="p-1 hover:bg-muted rounded">
+                  <button onClick={() => removeFile(index)} className="p-0.5 hover:bg-muted rounded">
                     <X className="w-3 h-3" />
                   </button>
                 )}
-                {fileObj.status === 'uploading' && <Loader2 className="w-4 h-4 animate-spin text-primary" />}
-                {fileObj.status === 'success' && <CheckCircle className="w-4 h-4 text-green-500" />}
-                {fileObj.status === 'error' && <AlertCircle className="w-4 h-4 text-destructive" />}
+                {fileObj.status === 'uploading' && <Loader2 className="w-3.5 h-3.5 animate-spin text-primary" />}
+                {fileObj.status === 'success' && <CheckCircle className="w-3.5 h-3.5 text-green-500" />}
+                {fileObj.status === 'error' && <AlertCircle className="w-3.5 h-3.5 text-destructive" />}
               </div>
             ))}
             
             <button
               onClick={() => fileInputRef.current?.click()}
-              className="w-full p-1.5 border border-dashed rounded-lg text-[11px] text-muted-foreground hover:bg-muted/30"
+              className="w-full p-1.5 border border-dashed rounded-lg text-[10px] text-muted-foreground hover:bg-muted/30"
             >
               + Agregar mas
             </button>
@@ -511,7 +455,7 @@ export function DocumentUploader({ onUploaded, onClose, defaultCategoria }: Docu
       
       {/* Footer */}
       {files.length > 0 && (
-        <div className="p-3 border-t bg-background">
+        <div className="p-3 border-t">
           {files.every(f => f.status === 'success') ? (
             <Button
               onClick={() => {
@@ -519,26 +463,26 @@ export function DocumentUploader({ onUploaded, onClose, defaultCategoria }: Docu
                 onUploaded?.()
                 onClose?.()
               }}
-              className="w-full h-10 text-sm gap-2 bg-green-600 hover:bg-green-700"
+              className="w-full h-9 text-xs gap-2 bg-green-600 hover:bg-green-700"
             >
-              <CheckCircle className="w-4 h-4" />
+              <CheckCircle className="w-3.5 h-3.5" />
               Guardar y cerrar
             </Button>
           ) : (
             <Button
               onClick={uploadFiles}
               disabled={uploading}
-              className="w-full h-10 text-sm gap-2"
+              className="w-full h-9 text-xs gap-2"
             >
               {uploading ? (
                 <>
-                  <Loader2 className="w-4 h-4 animate-spin" />
+                  <Loader2 className="w-3.5 h-3.5 animate-spin" />
                   Subiendo...
                 </>
               ) : (
                 <>
-                  <Upload className="w-4 h-4" />
-                  Subir {files.length} {files.length === 1 ? 'archivo' : 'archivos'}
+                  <Upload className="w-3.5 h-3.5" />
+                  Subir {files.length}
                 </>
               )}
             </Button>
