@@ -19,7 +19,7 @@ import type { User } from '@supabase/supabase-js'
 export default function DashboardPage() {
   const router = useRouter()
   const [user, setUser] = useState<User | null>(null)
-  const [profile, setProfile] = useState<{ role?: string; full_name?: string; codigo_usuario?: string; is_verified?: boolean } | null>(null)
+  const [profile, setProfile] = useState<{ role?: string; full_name?: string; codigo_usuario?: string; verification_status?: string } | null>(null)
   const [casosActivos, setCasosActivos] = useState(0)
   const [loading, setLoading] = useState(true)
   const [showVerifiedEffect, setShowVerifiedEffect] = useState(false)
@@ -43,7 +43,7 @@ export default function DashboardPage() {
         
         // Ejecutar consultas en paralelo para mejor rendimiento
         const [profileResult, casosResult] = await Promise.all([
-          supabase.from('profiles').select('role, full_name, codigo_usuario, is_verified, celebration_shown').eq('id', currentUser.id).single(),
+          supabase.from('profiles').select('role, full_name, codigo_usuario, verification_status, celebration_shown').eq('id', currentUser.id).single(),
           supabase.from('calculos_liquidacion').select('*', { count: 'exact', head: true }).eq('user_id', currentUser.id)
         ])
         
@@ -70,7 +70,7 @@ export default function DashboardPage() {
           }
           
           // Verificar si es usuario verificado que aun no ha visto la celebracion
-          if (profileData.is_verified && profileData.role === 'worker' && !profileData.celebration_shown) {
+          if (profileData.verification_status === 'verified' && profileData.role === 'worker' && !profileData.celebration_shown) {
             setShowVerifiedEffect(true)
             // Actualizar en BD sin bloquear
             supabase.from('profiles').update({ celebration_shown: true }).eq('id', currentUser.id)
@@ -205,7 +205,7 @@ export default function DashboardPage() {
             codigoUsuario={profile?.codigo_usuario}
             fullName={profile?.full_name}
             role={role}
-            isVerified={profile?.is_verified || role === 'worker' || role === 'lawyer'}
+            isVerified={profile?.verification_status === 'verified' || role === 'worker' || role === 'lawyer'}
             casosActivos={casosActivos}
           />
 

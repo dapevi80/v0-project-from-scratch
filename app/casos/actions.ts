@@ -72,7 +72,7 @@ export async function verificarAccesoCasos() {
   
   const { data: profile } = await supabase
     .from('profiles')
-    .select('role, is_verified')
+    .select('role, verification_status')
     .eq('id', user.id)
     .single()
   

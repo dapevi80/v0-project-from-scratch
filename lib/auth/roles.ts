@@ -13,7 +13,7 @@ export interface UserProfile {
   codigo_usuario: string | null
   avatar_url: string | null
   phone: string | null
-  is_verified: boolean
+  verification_status: string | null
   created_at: string
 }
 
@@ -63,7 +63,7 @@ export async function getCurrentUser(): Promise<{ user: UserProfile | null; erro
       codigo_usuario: profile.codigo_usuario,
       avatar_url: profile.avatar_url,
       phone: profile.phone,
-      is_verified: profile.is_verified || false,
+      verification_status: profile.verification_status || null,
       created_at: profile.created_at
     }, 
     error: null 

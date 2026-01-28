@@ -622,7 +622,7 @@ export async function getPendingVerifications() {
     .from('profiles')
     .select('*')
     .in('role', ['guest', 'worker'])
-    .eq('is_verified', false)
+    .neq('verification_status', 'verified')
     .or('caso_creado.eq.true,verification_status.eq.pending')
     .order('created_at', { ascending: false })
   
@@ -632,7 +632,7 @@ export async function getPendingVerifications() {
       .from('profiles')
       .select('*')
       .in('role', ['guest', 'worker'])
-      .eq('is_verified', false)
+      .neq('verification_status', 'verified')
       .order('created_at', { ascending: false })
     
     if (fallbackError) {
@@ -680,8 +680,7 @@ export async function verifyUserAccount(userId: string, datos: {
         identificacion_verificada: true,
         identificacion_verificada_por: user.id,
         identificacion_verificada_at: new Date().toISOString(),
-        verification_status: 'verified',
-        is_verified: true
+        verification_status: 'verified'
       })
       .eq('id', userId)
     
