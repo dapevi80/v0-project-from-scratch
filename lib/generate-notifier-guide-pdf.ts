@@ -8,6 +8,9 @@ export interface NotifierGuideData {
   address?: string
   companyName?: string
   timestamp: string
+  heading?: number        // Direccion de la camara Street View (0-360)
+  pitch?: number          // Inclinacion de la camara (-90 a 90)
+  streetViewImageUrl?: string  // URL de la imagen de Street View preconfigurada
 }
 
 // Genera un PDF "Guía para Notificador" con mapa, Street View y coordenadas
@@ -116,10 +119,17 @@ export async function generateNotifierGuidePDF(data: NotifierGuideData): Promise
   doc.setTextColor(...grayColor)
   doc.text('Vista de fachada - Ver enlace para verificar', margin + 5, yPos + 30)
   
-  // Link a Street View
-  const streetViewLink = `https://www.google.com/maps?layer=c&cbll=${data.lat},${data.lng}`
+  // Link a Street View con heading y pitch configurados
+  const heading = data.heading ?? 0
+  const pitch = data.pitch ?? 0
+  const streetViewLink = `https://www.google.com/maps/@?api=1&map_action=pano&viewpoint=${data.lat},${data.lng}&heading=${heading}&pitch=${pitch}`
   doc.setTextColor(37, 99, 235)
   doc.textWithLink(streetViewLink, margin + 5, yPos + 38, { url: streetViewLink })
+  
+  // Mostrar orientacion de la camara
+  doc.setTextColor(...grayColor)
+  doc.setFontSize(8)
+  doc.text(`Orientacion camara: ${heading}° | Inclinacion: ${pitch}°`, margin + 5, yPos + 46)
   
   yPos += 60
   

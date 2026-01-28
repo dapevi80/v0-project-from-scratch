@@ -1113,8 +1113,11 @@ export async function actualizarUbicacionCaso(
     lng: number
     address?: string
     streetViewUrl: string
+    streetViewImageUrl?: string  // URL de imagen estatica de Street View
     mapsUrl: string
     timestamp: string
+    heading?: number   // Direccion de la camara (0-360)
+    pitch?: number     // Inclinacion de la camara (-90 a 90)
   }
 ) {
   const supabase = await createClient()
@@ -1147,10 +1150,20 @@ export async function actualizarUbicacionCaso(
   }
   
   // Actualizar el caso con la ubicacion - usar campos que existen en la tabla
+  // Guardar todos los datos de ubicacion incluyendo la imagen de Street View configurada
   const { error } = await supabase
     .from('casos')
     .update({
       employer_address: locationData.address || `${locationData.lat}, ${locationData.lng}`,
+      ubicacion_coordenadas: `${locationData.lat},${locationData.lng}`,
+      ubicacion_lat: locationData.lat,
+      ubicacion_lng: locationData.lng,
+      ubicacion_street_view_url: locationData.streetViewUrl,
+      ubicacion_street_view_image: locationData.streetViewImageUrl,
+      ubicacion_maps_url: locationData.mapsUrl,
+      ubicacion_heading: locationData.heading,
+      ubicacion_pitch: locationData.pitch,
+      ubicacion_timestamp: locationData.timestamp,
       updated_at: new Date().toISOString()
     })
     .eq('id', targetCasoId)
