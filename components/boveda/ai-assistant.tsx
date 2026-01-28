@@ -39,7 +39,7 @@ const QUICK_QUESTIONS = [
   { icon: HelpCircle, text: "Plazo para demandar", color: "bg-purple-50 text-purple-600 border-purple-200" },
 ]
 
-// FAQ por asistente
+// FAQ por asistente - Con urgencia de 60 dias
 const FAQ_RESPONSES: Record<string, Record<string, string>> = {
   lia: {
     "Calcular liquidacion": `**Para calcular tu liquidacion:**
@@ -48,32 +48,33 @@ Solo necesitas tu **salario** y **fechas de trabajo**.
 
 La app calcula: 3 meses + 20 dias/año + aguinaldo + vacaciones.
 
-**Guardalo en tu Boveda** y muestraselo a un abogado.
+**Importante:** Los primeros **60 dias** son clave para negociar. Despues la empresa se pone mas dificil.
 
-Crea tu cuenta y empieza ahora.`,
+Calcula ahora y guarda en tu Boveda.`,
     "Iniciar conciliacion": `**Para iniciar conciliacion:**
 
 1. Junta tus documentos (INE, nomina)
 2. Pide cita en el Centro de Conciliacion
 3. Asiste y expon tu caso
 
-Tienes **1 año** desde tu despido. No pierdas tiempo.
+**Ojo:** Tienes solo **60 dias** desde el problema para tener mas fuerza legal. Despues se complica.
 
-Guarda todo en la Boveda primero.`,
+Guarda todo en la Boveda y actua rapido.`,
     "Despido sin causa": `**Si te despiden sin causa, te deben:**
 
 - 3 meses de salario
 - 20 dias por año trabajado
 - Prima de antiguedad
 
-No quieren pagar? Un abogado te ayuda y solo cobra si ganas.
+**Tip:** En los primeros **60 dias** tienes mejor posicion para negociar. No dejes pasar el tiempo.
 
 Calcula cuanto te deben ahora.`,
-    "Plazo para demandar": `**Tienes 1 AÑO desde tu despido.**
+    "Plazo para demandar": `**Plazos importantes:**
 
-Despues pierdes el derecho.
+- **60 dias:** Mejor momento para negociar (la empresa aun quiere arreglar)
+- **1 año:** Limite legal para demandar
 
-Actua rapido: mas pruebas, mejor negociacion.
+Entre mas rapido actues, mejor resultado. Las pruebas estan frescas y la empresa negocia.
 
 Calcula tu liquidacion ahora.`
   },
@@ -82,50 +83,58 @@ Calcula tu liquidacion ahora.`
 
 La app hace la matematica. Yo duermo.
 
-Te deben: indemnizacion + aguinaldo + vacaciones...
+*abre un ojo* Oye, tienes **60 dias** para que la empresa te tome en serio. Despues... meh.
 
-Guardalo en la Boveda. *se estira*`,
+Hazlo ya. *se estira*`,
     "Iniciar conciliacion": `*abre un ojo*
 
 Junta papeles, pide cita, ve a la audiencia.
 
-Tienes 1 año. Son 365 siestas. *se lame la pata*
+*se lame la pata* Son **60 dias** para actuar con fuerza. Despues la empresa se hace la dormida... como yo.
 
 Guarda todo en la Boveda.`,
     "Despido sin causa": `*levanta las orejas*
 
 Te deben 3 meses + 20 dias/año + prima.
 
-Calcula tu lana mientras tomo siesta #47.`,
-    "Plazo para demandar": `*bosteza* Un año. 365 siestas.
+*ronronea* Pero actua en los primeros **60 dias**... o la empresa se pone dificil.
 
-Actua rapido. *ronronea*
+Calcula tu lana ya.`,
+    "Plazo para demandar": `*bosteza* 60 dias para negociar bien. Un año limite.
 
-Calculamos?`
+Entre mas duermas, peor. *ironia gatuna*
+
+Calculamos? *se rasca la oreja*`
   },
   bora: {
     "Calcular liquidacion": `*suspira pesadamente*
 
 Ay mijo... Pon tu salario y fechas. Ya.
 
-La app hace todo. Yo estoy muy vieja para matematicas.
+*te mira seria* Tienes **60 dias** para que te hagan caso. Despues se hacen los sordos. Lo he visto mil veces.
 
-Guardala en la Boveda antes de que la pierdas. *se acuesta*`,
+Calculalo ya. *se acuesta*`,
     "Iniciar conciliacion": `*te mira con ojos entrecerrados*
 
 Papeles. Cita. Audiencia. Listo.
 
-Tienes un año. Guarda tus cosas en la Boveda. *mueve la cola molesta*`,
+*gruñe* **60 dias**. Ese es tu tiempo de oro. Despues la empresa ya no te pela. Hazme caso, soy vieja y sabia.
+
+Guarda todo en la Boveda. *mueve la cola molesta*`,
     "Despido sin causa": `*ronquido interrumpido*
 
 Te deben 3 meses, 20 dias por año, prima... lo de siempre.
 
-Dejen de quejarse y calculen. *se da la vuelta*`,
+*te ve fijamente* Pero si dejas pasar **60 dias**, la empresa ya no negocia igual. Aprende de esta gata vieja.
+
+Calcula ahora. *se da la vuelta*`,
     "Plazo para demandar": `*te observa con desden*
 
-Un año. Tictac.
+En mis tiempos la gente actuaba rapido. Ahora todo lo dejan.
 
-Hazlo ahora. Estoy tratando de dormir. *cierra los ojos*`
+**60 dias** para negociar con fuerza. Un año limite. Tictac.
+
+Hazlo ahora. *cierra los ojos*`
   }
 }
 
@@ -137,9 +146,9 @@ const ASSISTANTS = {
     avatar: "/lia-avatar.jpg",
     color: "bg-emerald-500",
     api: "/api/legal-assistant",
-    welcomeMessage: `Hola! Soy **Lia**, tu asistente legal. Que necesitas saber?`,
+    welcomeMessage: `Hola! Soy **Lia**, tu asistente legal. Recuerda: los primeros **60 dias** son clave para tu caso. En que te ayudo?`,
     loadingText: "Escribiendo...",
-    ctaMessage: `**Ya tienes la info!** Crea tu cuenta gratis para calcular y guardar.`
+    ctaMessage: `**El tiempo corre!** Crea tu cuenta gratis y calcula tu liquidacion antes de que pasen los 60 dias.`
   },
   mandu: {
     name: "Mandu",
@@ -147,9 +156,9 @@ const ASSISTANTS = {
     avatar: "/mandu-avatar.jpg",
     color: "bg-slate-500",
     api: "/api/mandu-assistant",
-    welcomeMessage: `*bosteza* Soy **Mandu**... Que quieres? *se estira*`,
+    welcomeMessage: `*bosteza* Soy **Mandu**... Oye, no duermas tanto como yo. Tienes **60 dias** para actuar. Que necesitas?`,
     loadingText: "Pensando... zzz",
-    ctaMessage: `*se estira* Ya sabes lo basico. Entra a la app...`
+    ctaMessage: `*se estira* Ya sabes lo basico. Ahora deja de ronronear y entra a la app. El tiempo no espera.`
   },
   bora: {
     name: "Bora",
@@ -157,9 +166,9 @@ const ASSISTANTS = {
     avatar: "/bora-avatar.jpg",
     color: "bg-orange-500",
     api: "/api/bora-assistant",
-    welcomeMessage: `*te mira* Soy **Bora**. Vieja y con poca paciencia. Que quieres?`,
+    welcomeMessage: `*te mira* Soy **Bora**. Vieja y sabia. Se que tienes problemas laborales... y se que tienes **60 dias** para actuar. Que quieres saber?`,
     loadingText: "Pensando... *suspira*",
-    ctaMessage: `*bostezo* Bueno ya. Entra a la app y deja de molestar.`
+    ctaMessage: `*suspira* Ya te di la informacion. Ahora actua. Los 60 dias pasan rapido. Entra a la app.`
   }
 }
 
