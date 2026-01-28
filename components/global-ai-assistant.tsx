@@ -27,6 +27,8 @@ export function GlobalAIAssistant() {
   const dragOffset = useRef<Position>({ x: 0, y: 0 })
   const idleTimer = useRef<NodeJS.Timeout | null>(null)
   const lastInteraction = useRef<number>(Date.now())
+  const hasMoved = useRef<boolean>(false)
+  const dragStartPos = useRef<Position>({ x: 0, y: 0 })
 
   // Tamaño actual basado en estado
   const currentSize = isOpen ? BUBBLE_SIZE_ACTIVE : isHovered || isDragging ? BUBBLE_SIZE_HOVER : isIdle ? BUBBLE_SIZE_IDLE - 8 : BUBBLE_SIZE_IDLE
@@ -100,6 +102,8 @@ export function GlobalAIAssistant() {
     if (!bubbleRef.current) return
     resetIdle()
     setIsDragging(true)
+    hasMoved.current = false
+    dragStartPos.current = { x: clientX, y: clientY }
     
     const rect = bubbleRef.current.getBoundingClientRect()
     dragOffset.current = {
@@ -111,6 +115,13 @@ export function GlobalAIAssistant() {
   const handleDragMove = useCallback((clientX: number, clientY: number) => {
     if (!isDragging) return
     
+    // Detectar si hubo movimiento real (más de 5px)
+    const deltaX = Math.abs(clientX - dragStartPos.current.x)
+    const deltaY = Math.abs(clientY - dragStartPos.current.y)
+    if (deltaX > 5 || deltaY > 5) {
+      hasMoved.current = true
+    }
+    
     const newX = clientX - dragOffset.current.x
     const newY = clientY - dragOffset.current.y
     
@@ -120,7 +131,11 @@ export function GlobalAIAssistant() {
   const handleDragEnd = useCallback(() => {
     if (!isDragging) return
     setIsDragging(false)
-    snapToEdge(position.x, position.y)
+    
+    // Solo hacer snap si hubo movimiento
+    if (hasMoved.current) {
+      snapToEdge(position.x, position.y)
+    }
   }, [isDragging, position, snapToEdge])
 
   // Mouse events
@@ -177,10 +192,13 @@ export function GlobalAIAssistant() {
   }, [edge, currentSize])
 
   const handleClick = () => {
-    if (!isDragging) {
+    // Solo abrir si no hubo movimiento (fue un click real, no un drag)
+    if (!hasMoved.current) {
       resetIdle()
       setIsOpen(true)
     }
+    // Reset para el siguiente click
+    hasMoved.current = false
   }
 
   if (position.x === -1) return null
