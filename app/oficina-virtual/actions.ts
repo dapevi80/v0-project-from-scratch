@@ -621,7 +621,7 @@ export async function getPendingVerifications() {
   const { data, error } = await supabase
     .from('profiles')
     .select('*')
-    .in('role', ['guest', 'worker'])
+    .in('role', ['guest', 'worker', 'guestworker'])
     .neq('verification_status', 'verified')
     .or('caso_creado.eq.true,verification_status.eq.pending')
     .order('created_at', { ascending: false })
@@ -631,7 +631,7 @@ export async function getPendingVerifications() {
     const { data: fallbackData, error: fallbackError } = await supabase
       .from('profiles')
       .select('*')
-      .in('role', ['guest', 'worker'])
+      .in('role', ['guest', 'worker', 'guestworker'])
       .neq('verification_status', 'verified')
       .order('created_at', { ascending: false })
     

@@ -63,7 +63,7 @@ export async function getCurrentUser(): Promise<{ user: UserProfile | null; erro
       codigo_usuario: profile.codigo_usuario,
       avatar_url: profile.avatar_url,
       phone: profile.phone,
-      verification_status: profile.verification_status || null,
+      is_verified: profile.verification_status === 'verified',
       created_at: profile.created_at
     }, 
     error: null 

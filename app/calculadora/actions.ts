@@ -204,14 +204,15 @@ export async function crearCasoDesdeCalculo(params: CrearCasoParams) {
     }
     
     // Verificar si ya existe un caso abierto con esta empresa
-    const { data: existingCase } = await supabase
+    const { data: existingCases } = await supabase
       .from('casos')
       .select('id, folio, status')
       .eq('worker_id', user.id)
       .eq('empresa_nombre', params.datosCalculo.nombreEmpresa)
       .in('status', ['draft', 'open', 'assigned', 'in_progress'])
-      .single()
+      .limit(1)
     
+    const existingCase = existingCases?.[0]
     if (existingCase) {
       return {
         success: false,
