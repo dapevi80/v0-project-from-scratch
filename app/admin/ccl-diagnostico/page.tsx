@@ -7,7 +7,7 @@ import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Progress } from '@/components/ui/progress'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog'
-import { ArrowLeft, Play, Pause, CheckCircle2, XCircle, AlertTriangle, Clock, Loader2, Eye, Shield, HelpCircle, Send, Camera, RefreshCw } from 'lucide-react'
+import { ArrowLeft, Play, Pause, CheckCircle2, XCircle, AlertTriangle, Clock, Loader2, Eye, Shield, HelpCircle, Send, Camera, RefreshCw, FileText, Download, ExternalLink } from 'lucide-react'
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase/client'
 import { MatrixRain } from '@/components/ui/matrix-rain'
@@ -34,6 +34,8 @@ interface Resultado {
   url: string
   captchaPendiente: boolean
   accionSugerida: string
+  pdfUrl: string
+  folioGenerado: string
 }
 
 // URLs de portales CCL por estado
@@ -93,6 +95,8 @@ export default function CCLDiagnosticoPage() {
   const [currentIndex, setCurrentIndex] = useState(0)
   const [selectedEstado, setSelectedEstado] = useState<Resultado | null>(null)
   const [showDetailDialog, setShowDetailDialog] = useState(false)
+  const [showPdfDialog, setShowPdfDialog] = useState(false)
+  const [selectedPdf, setSelectedPdf] = useState<Resultado | null>(null)
   const [captchasSolicitados, setCaptchasSolicitados] = useState<string[]>([])
 
   useEffect(() => {
@@ -134,8 +138,18 @@ export default function CCLDiagnosticoPage() {
       screenshot: '',
       url: PORTAL_URLS[estado] || `https://ccl.${estado.toLowerCase().replace(/ /g, '')}.gob.mx`,
       captchaPendiente: false,
-      accionSugerida: ''
+      accionSugerida: '',
+      pdfUrl: '',
+      folioGenerado: ''
     })))
+  }
+
+  // Generar folio simulado
+  const generarFolio = (estado: string) => {
+    const prefijo = estado.slice(0, 3).toUpperCase()
+    const fecha = new Date().toISOString().slice(0, 10).replace(/-/g, '')
+    const numero = Math.floor(Math.random() * 9999).toString().padStart(4, '0')
+    return `CCL-${prefijo}-${fecha}-${numero}`
   }
 
   const generarErrorAleatorio = (): { errorType: ErrorType; errorMessage: string; accionSugerida: string } => {
@@ -201,6 +215,8 @@ export default function CCLDiagnosticoPage() {
         errorData = generarErrorAleatorio()
       }
       
+      const folio = status === 'exito' ? generarFolio(ESTADOS_MEXICO[i]) : ''
+      
       setResultados(prev => prev.map((r, idx) => 
         idx === i ? { 
           ...r, 
@@ -208,7 +224,9 @@ export default function CCLDiagnosticoPage() {
           tiempo: Math.round(tiempo),
           ...errorData,
           captchaPendiente: errorData.errorType === 'captcha',
-          screenshot: status !== 'exito' ? `/api/placeholder/400/300?text=${encodeURIComponent(ESTADOS_MEXICO[i] + ' - Error')}` : ''
+          screenshot: status !== 'exito' ? `/api/placeholder/400/300?text=${encodeURIComponent(ESTADOS_MEXICO[i] + ' - Error')}` : '',
+          pdfUrl: status === 'exito' ? `/api/ccl-pdf/${folio}` : '',
+          folioGenerado: folio
         } : r
       ))
       
@@ -687,12 +705,98 @@ export default function CCLDiagnosticoPage() {
                 </>
               )}
 
-              {/* Success state */}
+              {/* Success state con PDF */}
               {selectedEstado.status === 'exito' && (
-                <div className="p-4 bg-green-950/30 rounded border border-green-600 text-center">
-                  <CheckCircle2 className="w-12 h-12 text-green-400 mx-auto mb-2" />
-                  <p className="text-green-400">Portal funcionando correctamente</p>
-                  <p className="text-green-600 text-xs mt-1">Tiempo de respuesta: {selectedEstado.tiempo}ms</p>
+                <div className="space-y-3">
+                  <div className="p-3 bg-green-950/30 rounded border border-green-600 text-center">
+                    <CheckCircle2 className="w-8 h-8 text-green-400 mx-auto mb-2" />
+                    <p className="text-green-400 text-sm">Solicitud generada exitosamente</p>
+                    <p className="text-green-600 text-xs mt-1">Tiempo: {selectedEstado.tiempo}ms</p>
+                  </div>
+                  
+                  {/* Folio generado */}
+                  <div className="p-3 bg-green-950/50 rounded border border-green-800">
+                    <span className="text-green-600 text-xs block mb-1">Folio Generado:</span>
+                    <code className="text-green-300 text-sm font-bold">{selectedEstado.folioGenerado}</code>
+                  </div>
+                  
+                  {/* PDF Preview */}
+                  <div className="p-3 bg-green-950/50 rounded border border-green-800">
+                    <div className="flex items-center gap-2 mb-3">
+                      <FileText className="w-4 h-4 text-green-500" />
+                      <span className="text-green-500 text-xs">Documento PDF Generado:</span>
+                    </div>
+                    
+                    {/* PDF Preview simulado */}
+                    <div className="bg-white rounded-lg p-4 text-black text-xs">
+                      <div className="border-b-2 border-green-600 pb-2 mb-3">
+                        <div className="flex justify-between items-start">
+                          <div>
+                            <p className="font-bold text-green-700">CENTRO DE CONCILIACION LABORAL</p>
+                            <p className="text-gray-600 text-[10px]">{selectedEstado.estado}</p>
+                          </div>
+                          <div className="text-right">
+                            <p className="text-[10px] text-gray-500">FOLIO</p>
+                            <p className="font-mono font-bold text-[10px]">{selectedEstado.folioGenerado}</p>
+                          </div>
+                        </div>
+                      </div>
+                      
+                      <div className="space-y-2 text-[10px]">
+                        <p className="font-bold text-center">CONSTANCIA DE SOLICITUD DE CONCILIACION</p>
+                        <div className="grid grid-cols-2 gap-2 text-[9px]">
+                          <div>
+                            <span className="text-gray-500">Fecha:</span>
+                            <span className="ml-1">{new Date().toLocaleDateString('es-MX')}</span>
+                          </div>
+                          <div>
+                            <span className="text-gray-500">Hora:</span>
+                            <span className="ml-1">{new Date().toLocaleTimeString('es-MX', { hour: '2-digit', minute: '2-digit' })}</span>
+                          </div>
+                        </div>
+                        <div className="bg-green-50 p-2 rounded text-[9px]">
+                          <p className="text-green-700">Se ha registrado su solicitud de conciliacion laboral.</p>
+                          <p className="text-gray-500 mt-1">Conserve este documento como comprobante.</p>
+                        </div>
+                      </div>
+                      
+                      <div className="mt-3 pt-2 border-t border-gray-200 flex justify-between items-center">
+                        <div className="flex items-center gap-1">
+                          <div className="w-8 h-8 bg-gray-200 rounded flex items-center justify-center">
+                            <span className="text-[8px] text-gray-500">QR</span>
+                          </div>
+                          <span className="text-[8px] text-gray-400">Verificar en linea</span>
+                        </div>
+                        <div className="text-right text-[8px] text-gray-400">
+                          <p>Documento generado automaticamente</p>
+                          <p>por sistema CCL v1.0</p>
+                        </div>
+                      </div>
+                    </div>
+                    
+                    {/* Botones de accion PDF */}
+                    <div className="flex gap-2 mt-3">
+                      <Button
+                        size="sm"
+                        className="flex-1 bg-green-700 hover:bg-green-600 text-white font-mono text-xs"
+                        onClick={() => {
+                          setSelectedPdf(selectedEstado)
+                          setShowPdfDialog(true)
+                        }}
+                      >
+                        <Eye className="w-3 h-3 mr-1" />
+                        VER PDF COMPLETO
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        className="flex-1 border-green-600 text-green-400 hover:bg-green-950 font-mono text-xs bg-transparent"
+                      >
+                        <Download className="w-3 h-3 mr-1" />
+                        DESCARGAR
+                      </Button>
+                    </div>
+                  </div>
                 </div>
               )}
 
@@ -703,6 +807,130 @@ export default function CCLDiagnosticoPage() {
               </div>
             </div>
           )}
+        </DialogContent>
+      </Dialog>
+
+      {/* Dialog de PDF Completo */}
+      <Dialog open={showPdfDialog} onOpenChange={setShowPdfDialog}>
+        <DialogContent className="bg-white text-black max-w-2xl max-h-[90vh] overflow-auto">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2 text-green-700">
+              <FileText className="w-5 h-5" />
+              Constancia de Solicitud CCL
+            </DialogTitle>
+            <DialogDescription>
+              {selectedPdf?.estado} - Folio: {selectedPdf?.folioGenerado}
+            </DialogDescription>
+          </DialogHeader>
+          
+          {selectedPdf && (
+            <div className="border border-gray-300 rounded-lg p-6 bg-white">
+              {/* Header oficial */}
+              <div className="text-center border-b-2 border-green-600 pb-4 mb-4">
+                <div className="w-16 h-16 bg-green-100 rounded-full mx-auto mb-2 flex items-center justify-center">
+                  <Shield className="w-8 h-8 text-green-600" />
+                </div>
+                <h2 className="text-lg font-bold text-green-800">CENTRO DE CONCILIACION LABORAL</h2>
+                <p className="text-sm text-gray-600">{selectedPdf.estado === 'Federal' ? 'Centro Federal de Conciliacion y Registro Laboral' : `Estado de ${selectedPdf.estado}`}</p>
+                <p className="text-xs text-gray-400 mt-1">{selectedPdf.url}</p>
+              </div>
+              
+              {/* Titulo */}
+              <div className="text-center mb-6">
+                <h3 className="text-base font-bold text-gray-800">CONSTANCIA DE SOLICITUD DE CONCILIACION LABORAL</h3>
+                <p className="text-xs text-gray-500 mt-1">Documento electronico con validez oficial</p>
+              </div>
+              
+              {/* Datos del folio */}
+              <div className="bg-green-50 border border-green-200 rounded-lg p-4 mb-4">
+                <div className="grid grid-cols-2 gap-4 text-sm">
+                  <div>
+                    <span className="text-gray-500 text-xs">Folio de Solicitud:</span>
+                    <p className="font-mono font-bold text-green-700">{selectedPdf.folioGenerado}</p>
+                  </div>
+                  <div>
+                    <span className="text-gray-500 text-xs">Fecha de Emision:</span>
+                    <p className="font-semibold">{new Date().toLocaleDateString('es-MX', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}</p>
+                  </div>
+                  <div>
+                    <span className="text-gray-500 text-xs">Hora de Registro:</span>
+                    <p className="font-semibold">{new Date().toLocaleTimeString('es-MX')}</p>
+                  </div>
+                  <div>
+                    <span className="text-gray-500 text-xs">Estado del Tramite:</span>
+                    <Badge className="bg-green-100 text-green-700">REGISTRADO</Badge>
+                  </div>
+                </div>
+              </div>
+              
+              {/* Contenido */}
+              <div className="space-y-4 text-sm text-gray-700">
+                <p>
+                  Por medio del presente documento se hace constar que se ha recibido y registrado 
+                  correctamente la solicitud de conciliacion laboral en el sistema del Centro de 
+                  Conciliacion Laboral {selectedPdf.estado === 'Federal' ? 'Federal' : `del Estado de ${selectedPdf.estado}`}.
+                </p>
+                
+                <div className="bg-yellow-50 border-l-4 border-yellow-400 p-3">
+                  <p className="text-yellow-800 text-xs">
+                    <strong>IMPORTANTE:</strong> Conserve este documento como comprobante de su solicitud. 
+                    Debera presentarlo el dia de su cita de conciliacion junto con una identificacion oficial vigente.
+                  </p>
+                </div>
+                
+                <div className="bg-gray-50 rounded p-3">
+                  <p className="text-xs text-gray-600">
+                    <strong>Proximos pasos:</strong>
+                  </p>
+                  <ol className="text-xs text-gray-600 list-decimal ml-4 mt-2 space-y-1">
+                    <li>Recibira una notificacion con la fecha y hora de su audiencia de conciliacion</li>
+                    <li>Prepare la documentacion requerida segun su caso</li>
+                    <li>Presentese 15 minutos antes de la hora programada</li>
+                  </ol>
+                </div>
+              </div>
+              
+              {/* Footer con QR y firma */}
+              <div className="mt-6 pt-4 border-t border-gray-200">
+                <div className="flex justify-between items-end">
+                  <div className="flex items-center gap-3">
+                    <div className="w-20 h-20 bg-gray-100 border border-gray-300 rounded flex items-center justify-center">
+                      <div className="text-center">
+                        <div className="grid grid-cols-4 gap-0.5 w-12 h-12 mx-auto">
+                          {Array.from({ length: 16 }).map((_, i) => (
+                            <div key={i} className={`w-2 h-2 ${Math.random() > 0.5 ? 'bg-black' : 'bg-white'}`} />
+                          ))}
+                        </div>
+                        <span className="text-[8px] text-gray-400">QR Code</span>
+                      </div>
+                    </div>
+                    <div className="text-xs text-gray-500">
+                      <p>Escanee para verificar</p>
+                      <p>autenticidad del documento</p>
+                      <p className="font-mono text-[10px] mt-1">{selectedPdf.url}/verify/{selectedPdf.folioGenerado}</p>
+                    </div>
+                  </div>
+                  <div className="text-right text-xs text-gray-400">
+                    <p>Documento generado electronicamente</p>
+                    <p>Sistema CCL v1.0 - {new Date().getFullYear()}</p>
+                    <p className="font-mono text-[10px] mt-2">ID: {Math.random().toString(36).substring(2, 10).toUpperCase()}</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+          
+          {/* Botones */}
+          <div className="flex gap-2 mt-4">
+            <Button className="flex-1 bg-green-600 hover:bg-green-500">
+              <Download className="w-4 h-4 mr-2" />
+              Descargar PDF
+            </Button>
+            <Button variant="outline" className="flex-1 bg-transparent">
+              <ExternalLink className="w-4 h-4 mr-2" />
+              Abrir en Nueva Ventana
+            </Button>
+          </div>
         </DialogContent>
       </Dialog>
     </div>
