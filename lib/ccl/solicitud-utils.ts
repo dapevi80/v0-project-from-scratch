@@ -6,6 +6,12 @@
 // Tipos de terminación laboral
 export type TipoTerminacion = 'despido' | 'rescision' | 'renuncia_forzada'
 
+// Tipo de persona del citado/demandado
+export type TipoPersonaCitado = 'fisica' | 'moral'
+
+// Modalidad de conciliación
+export type ModalidadConciliacionTipo = 'presencial' | 'remota'
+
 // Datos del caso para generar solicitud
 export interface DatosCasoSolicitud {
   casoId: string
@@ -26,6 +32,9 @@ export interface DatosCasoSolicitud {
   descripcionHechos?: string
   prestacionesReclamadas?: string[]
   montoEstimado?: number
+  // Nuevos campos para SINACOL
+  citadoTipoPersona?: TipoPersonaCitado  // Si el demandado es persona física o moral
+  modalidadConciliacion?: ModalidadConciliacionTipo  // Presencial o remota
 }
 
 // Resultado de la solicitud
@@ -40,6 +49,12 @@ export interface ResultadoSolicitud {
   instrucciones?: string[]
   error?: string
   portalUsado?: string
+  // Campos adicionales para conciliación remota
+  modalidad?: ModalidadConciliacionTipo
+  ligaUnica?: string              // URL única para audiencias remotas (Zoom/Teams del CCL)
+  fechaLimiteConfirmacion?: string // Fecha límite para confirmar la solicitud (3 días hábiles)
+  telefonoConfirmacion?: string   // Teléfono del CCL para agendar confirmación remota
+  instruccionesConfirmacion?: string[] // Pasos para confirmar la solicitud
 }
 
 // Calcular días de prescripción según tipo de terminación

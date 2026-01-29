@@ -13,8 +13,9 @@ import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
 import { 
   FileText, Calendar, MapPin, Building2, User, Phone, Mail, 
   AlertTriangle, CheckCircle2, Loader2, Clock, Scale, Sparkles,
-  ArrowRight, ArrowLeft, DollarSign
+  ArrowRight, ArrowLeft, DollarSign, Video, Users
 } from 'lucide-react'
+import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group'
 import { 
   generarSolicitudCCL, 
   calcularPrescripcion, 
@@ -22,6 +23,8 @@ import {
   getEstadosMexico,
   type DatosCasoSolicitud,
   type TipoTerminacion,
+  type TipoPersonaCitado,
+  type ModalidadConciliacionTipo,
   type ResultadoSolicitud
 } from '@/lib/ccl/solicitud-generator'
 
@@ -101,6 +104,9 @@ export function GenerarSolicitudModal({ isOpen, onClose, caso, onSuccess }: Gene
   const [fechaTerminacion, setFechaTerminacion] = useState('')
   const [descripcionHechos, setDescripcionHechos] = useState('')
   const [montoEstimado, setMontoEstimado] = useState('')
+  // Nuevos campos SINACOL
+  const [tipoPersonaCitado, setTipoPersonaCitado] = useState<TipoPersonaCitado>('moral')
+  const [modalidadConciliacion, setModalidadConciliacion] = useState<ModalidadConciliacionTipo>('remota')
   
   // Prescripción calculada
   const [prescripcion, setPrescripcion] = useState<{ diasRestantes: number; fechaLimite: string; urgente: boolean } | null>(null)
@@ -165,7 +171,10 @@ export function GenerarSolicitudModal({ isOpen, onClose, caso, onSuccess }: Gene
       salarioDiario: caso.salary_daily || 0,
       puestoTrabajo: caso.job_title,
       descripcionHechos: descripcionHechos,
-      montoEstimado: montoEstimado ? parseFloat(montoEstimado) : undefined
+      montoEstimado: montoEstimado ? parseFloat(montoEstimado) : undefined,
+      // Nuevos campos SINACOL
+      citadoTipoPersona: tipoPersonaCitado,
+      modalidadConciliacion: modalidadConciliacion
     }
     
     const result = await generarSolicitudCCL(datos)
@@ -357,18 +366,82 @@ export function GenerarSolicitudModal({ isOpen, onClose, caso, onSuccess }: Gene
         {/* Paso 2: Confirmación y detalles adicionales */}
         {step === 2 && (
           <div className="space-y-4">
+            {/* Tipo de persona del demandado */}
+            <div className="space-y-3">
+              <Label className="flex items-center gap-2">
+                <Users className="h-4 w-4" />
+                Tipo de persona del demandado *
+              </Label>
+              <RadioGroup
+                value={tipoPersonaCitado}
+                onValueChange={(v) => setTipoPersonaCitado(v as TipoPersonaCitado)}
+                className="flex gap-4"
+              >
+                <div className="flex items-center space-x-2">
+                  <RadioGroupItem value="moral" id="moral-ccl" />
+                  <Label htmlFor="moral-ccl" className="font-normal cursor-pointer">
+                    Persona Moral (empresa)
+                  </Label>
+                </div>
+                <div className="flex items-center space-x-2">
+                  <RadioGroupItem value="fisica" id="fisica-ccl" />
+                  <Label htmlFor="fisica-ccl" className="font-normal cursor-pointer">
+                    Persona Fisica
+                  </Label>
+                </div>
+              </RadioGroup>
+            </div>
+
+            {/* Modalidad de conciliación */}
+            <div className="space-y-3">
+              <Label className="flex items-center gap-2">
+                <Video className="h-4 w-4" />
+                Modalidad de conciliacion *
+              </Label>
+              <RadioGroup
+                value={modalidadConciliacion}
+                onValueChange={(v) => setModalidadConciliacion(v as ModalidadConciliacionTipo)}
+                className="flex flex-col gap-2"
+              >
+                <div className="flex items-start space-x-2 p-3 border rounded-lg hover:bg-muted/50 cursor-pointer">
+                  <RadioGroupItem value="remota" id="remota-ccl" className="mt-1" />
+                  <div className="flex-1">
+                    <Label htmlFor="remota-ccl" className="font-medium cursor-pointer flex items-center gap-2">
+                      <Video className="w-4 h-4 text-blue-500" />
+                      Conciliacion Remota (Recomendada)
+                    </Label>
+                    <p className="text-xs text-muted-foreground mt-1">
+                      Audiencia por videollamada. El abogado llama al CCL para agendar confirmacion.
+                    </p>
+                  </div>
+                </div>
+                <div className="flex items-start space-x-2 p-3 border rounded-lg hover:bg-muted/50 cursor-pointer">
+                  <RadioGroupItem value="presencial" id="presencial-ccl" className="mt-1" />
+                  <div className="flex-1">
+                    <Label htmlFor="presencial-ccl" className="font-medium cursor-pointer flex items-center gap-2">
+                      <MapPin className="w-4 h-4 text-green-500" />
+                      Conciliacion Presencial
+                    </Label>
+                    <p className="text-xs text-muted-foreground mt-1">
+                      El trabajador debe acudir al CCL a confirmar dentro de 3 dias habiles.
+                    </p>
+                  </div>
+                </div>
+              </RadioGroup>
+            </div>
+
             <div>
-              <Label>Descripción de los hechos (opcional)</Label>
+              <Label>Descripcion de los hechos (opcional)</Label>
               <Textarea 
-                placeholder="Describe brevemente lo que sucedió..."
+                placeholder="Describe brevemente lo que sucedio..."
                 value={descripcionHechos}
                 onChange={(e) => setDescripcionHechos(e.target.value)}
-                rows={4}
+                rows={3}
               />
             </div>
 
             <div>
-              <Label>Monto estimado de liquidación (opcional)</Label>
+              <Label>Monto estimado de liquidacion (opcional)</Label>
               <div className="relative">
                 <DollarSign className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
                 <Input 
@@ -391,14 +464,26 @@ export function GenerarSolicitudModal({ isOpen, onClose, caso, onSuccess }: Gene
                     <span className="font-medium">{caso.worker?.full_name}</span>
                   </div>
                   <div className="flex justify-between">
-                    <span className="text-gray-500">Empleador:</span>
+                    <span className="text-gray-500">Demandado:</span>
                     <span className="font-medium">{caso.employer_name}</span>
                   </div>
                   <div className="flex justify-between">
-                    <span className="text-gray-500">Tipo:</span>
+                    <span className="text-gray-500">Tipo persona:</span>
+                    <Badge variant="outline">
+                      {tipoPersonaCitado === 'moral' ? 'Persona Moral' : 'Persona Fisica'}
+                    </Badge>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-gray-500">Tipo terminacion:</span>
                     <Badge variant="outline">
                       {tipoTerminacion === 'despido' ? 'Despido Injustificado' : 
-                       tipoTerminacion === 'rescision' ? 'Rescisión' : 'Renuncia Forzada'}
+                       tipoTerminacion === 'rescision' ? 'Rescision' : 'Renuncia Forzada'}
+                    </Badge>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-gray-500">Modalidad:</span>
+                    <Badge className={modalidadConciliacion === 'remota' ? 'bg-blue-500' : 'bg-green-500'}>
+                      {modalidadConciliacion === 'remota' ? 'Remota (videollamada)' : 'Presencial'}
                     </Badge>
                   </div>
                   <div className="flex justify-between">
@@ -454,7 +539,9 @@ export function GenerarSolicitudModal({ isOpen, onClose, caso, onSuccess }: Gene
                     <CheckCircle2 className="h-8 w-8 text-green-600" />
                   </div>
                   <h3 className="text-xl font-bold text-green-800">Solicitud Generada</h3>
-                  <p className="text-green-600">Tu solicitud ha sido registrada exitosamente</p>
+                  <p className="text-green-600">
+                    Modalidad: {resultado.modalidad === 'remota' ? 'CONCILIACION REMOTA' : 'CONCILIACION PRESENCIAL'}
+                  </p>
                 </div>
 
                 <Card className="border-green-200 bg-green-50">
@@ -465,34 +552,76 @@ export function GenerarSolicitudModal({ isOpen, onClose, caso, onSuccess }: Gene
                         <Badge className="text-lg px-3 py-1 bg-green-600">{resultado.folioSolicitud}</Badge>
                       </div>
                       <div className="flex justify-between">
-                        <span className="text-gray-600">Fecha de cita:</span>
-                        <span className="font-semibold">{resultado.fechaCita}</span>
+                        <span className="text-gray-600">Modalidad:</span>
+                        <Badge className={resultado.modalidad === 'remota' ? 'bg-blue-500' : 'bg-green-500'}>
+                          {resultado.modalidad === 'remota' ? 'Remota (videollamada)' : 'Presencial'}
+                        </Badge>
                       </div>
                       <div className="flex justify-between">
-                        <span className="text-gray-600">Hora:</span>
-                        <span className="font-semibold">{resultado.horaCita}</span>
-                      </div>
-                      <div className="flex justify-between">
-                        <span className="text-gray-600">Sede:</span>
+                        <span className="text-gray-600">Sede CCL:</span>
                         <span className="font-semibold">{resultado.sedeCcl}</span>
                       </div>
+                      {resultado.fechaLimiteConfirmacion && (
+                        <div className="flex justify-between">
+                          <span className="text-gray-600">Confirmar antes de:</span>
+                          <span className="font-semibold text-amber-600">{resultado.fechaLimiteConfirmacion}</span>
+                        </div>
+                      )}
+                      {resultado.telefonoConfirmacion && resultado.modalidad === 'remota' && (
+                        <div className="flex justify-between">
+                          <span className="text-gray-600">Telefono CCL:</span>
+                          <span className="font-semibold">{resultado.telefonoConfirmacion}</span>
+                        </div>
+                      )}
+                      {resultado.ligaUnica && (
+                        <div className="pt-2 border-t">
+                          <span className="text-gray-600 block mb-1">Liga unica para audiencias:</span>
+                          <a href={resultado.ligaUnica} target="_blank" rel="noopener noreferrer" className="text-blue-600 underline text-sm break-all">
+                            {resultado.ligaUnica}
+                          </a>
+                        </div>
+                      )}
                       <div className="pt-2 border-t">
-                        <span className="text-gray-600 block mb-1">Dirección:</span>
+                        <span className="text-gray-600 block mb-1">Direccion CCL:</span>
                         <p className="text-sm">{resultado.direccionSede}</p>
                       </div>
                     </div>
                   </CardContent>
                 </Card>
 
+                {/* Alerta importante según modalidad */}
+                <Alert className={resultado.modalidad === 'remota' ? 'border-blue-300 bg-blue-50' : 'border-green-300 bg-green-50'}>
+                  {resultado.modalidad === 'remota' ? (
+                    <Video className="h-4 w-4 text-blue-600" />
+                  ) : (
+                    <MapPin className="h-4 w-4 text-green-600" />
+                  )}
+                  <AlertTitle className={resultado.modalidad === 'remota' ? 'text-blue-800' : 'text-green-800'}>
+                    {resultado.modalidad === 'remota' ? 'Siguiente paso: Llamar al CCL' : 'Siguiente paso: Acudir al CCL'}
+                  </AlertTitle>
+                  <AlertDescription className={resultado.modalidad === 'remota' ? 'text-blue-700' : 'text-green-700'}>
+                    {resultado.modalidad === 'remota' 
+                      ? 'El abogado debe llamar al CCL para agendar la cita de confirmacion por videollamada con el oficial de partes.'
+                      : 'El trabajador debe acudir personalmente al CCL a confirmar la solicitud con su identificacion oficial.'
+                    }
+                  </AlertDescription>
+                </Alert>
+
                 {resultado.instrucciones && resultado.instrucciones.length > 0 && (
                   <Card>
                     <CardContent className="pt-4">
-                      <h4 className="font-semibold mb-2">Instrucciones</h4>
+                      <h4 className="font-semibold mb-2">Instrucciones de confirmacion</h4>
                       <ul className="space-y-2 text-sm">
                         {resultado.instrucciones.map((inst, i) => (
                           <li key={i} className="flex items-start gap-2">
-                            <CheckCircle2 className="h-4 w-4 text-green-500 mt-0.5 shrink-0" />
-                            <span>{inst}</span>
+                            {inst ? (
+                              <>
+                                <CheckCircle2 className="h-4 w-4 text-green-500 mt-0.5 shrink-0" />
+                                <span>{inst}</span>
+                              </>
+                            ) : (
+                              <span className="h-4" />
+                            )}
                           </li>
                         ))}
                       </ul>

@@ -10,7 +10,8 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
-import { ArrowLeft, Briefcase, Building2, Calendar, DollarSign, FileText, Loader2 } from 'lucide-react'
+import { ArrowLeft, Briefcase, Building2, Calendar, DollarSign, FileText, Loader2, User, Video, MapPin } from 'lucide-react'
+import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group'
 import { crearCaso } from '../actions'
 import { AyudaUrgenteButton } from '@/components/ayuda-urgente-button'
 
@@ -24,7 +25,9 @@ export default function NuevoCasoPage() {
     empresa_nombre: '',
     descripcion: '',
     fecha_despido: '',
-    monto_reclamado: ''
+    monto_reclamado: '',
+    citado_tipo_persona: 'moral' as 'fisica' | 'moral',  // Por defecto moral (empresa)
+    modalidad_conciliacion: 'remota' as 'presencial' | 'remota'  // Por defecto remota
   })
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -42,7 +45,9 @@ export default function NuevoCasoPage() {
       empresa_nombre: formData.empresa_nombre.trim(),
       descripcion: formData.descripcion.trim() || undefined,
       fecha_despido: formData.fecha_despido || undefined,
-      monto_reclamado: formData.monto_reclamado ? parseFloat(formData.monto_reclamado) : undefined
+      monto_reclamado: formData.monto_reclamado ? parseFloat(formData.monto_reclamado) : undefined,
+      citado_tipo_persona: formData.citado_tipo_persona,
+      modalidad_conciliacion: formData.modalidad_conciliacion
     })
     
     if (res.error) {
@@ -109,15 +114,86 @@ export default function NuevoCasoPage() {
               <div className="space-y-2">
                 <Label htmlFor="empresa" className="flex items-center gap-2">
                   <Building2 className="w-4 h-4" />
-                  Nombre de la empresa *
+                  Nombre del demandado *
                 </Label>
                 <Input
                   id="empresa"
-                  placeholder="Ej: Empresa S.A. de C.V."
+                  placeholder="Ej: Empresa S.A. de C.V. o Juan Perez"
                   value={formData.empresa_nombre}
                   onChange={(e) => setFormData({ ...formData, empresa_nombre: e.target.value })}
                   required
                 />
+              </div>
+
+              {/* Tipo de persona del demandado */}
+              <div className="space-y-3">
+                <Label className="flex items-center gap-2">
+                  <User className="w-4 h-4" />
+                  Tipo de persona del demandado *
+                </Label>
+                <RadioGroup
+                  value={formData.citado_tipo_persona}
+                  onValueChange={(value: 'fisica' | 'moral') => 
+                    setFormData({ ...formData, citado_tipo_persona: value })
+                  }
+                  className="flex gap-4"
+                >
+                  <div className="flex items-center space-x-2">
+                    <RadioGroupItem value="moral" id="moral" />
+                    <Label htmlFor="moral" className="font-normal cursor-pointer">
+                      Persona Moral (empresa)
+                    </Label>
+                  </div>
+                  <div className="flex items-center space-x-2">
+                    <RadioGroupItem value="fisica" id="fisica" />
+                    <Label htmlFor="fisica" className="font-normal cursor-pointer">
+                      Persona Fisica
+                    </Label>
+                  </div>
+                </RadioGroup>
+                <p className="text-xs text-muted-foreground">
+                  Selecciona si el demandado es una empresa (persona moral) o un individuo (persona fisica)
+                </p>
+              </div>
+
+              {/* Modalidad de conciliacion */}
+              <div className="space-y-3">
+                <Label className="flex items-center gap-2">
+                  <Video className="w-4 h-4" />
+                  Modalidad de conciliacion *
+                </Label>
+                <RadioGroup
+                  value={formData.modalidad_conciliacion}
+                  onValueChange={(value: 'presencial' | 'remota') => 
+                    setFormData({ ...formData, modalidad_conciliacion: value })
+                  }
+                  className="flex flex-col gap-3"
+                >
+                  <div className="flex items-start space-x-2 p-3 border rounded-lg hover:bg-muted/50 cursor-pointer">
+                    <RadioGroupItem value="remota" id="remota" className="mt-1" />
+                    <div className="flex-1">
+                      <Label htmlFor="remota" className="font-medium cursor-pointer flex items-center gap-2">
+                        <Video className="w-4 h-4 text-blue-500" />
+                        Conciliacion Remota (Recomendada)
+                      </Label>
+                      <p className="text-xs text-muted-foreground mt-1">
+                        Audiencia por videollamada. Requiere llamar al CCL para agendar confirmacion de solicitud.
+                      </p>
+                    </div>
+                  </div>
+                  <div className="flex items-start space-x-2 p-3 border rounded-lg hover:bg-muted/50 cursor-pointer">
+                    <RadioGroupItem value="presencial" id="presencial" className="mt-1" />
+                    <div className="flex-1">
+                      <Label htmlFor="presencial" className="font-medium cursor-pointer flex items-center gap-2">
+                        <MapPin className="w-4 h-4 text-green-500" />
+                        Conciliacion Presencial
+                      </Label>
+                      <p className="text-xs text-muted-foreground mt-1">
+                        Debes acudir personalmente al CCL a confirmar la solicitud dentro de 3 dias habiles.
+                      </p>
+                    </div>
+                  </div>
+                </RadioGroup>
               </div>
               
               {/* Fecha despido */}
