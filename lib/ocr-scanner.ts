@@ -697,3 +697,166 @@ export function cropToDocument(
   // Primero aplicar transformación de perspectiva
   return applyPerspectiveTransform(canvas, bounds)
 }
+
+// ===== DETECCIÓN DE ORIENTACIÓN DEL DOCUMENTO =====
+
+export interface OrientationResult {
+  angle: number // 0, 90, 180, 270
+  confidence: number
+  needsRotation: boolean
+}
+
+// Detectar si el documento está volteado analizando la distribución de texto
+export async function detectDocumentOrientation(imageSource: string): Promise<OrientationResult> {
+  try {
+    // Crear worker temporal para análisis rápido
+    const worker = await Tesseract.createWorker('spa', 1)
+    
+    // Obtener información de orientación de Tesseract
+    const { data } = await worker.recognize(imageSource)
+    await worker.terminate()
+    
+    // Analizar la orientación basada en las líneas de texto
+    const lines = data.lines || []
+    
+    if (lines.length < 2) {
+      return { angle: 0, confidence: 0.5, needsRotation: false }
+    }
+    
+    // Calcular la orientación promedio de las líneas
+    let horizontalLines = 0
+    let verticalLines = 0
+    let totalConfidence = 0
+    
+    for (const line of lines) {
+      if (!line.bbox) continue
+      
+      const width = line.bbox.x1 - line.bbox.x0
+      const height = line.bbox.y1 - line.bbox.y0
+      const aspectRatio = width / (height || 1)
+      
+      // Líneas horizontales tienen aspect ratio > 2
+      // Líneas verticales tienen aspect ratio < 0.5
+      if (aspectRatio > 2) {
+        horizontalLines++
+      } else if (aspectRatio < 0.5) {
+        verticalLines++
+      }
+      
+      totalConfidence += line.confidence || 0
+    }
+    
+    const avgConfidence = totalConfidence / lines.length / 100
+    
+    // Determinar orientación basada en la distribución de líneas
+    if (verticalLines > horizontalLines * 2) {
+      // El documento parece estar girado 90 o 270 grados
+      // Necesitamos determinar la dirección correcta
+      return { angle: 90, confidence: avgConfidence, needsRotation: true }
+    }
+    
+    // Verificar si el texto está al revés (180 grados)
+    // Esto es más difícil de detectar, usamos heurísticas
+    const textSample = data.text?.slice(0, 100) || ''
+    const uppercaseRatio = (textSample.match(/[A-ZÁÉÍÓÚÑ]/g) || []).length / (textSample.length || 1)
+    
+    // Si hay muy pocos caracteres reconocidos o baja confianza, puede estar al revés
+    if (avgConfidence < 0.3 && lines.length > 3) {
+      return { angle: 180, confidence: avgConfidence, needsRotation: true }
+    }
+    
+    return { angle: 0, confidence: avgConfidence, needsRotation: false }
+  } catch (error) {
+    console.error('Error detectando orientación:', error)
+    return { angle: 0, confidence: 0, needsRotation: false }
+  }
+}
+
+// Detectar orientación usando análisis de imagen (más rápido, sin OCR)
+export function detectOrientationFast(canvas: HTMLCanvasElement): OrientationResult {
+  const ctx = canvas.getContext('2d')
+  if (!ctx) return { angle: 0, confidence: 0, needsRotation: false }
+  
+  const { width, height } = canvas
+  const imageData = ctx.getImageData(0, 0, width, height)
+  const data = imageData.data
+  
+  // Analizar gradientes horizontales vs verticales
+  let horizontalGradient = 0
+  let verticalGradient = 0
+  
+  // Muestrear puntos para acelerar
+  const step = Math.max(4, Math.floor(Math.min(width, height) / 100))
+  
+  for (let y = step; y < height - step; y += step) {
+    for (let x = step; x < width - step; x += step) {
+      const idx = (y * width + x) * 4
+      const gray = (data[idx] + data[idx + 1] + data[idx + 2]) / 3
+      
+      // Gradiente horizontal (diferencia con pixel derecho)
+      const idxRight = (y * width + x + step) * 4
+      const grayRight = (data[idxRight] + data[idxRight + 1] + data[idxRight + 2]) / 3
+      horizontalGradient += Math.abs(gray - grayRight)
+      
+      // Gradiente vertical (diferencia con pixel abajo)
+      const idxDown = ((y + step) * width + x) * 4
+      const grayDown = (data[idxDown] + data[idxDown + 1] + data[idxDown + 2]) / 3
+      verticalGradient += Math.abs(gray - grayDown)
+    }
+  }
+  
+  // Si los gradientes verticales son mucho mayores que los horizontales,
+  // probablemente el documento está girado 90 grados
+  const ratio = verticalGradient / (horizontalGradient || 1)
+  
+  if (ratio > 1.5) {
+    return { angle: 90, confidence: Math.min(ratio / 3, 0.9), needsRotation: true }
+  } else if (ratio < 0.67) {
+    // Podría estar normal o girado 180 - difícil de determinar sin OCR
+    return { angle: 0, confidence: 0.7, needsRotation: false }
+  }
+  
+  return { angle: 0, confidence: 0.8, needsRotation: false }
+}
+
+// Corregir orientación del documento automáticamente
+export async function autoCorrectOrientation(canvas: HTMLCanvasElement): Promise<{
+  correctedCanvas: HTMLCanvasElement
+  rotatedBy: number
+  wasRotated: boolean
+}> {
+  // Primero intentar detección rápida basada en imagen
+  const fastResult = detectOrientationFast(canvas)
+  
+  if (fastResult.needsRotation && fastResult.confidence > 0.6) {
+    const corrected = rotateImage(canvas, fastResult.angle)
+    return {
+      correctedCanvas: corrected,
+      rotatedBy: fastResult.angle,
+      wasRotated: true
+    }
+  }
+  
+  // Si no estamos seguros, intentar con OCR
+  try {
+    const imageUrl = canvas.toDataURL('image/jpeg', 0.8)
+    const ocrResult = await detectDocumentOrientation(imageUrl)
+    
+    if (ocrResult.needsRotation) {
+      const corrected = rotateImage(canvas, ocrResult.angle)
+      return {
+        correctedCanvas: corrected,
+        rotatedBy: ocrResult.angle,
+        wasRotated: true
+      }
+    }
+  } catch (error) {
+    console.error('Error en auto-corrección de orientación:', error)
+  }
+  
+  return {
+    correctedCanvas: canvas,
+    rotatedBy: 0,
+    wasRotated: false
+  }
+}
