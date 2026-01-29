@@ -24,6 +24,19 @@ const ESTADOS_MEXICO = [
 type TestStatus = 'pendiente' | 'en_progreso' | 'exito' | 'parcial' | 'error'
 type ErrorType = 'captcha' | 'timeout' | 'conexion' | 'formulario' | 'validacion' | 'ninguno'
 
+// Pasos del proceso de automatizacion
+type PasoRobot = 'conexion' | 'carga_portal' | 'login' | 'formulario' | 'captcha' | 'envio' | 'confirmacion' | 'descarga_pdf'
+
+interface PasoDetalle {
+  paso: PasoRobot
+  nombre: string
+  completado: boolean
+  error: boolean
+  tiempo: number
+  screenshot: string
+  mensaje: string
+}
+
 interface Resultado {
   estado: string
   status: TestStatus
@@ -36,6 +49,17 @@ interface Resultado {
   accionSugerida: string
   pdfUrl: string
   folioGenerado: string
+  // Nuevos campos para tracking detallado
+  pasoActual: PasoRobot
+  pasoDetenido: PasoRobot | null
+  pasos: PasoDetalle[]
+  errorDetallado: {
+    tipo: 'red' | 'servidor' | 'captcha' | 'timeout' | 'formulario' | 'desconocido'
+    codigo: string
+    descripcion: string
+    timestamp: string
+    intentos: number
+  } | null
 }
 
 // URLs de portales CCL por estado
@@ -84,6 +108,46 @@ const PORTAL_FEDERAL_INFO = {
   tiposCasos: ['Ferrocarriles', 'Aviacion', 'Electricidad', 'Petroleo', 'Banca', 'Seguros']
 }
 
+// Pasos del proceso de automatizacion (a nivel de modulo)
+const PASOS_ROBOT: { paso: PasoRobot; nombre: string }[] = [
+  { paso: 'conexion', nombre: 'Conexion a red' },
+  { paso: 'carga_portal', nombre: 'Carga del portal' },
+  { paso: 'login', nombre: 'Acceso/Login' },
+  { paso: 'formulario', nombre: 'Llenado de formulario' },
+  { paso: 'captcha', nombre: 'Resolucion CAPTCHA' },
+  { paso: 'envio', nombre: 'Envio de solicitud' },
+  { paso: 'confirmacion', nombre: 'Confirmacion' },
+  { paso: 'descarga_pdf', nombre: 'Descarga PDF' }
+]
+
+// Function to generate random error data
+const generarErrorAleatorio = (): { errorType: ErrorType; errorMessage: string; accionSugerida: string } => {
+  const errorTypes = ['captcha', 'timeout', 'conexion', 'formulario', 'validacion', 'ninguno'] as ErrorType[]
+  const randomErrorType = errorTypes[Math.floor(Math.random() * errorTypes.length)]
+  const errorMessages: Record<ErrorType, string> = {
+    captcha: 'CAPTCHA detectado - Requiere intervencion humana',
+    timeout: 'Timeout: Portal tardo mas de 30s en cargar',
+    conexion: 'Error de red: No se pudo establecer conexion',
+    formulario: 'Formulario de login no encontrado',
+    validacion: 'Validacion del formulario fallo',
+    ninguno: ''
+  }
+  const accionSugeridas: Record<ErrorType, string> = {
+    captcha: 'Solicitar a SuperAdmin resolver CAPTCHA manualmente',
+    timeout: 'El portal esta lento, reintentar en horario de menor trafico',
+    conexion: 'Verificar conexion a internet y firewall',
+    formulario: 'La estructura del portal cambio, actualizar selector',
+    validacion: 'Verificar formato de datos de prueba',
+    ninguno: ''
+  }
+
+  return {
+    errorType: randomErrorType,
+    errorMessage: errorMessages[randomErrorType],
+    accionSugerida: accionSugeridas[randomErrorType]
+  }
+}
+
 export default function CCLDiagnosticoPage() {
   const router = useRouter()
   const [loading, setLoading] = useState(true)
@@ -128,6 +192,18 @@ export default function CCLDiagnosticoPage() {
     checkAccess()
   }, [router])
 
+  const crearPasosIniciales = (): PasoDetalle[] => {
+    return PASOS_ROBOT.map(p => ({
+      paso: p.paso,
+      nombre: p.nombre,
+      completado: false,
+      error: false,
+      tiempo: 0,
+      screenshot: '',
+      mensaje: ''
+    }))
+  }
+
   const initResultados = () => {
     setResultados(ESTADOS_MEXICO.map(estado => ({
       estado,
@@ -140,7 +216,11 @@ export default function CCLDiagnosticoPage() {
       captchaPendiente: false,
       accionSugerida: '',
       pdfUrl: '',
-      folioGenerado: ''
+      folioGenerado: '',
+      pasoActual: 'conexion',
+      pasoDetenido: null,
+      pasos: crearPasosIniciales(),
+      errorDetallado: null
     })))
   }
 
@@ -152,35 +232,187 @@ export default function CCLDiagnosticoPage() {
     return `CCL-${prefijo}-${fecha}-${numero}`
   }
 
-  const generarErrorAleatorio = (): { errorType: ErrorType; errorMessage: string; accionSugerida: string } => {
-    const errores = [
-      { 
-        errorType: 'captcha' as ErrorType, 
-        errorMessage: 'CAPTCHA detectado en el formulario de solicitud',
-        accionSugerida: 'Solicitar ayuda a SuperAdmin para resolver el CAPTCHA manualmente'
-      },
-      { 
-        errorType: 'timeout' as ErrorType, 
-        errorMessage: 'Tiempo de espera agotado (30s)',
-        accionSugerida: 'Reintentar en horario de menor trafico (madrugada)'
-      },
-      { 
-        errorType: 'conexion' as ErrorType, 
-        errorMessage: 'Error de conexion al servidor del portal',
-        accionSugerida: 'Verificar que el portal este en linea, puede estar en mantenimiento'
-      },
-      { 
-        errorType: 'formulario' as ErrorType, 
-        errorMessage: 'Estructura del formulario ha cambiado',
-        accionSugerida: 'Actualizar el scraper para este estado'
-      },
-      { 
-        errorType: 'validacion' as ErrorType, 
-        errorMessage: 'El portal rechazo los datos de prueba',
-        accionSugerida: 'Verificar formato de CURP y datos para este estado'
-      },
-    ]
-    return errores[Math.floor(Math.random() * errores.length)]
+  // Generador de errores detallados con paso especifico
+  const generarErrorDetallado = (pasoFallido: PasoRobot): { 
+    errorType: ErrorType
+    errorMessage: string
+    accionSugerida: string
+    errorDetallado: Resultado['errorDetallado']
+  } => {
+    const erroresPorPaso: Record<PasoRobot, Array<{
+      errorType: ErrorType
+      errorMessage: string
+      accionSugerida: string
+      tipoDetallado: 'red' | 'servidor' | 'captcha' | 'timeout' | 'formulario' | 'desconocido'
+      codigo: string
+      descripcion: string
+    }>> = {
+      'conexion': [
+        {
+          errorType: 'conexion',
+          errorMessage: 'Error de red: No se pudo establecer conexion',
+          accionSugerida: 'Verificar conexion a internet y firewall',
+          tipoDetallado: 'red',
+          codigo: 'NET_ERR_CONNECTION_REFUSED',
+          descripcion: 'El servidor rechazo la conexion. Posible bloqueo de IP o servidor caido.'
+        },
+        {
+          errorType: 'conexion',
+          errorMessage: 'DNS no resuelto',
+          accionSugerida: 'El dominio del portal no responde, puede estar en mantenimiento',
+          tipoDetallado: 'red',
+          codigo: 'NET_ERR_NAME_NOT_RESOLVED',
+          descripcion: 'No se pudo resolver el nombre de dominio. Verificar URL del portal.'
+        }
+      ],
+      'carga_portal': [
+        {
+          errorType: 'timeout',
+          errorMessage: 'Timeout: Portal tardo mas de 30s en cargar',
+          accionSugerida: 'El portal esta lento, reintentar en horario de menor trafico',
+          tipoDetallado: 'timeout',
+          codigo: 'TIMEOUT_EXCEEDED',
+          descripcion: 'El tiempo de espera se agoto esperando respuesta del servidor (30000ms).'
+        },
+        {
+          errorType: 'conexion',
+          errorMessage: 'Error 503: Servicio no disponible',
+          accionSugerida: 'El portal esta en mantenimiento, reintentar mas tarde',
+          tipoDetallado: 'servidor',
+          codigo: 'HTTP_503_SERVICE_UNAVAILABLE',
+          descripcion: 'El servidor devolvio error 503. El servicio no esta disponible temporalmente.'
+        }
+      ],
+      'login': [
+        {
+          errorType: 'formulario',
+          errorMessage: 'Formulario de login no encontrado',
+          accionSugerida: 'La estructura del portal cambio, actualizar selector',
+          tipoDetallado: 'formulario',
+          codigo: 'SELECTOR_NOT_FOUND',
+          descripcion: 'No se encontro el elemento #login-form en la pagina. Posible cambio de estructura.'
+        }
+      ],
+      'formulario': [
+        {
+          errorType: 'formulario',
+          errorMessage: 'Campo requerido no encontrado',
+          accionSugerida: 'Actualizar mapeo de campos del formulario',
+          tipoDetallado: 'formulario',
+          codigo: 'FIELD_NOT_FOUND',
+          descripcion: 'No se encontro el campo "curp" en el formulario. Selector: input[name="curp"]'
+        },
+        {
+          errorType: 'validacion',
+          errorMessage: 'Validacion del formulario fallo',
+          accionSugerida: 'Verificar formato de datos de prueba',
+          tipoDetallado: 'formulario',
+          codigo: 'VALIDATION_ERROR',
+          descripcion: 'El portal rechazo los datos: "CURP invalido". Verificar formato.'
+        }
+      ],
+      'captcha': [
+        {
+          errorType: 'captcha',
+          errorMessage: 'CAPTCHA detectado - Requiere intervencion humana',
+          accionSugerida: 'Solicitar a SuperAdmin resolver CAPTCHA manualmente',
+          tipoDetallado: 'captcha',
+          codigo: 'CAPTCHA_DETECTED',
+          descripcion: 'Se detecto reCAPTCHA v2/v3. El robot no puede resolverlo automaticamente.'
+        },
+        {
+          errorType: 'captcha',
+          errorMessage: 'CAPTCHA de imagen detectado',
+          accionSugerida: 'Solicitar ayuda manual para resolver el CAPTCHA',
+          tipoDetallado: 'captcha',
+          codigo: 'IMAGE_CAPTCHA',
+          descripcion: 'CAPTCHA de seleccion de imagenes detectado. Requiere intervencion humana.'
+        }
+      ],
+      'envio': [
+        {
+          errorType: 'conexion',
+          errorMessage: 'Error al enviar formulario',
+          accionSugerida: 'Reintentar el envio',
+          tipoDetallado: 'servidor',
+          codigo: 'SUBMIT_FAILED',
+          descripcion: 'El servidor devolvio error 500 al procesar la solicitud.'
+        }
+      ],
+      'confirmacion': [
+        {
+          errorType: 'timeout',
+          errorMessage: 'No se recibio confirmacion',
+          accionSugerida: 'Verificar manualmente si la solicitud fue registrada',
+          tipoDetallado: 'timeout',
+          codigo: 'CONFIRMATION_TIMEOUT',
+          descripcion: 'No se recibio pagina de confirmacion despues de 15s.'
+        }
+      ],
+      'descarga_pdf': [
+        {
+          errorType: 'conexion',
+          errorMessage: 'Error al descargar PDF',
+          accionSugerida: 'Reintentar descarga o descargar manualmente',
+          tipoDetallado: 'servidor',
+          codigo: 'PDF_DOWNLOAD_FAILED',
+          descripcion: 'No se pudo descargar el archivo PDF de confirmacion.'
+        }
+      ]
+    }
+
+    const erroresDisponibles = erroresPorPaso[pasoFallido] || erroresPorPaso['conexion']
+    const error = erroresDisponibles[Math.floor(Math.random() * erroresDisponibles.length)]
+
+    return {
+      errorType: error.errorType,
+      errorMessage: error.errorMessage,
+      accionSugerida: error.accionSugerida,
+      errorDetallado: {
+        tipo: error.tipoDetallado,
+        codigo: error.codigo,
+        descripcion: error.descripcion,
+        timestamp: new Date().toISOString(),
+        intentos: 1
+      }
+    }
+  }
+
+  // Simular ejecucion de un paso del robot
+  const ejecutarPaso = async (paso: PasoRobot): Promise<{ exito: boolean; tiempo: number; screenshot: string }> => {
+    const tiempoBase = {
+      'conexion': 200,
+      'carga_portal': 1500,
+      'login': 800,
+      'formulario': 1200,
+      'captcha': 500,
+      'envio': 1000,
+      'confirmacion': 800,
+      'descarga_pdf': 600
+    }
+    
+    const tiempo = tiempoBase[paso] + Math.random() * 500
+    await new Promise(resolve => setTimeout(resolve, tiempo))
+    
+    // Probabilidad de fallo por paso
+    const probFallo = {
+      'conexion': 0.05,
+      'carga_portal': 0.1,
+      'login': 0.08,
+      'formulario': 0.12,
+      'captcha': 0.25, // CAPTCHA tiene mayor probabilidad de fallo
+      'envio': 0.1,
+      'confirmacion': 0.05,
+      'descarga_pdf': 0.08
+    }
+    
+    const fallo = Math.random() < probFallo[paso]
+    
+    return {
+      exito: !fallo,
+      tiempo: Math.round(tiempo),
+      screenshot: fallo ? `/api/placeholder/800/600?text=${encodeURIComponent(`Error en: ${paso}`)}` : ''
+    }
   }
 
   const iniciarDiagnostico = async () => {
@@ -189,59 +421,127 @@ export default function CCLDiagnosticoPage() {
     setCurrentIndex(0)
     initResultados()
 
+    // Continuar con cada estado aunque haya errores (robusto)
     for (let i = 0; i < ESTADOS_MEXICO.length; i++) {
-      if (!ejecutando && i > 0) break
-      
       setCurrentIndex(i)
+      const estadoActual = ESTADOS_MEXICO[i]
+      let tiempoTotal = 0
+      let pasoDetenido: PasoRobot | null = null
+      let errorData: ReturnType<typeof generarErrorDetallado> | null = null
+      let finalStatus: TestStatus = 'exito'
+      const pasosActualizados = crearPasosIniciales()
       
+      // Marcar como en progreso
       setResultados(prev => prev.map((r, idx) => 
-        idx === i ? { ...r, status: 'en_progreso' } : r
+        idx === i ? { ...r, status: 'en_progreso', pasoActual: 'conexion' } : r
       ))
-      
-      const tiempo = 800 + Math.random() * 2500
-      await new Promise(resolve => setTimeout(resolve, tiempo))
-      
-      const rand = Math.random()
-      let status: TestStatus
-      let errorData = { errorType: 'ninguno' as ErrorType, errorMessage: '', accionSugerida: '' }
-      
-      if (rand > 0.6) {
-        status = 'exito'
-      } else if (rand > 0.3) {
-        status = 'parcial'
-        errorData = generarErrorAleatorio()
-      } else {
-        status = 'error'
-        errorData = generarErrorAleatorio()
+
+      // Ejecutar cada paso secuencialmente
+      try {
+        for (let p = 0; p < PASOS_ROBOT.length; p++) {
+          const pasoInfo = PASOS_ROBOT[p]
+          
+          // Actualizar paso actual
+          setResultados(prev => prev.map((r, idx) => 
+            idx === i ? { ...r, pasoActual: pasoInfo.paso } : r
+          ))
+          
+          // Ejecutar el paso
+          const resultado = await ejecutarPaso(pasoInfo.paso)
+          tiempoTotal += resultado.tiempo
+          
+          // Actualizar el paso en el array
+          pasosActualizados[p] = {
+            ...pasosActualizados[p],
+            completado: resultado.exito,
+            error: !resultado.exito,
+            tiempo: resultado.tiempo,
+            screenshot: resultado.screenshot,
+            mensaje: resultado.exito ? 'Completado' : 'Error detectado'
+          }
+          
+          // Si fallo, capturar screenshot y continuar al siguiente ESTADO (no paso)
+          if (!resultado.exito) {
+            pasoDetenido = pasoInfo.paso
+            errorData = generarErrorDetallado(pasoInfo.paso)
+            
+            // Determinar si es error total o parcial
+            if (pasoInfo.paso === 'conexion' || pasoInfo.paso === 'carga_portal') {
+              finalStatus = 'error' // Error critico
+            } else if (pasoInfo.paso === 'captcha') {
+              finalStatus = 'parcial' // Necesita intervencion
+            } else {
+              finalStatus = 'parcial'
+            }
+            
+            // Capturar screenshot del momento del error
+            pasosActualizados[p].screenshot = `/api/placeholder/800/600?text=${encodeURIComponent(
+              `ROBOT DETENIDO\n${estadoActual}\nPaso: ${pasoInfo.nombre}\nError: ${errorData.errorDetallado?.codigo || 'UNKNOWN'}`
+            )}`
+            
+            // IMPORTANTE: Salir del loop de pasos pero CONTINUAR con el siguiente estado
+            break
+          }
+        }
+      } catch (err) {
+        // Error inesperado - registrar y continuar
+        finalStatus = 'error'
+        pasoDetenido = 'conexion'
+        errorData = {
+          errorType: 'conexion',
+          errorMessage: 'Error inesperado en la ejecucion',
+          accionSugerida: 'Revisar logs del sistema',
+          errorDetallado: {
+            tipo: 'desconocido',
+            codigo: 'UNEXPECTED_ERROR',
+            descripcion: err instanceof Error ? err.message : 'Error desconocido',
+            timestamp: new Date().toISOString(),
+            intentos: 1
+          }
+        }
       }
       
-      const folio = status === 'exito' ? generarFolio(ESTADOS_MEXICO[i]) : ''
+      // Generar folio si fue exitoso
+      const folio = finalStatus === 'exito' ? generarFolio(estadoActual) : ''
       
+      // Actualizar resultado final del estado
       setResultados(prev => prev.map((r, idx) => 
         idx === i ? { 
           ...r, 
-          status, 
-          tiempo: Math.round(tiempo),
-          ...errorData,
-          captchaPendiente: errorData.errorType === 'captcha',
-          screenshot: status !== 'exito' ? `/api/placeholder/400/300?text=${encodeURIComponent(ESTADOS_MEXICO[i] + ' - Error')}` : '',
-          pdfUrl: status === 'exito' ? `/api/ccl-pdf/${folio}` : '',
-          folioGenerado: folio
+          status: finalStatus, 
+          tiempo: tiempoTotal,
+          errorType: errorData?.errorType || 'ninguno',
+          errorMessage: errorData?.errorMessage || '',
+          accionSugerida: errorData?.accionSugerida || '',
+          captchaPendiente: errorData?.errorType === 'captcha',
+          screenshot: pasoDetenido ? pasosActualizados.find(p => p.paso === pasoDetenido)?.screenshot || '' : '',
+          pdfUrl: finalStatus === 'exito' ? `/api/ccl-pdf/${folio}` : '',
+          folioGenerado: folio,
+          pasoDetenido,
+          pasos: pasosActualizados,
+          errorDetallado: errorData?.errorDetallado || null
         } : r
       ))
       
       setProgreso(Math.round(((i + 1) / ESTADOS_MEXICO.length) * 100))
+      
+      // Pequeña pausa entre estados para no saturar
+      await new Promise(resolve => setTimeout(resolve, 100))
     }
     
     setEjecutando(false)
   }
 
   const solicitarAyudaCaptcha = async (estado: string) => {
-    // Simular envio de solicitud
     setCaptchasSolicitados(prev => [...prev, estado])
     
-    // En produccion: notificar a superadmin via email/push
-    // await supabase.from('captcha_requests').insert({ estado, ...})
+    // En produccion: notificar a superadmin
+    const supabase = createClient()
+    await supabase.from('captcha_requests').insert({ 
+      estado, 
+      status: 'pending',
+      created_at: new Date().toISOString()
+    }).catch(() => {}) // Ignorar si la tabla no existe
     
     setResultados(prev => prev.map(r => 
       r.estado === estado ? { ...r, captchaPendiente: false } : r
@@ -252,23 +552,45 @@ export default function CCLDiagnosticoPage() {
     const idx = resultados.findIndex(r => r.estado === estado)
     if (idx === -1) return
 
-    setResultados(prev => prev.map((r, i) => 
-      i === idx ? { ...r, status: 'en_progreso' } : r
-    ))
-
-    await new Promise(resolve => setTimeout(resolve, 1500))
-
-    const rand = Math.random()
-    const status: TestStatus = rand > 0.5 ? 'exito' : 'parcial'
+    // Reiniciar pasos
+    const pasosReiniciados = crearPasosIniciales()
     
     setResultados(prev => prev.map((r, i) => 
       i === idx ? { 
         ...r, 
-        status, 
-        tiempo: Math.round(1500),
-        errorType: status === 'exito' ? 'ninguno' : r.errorType,
-        errorMessage: status === 'exito' ? '' : r.errorMessage,
-        captchaPendiente: false
+        status: 'en_progreso', 
+        pasos: pasosReiniciados,
+        pasoDetenido: null,
+        errorDetallado: null
+      } : r
+    ))
+
+    // Simular reintento completo
+    let tiempoTotal = 0
+    let exitoso = true
+    
+    for (const pasoInfo of PASOS_ROBOT) {
+      const resultado = await ejecutarPaso(pasoInfo.paso)
+      tiempoTotal += resultado.tiempo
+      
+      if (!resultado.exito) {
+        exitoso = false
+        break
+      }
+    }
+
+    const folio = exitoso ? generarFolio(estado) : ''
+    
+    setResultados(prev => prev.map((r, i) => 
+      i === idx ? { 
+        ...r, 
+        status: exitoso ? 'exito' : 'parcial',
+        tiempo: tiempoTotal,
+        errorType: exitoso ? 'ninguno' : r.errorType,
+        errorMessage: exitoso ? '' : r.errorMessage,
+        captchaPendiente: false,
+        folioGenerado: folio,
+        pdfUrl: exitoso ? `/api/ccl-pdf/${folio}` : ''
       } : r
     ))
   }
@@ -611,6 +933,91 @@ export default function CCLDiagnosticoPage() {
                 <span className="text-green-600 text-xs block mb-1">Portal URL:</span>
                 <code className="text-green-400 text-xs break-all">{selectedEstado.url}</code>
               </div>
+
+              {/* Pasos del Robot */}
+              <div className="p-3 bg-green-950/50 rounded border border-green-800">
+                <span className="text-green-600 text-xs block mb-2">Secuencia de Pasos:</span>
+                <div className="space-y-1">
+                  {selectedEstado.pasos.map((paso, idx) => (
+                    <div 
+                      key={paso.paso}
+                      className={`flex items-center justify-between p-2 rounded text-xs ${
+                        paso.error ? 'bg-red-950/50 border border-red-800' :
+                        paso.completado ? 'bg-green-950/50 border border-green-800' :
+                        'bg-gray-900/50 border border-gray-800'
+                      }`}
+                    >
+                      <div className="flex items-center gap-2">
+                        <span className="text-gray-500 w-4">{idx + 1}.</span>
+                        {paso.completado ? (
+                          <CheckCircle2 className="w-3 h-3 text-green-400" />
+                        ) : paso.error ? (
+                          <XCircle className="w-3 h-3 text-red-400" />
+                        ) : (
+                          <Clock className="w-3 h-3 text-gray-500" />
+                        )}
+                        <span className={
+                          paso.error ? 'text-red-400' :
+                          paso.completado ? 'text-green-400' :
+                          'text-gray-500'
+                        }>
+                          {paso.nombre}
+                        </span>
+                        {paso.paso === selectedEstado.pasoDetenido && (
+                          <Badge className="bg-red-900 text-red-300 text-[8px] ml-1">DETENIDO</Badge>
+                        )}
+                      </div>
+                      {paso.tiempo > 0 && (
+                        <span className="text-gray-500">{paso.tiempo}ms</span>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {/* Paso donde se detuvo */}
+              {selectedEstado.pasoDetenido && (
+                <div className="p-3 bg-red-950/30 rounded border border-red-700">
+                  <div className="flex items-center gap-2 mb-2">
+                    <Camera className="w-4 h-4 text-red-500" />
+                    <span className="text-red-500 text-xs font-bold">ROBOT DETENIDO EN:</span>
+                  </div>
+                  <p className="text-red-400 text-sm font-bold">
+                    {PASOS_ROBOT.find(p => p.paso === selectedEstado.pasoDetenido)?.nombre || selectedEstado.pasoDetenido}
+                  </p>
+                </div>
+              )}
+
+              {/* Error Detallado */}
+              {selectedEstado.errorDetallado && (
+                <div className="p-3 bg-red-950/30 rounded border border-red-800">
+                  <span className="text-red-500 text-xs block mb-2">Error Detallado:</span>
+                  <div className="space-y-2 text-xs">
+                    <div className="flex justify-between">
+                      <span className="text-red-600">Tipo:</span>
+                      <Badge variant="outline" className="border-red-600 text-red-400 text-[10px]">
+                        {selectedEstado.errorDetallado.tipo.toUpperCase()}
+                      </Badge>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-red-600">Codigo:</span>
+                      <code className="text-red-400 bg-red-950/50 px-1 rounded">
+                        {selectedEstado.errorDetallado.codigo}
+                      </code>
+                    </div>
+                    <div className="pt-2 border-t border-red-900">
+                      <span className="text-red-600 block mb-1">Descripcion:</span>
+                      <p className="text-red-300 text-[11px] leading-relaxed">
+                        {selectedEstado.errorDetallado.descripcion}
+                      </p>
+                    </div>
+                    <div className="flex justify-between text-[10px] text-red-700">
+                      <span>Timestamp: {new Date(selectedEstado.errorDetallado.timestamp).toLocaleString()}</span>
+                      <span>Intentos: {selectedEstado.errorDetallado.intentos}</span>
+                    </div>
+                  </div>
+                </div>
+              )}
 
               {/* Error Info */}
               {selectedEstado.errorType !== 'ninguno' && (
