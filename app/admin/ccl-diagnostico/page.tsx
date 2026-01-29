@@ -1240,7 +1240,7 @@ export default function CCLDiagnosticoPage() {
                 </p>
               </div>
               
-              {/* Visor de PDF embebido - Mejorado */}
+              {/* Visor de documento embebido */}
               <div className="bg-gray-100 rounded-lg overflow-hidden border-2 border-green-700">
                 {selectedPdf.pdfUrl ? (
                   <div className="relative">
@@ -1248,9 +1248,9 @@ export default function CCLDiagnosticoPage() {
                     <div className="bg-gray-800 px-3 py-2 flex items-center justify-between border-b border-gray-700">
                       <div className="flex items-center gap-2">
                         <FileText className="w-4 h-4 text-green-400" />
-                        <span className="text-green-400 text-xs font-mono">constancia-ccl-{selectedPdf.folioGenerado}.pdf</span>
+                        <span className="text-green-400 text-xs font-mono">constancia-ccl-{selectedPdf.folioGenerado}</span>
                       </div>
-                      <div className="flex items-center gap-1">
+                      <div className="flex items-center gap-2">
                         <Button
                           size="sm"
                           variant="ghost"
@@ -1258,47 +1258,24 @@ export default function CCLDiagnosticoPage() {
                           onClick={() => window.open(selectedPdf.pdfUrl, '_blank')}
                         >
                           <ExternalLink className="w-3 h-3 mr-1" />
-                          <span className="text-xs">Abrir</span>
-                        </Button>
-                        <Button
-                          size="sm"
-                          variant="ghost"
-                          className="h-7 px-2 text-green-400 hover:bg-green-900/50"
-                          onClick={async () => {
-                            try {
-                              const response = await fetch(selectedPdf.pdfUrl)
-                              const blob = await response.blob()
-                              const url = window.URL.createObjectURL(blob)
-                              const a = document.createElement('a')
-                              a.href = url
-                              a.download = `constancia-ccl-${selectedPdf.folioGenerado}.pdf`
-                              document.body.appendChild(a)
-                              a.click()
-                              document.body.removeChild(a)
-                              window.URL.revokeObjectURL(url)
-                            } catch {
-                              window.open(selectedPdf.pdfUrl, '_blank')
-                            }
-                          }}
-                        >
-                          <Download className="w-3 h-3 mr-1" />
-                          <span className="text-xs">Descargar</span>
+                          <span className="text-xs">Abrir en nueva ventana</span>
                         </Button>
                       </div>
                     </div>
-                    {/* iframe del PDF */}
+                    {/* iframe del documento */}
                     <iframe 
-                      src={`${selectedPdf.pdfUrl}#toolbar=1&navpanes=0&scrollbar=1`}
+                      src={selectedPdf.pdfUrl}
                       className="w-full bg-white"
-                      style={{ height: '500px' }}
-                      title="PDF de Constancia CCL"
+                      style={{ height: '450px' }}
+                      title="Constancia CCL"
+                      sandbox="allow-same-origin allow-scripts allow-popups"
                     />
                   </div>
                 ) : (
-                  <div className="h-[500px] flex flex-col items-center justify-center bg-gray-100">
-                    <FileText className="w-16 h-16 text-gray-400 mb-4" />
-                    <p className="text-gray-600 text-sm">PDF no disponible en preview</p>
-                    <p className="text-gray-500 text-xs mt-1">Use los botones para descargar o abrir</p>
+                  <div className="h-[400px] flex flex-col items-center justify-center bg-gray-800">
+                    <FileText className="w-16 h-16 text-green-600 mb-4" />
+                    <p className="text-green-400 text-sm">Documento no disponible</p>
+                    <p className="text-green-600 text-xs mt-1">Este estado no genero constancia</p>
                   </div>
                 )}
               </div>
@@ -1339,34 +1316,21 @@ export default function CCLDiagnosticoPage() {
           <div className="flex gap-2 mt-4">
             <Button 
               className="flex-1 bg-green-600 hover:bg-green-500"
-              onClick={async () => {
+              onClick={() => {
                 if (!selectedPdf?.pdfUrl) return
-                try {
-                  const response = await fetch(selectedPdf.pdfUrl)
-                  const blob = await response.blob()
-                  const url = window.URL.createObjectURL(blob)
-                  const a = document.createElement('a')
-                  a.href = url
-                  a.download = `constancia-ccl-${selectedPdf.folioGenerado}.pdf`
-                  document.body.appendChild(a)
-                  a.click()
-                  document.body.removeChild(a)
-                  window.URL.revokeObjectURL(url)
-                } catch {
-                  window.open(selectedPdf.pdfUrl, '_blank')
-                }
+                // Abrir en nueva ventana para imprimir/guardar como PDF
+                window.open(selectedPdf.pdfUrl, '_blank')
               }}
             >
               <Download className="w-4 h-4 mr-2" />
-              Descargar PDF
+              Ver Constancia / Imprimir PDF
             </Button>
             <Button 
               variant="outline" 
               className="flex-1 bg-transparent border-green-600 text-green-400 hover:bg-green-950"
-              onClick={() => selectedPdf?.pdfUrl && window.open(selectedPdf.pdfUrl, '_blank')}
+              onClick={() => setShowPdfDialog(false)}
             >
-              <ExternalLink className="w-4 h-4 mr-2" />
-              Abrir en Nueva Ventana
+              Cerrar
             </Button>
           </div>
         </DialogContent>
