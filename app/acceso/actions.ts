@@ -20,6 +20,9 @@ export async function registrarUsuarioGuest(datos: {
 }) {
   try {
     const supabase = await createClient()
+    if (!supabase) {
+      return { error: 'Configuracion de autenticacion incompleta.', data: null }
+    }
     
     // Validacion minima - solo nombre
     if (!datos.nombre.trim()) {
@@ -36,6 +39,39 @@ export async function registrarUsuarioGuest(datos: {
     
     // Intentar con admin client primero (crea usuario ya confirmado)
     const adminClient = createAdminClient()
+
+    const upsertGuestProfile = async (userId: string) => {
+      const profileData = {
+        id: userId,
+        email: tempEmail,
+        full_name: datos.nombre.trim(),
+        role: 'guestworker',
+        verification_status: 'pending',
+        codigo_usuario: codigoUsuario,
+        is_profile_public: true
+      }
+
+      if (adminClient) {
+        const { error: profileError } = await adminClient
+          .from('profiles')
+          .upsert(profileData, { onConflict: 'id' })
+
+        if (profileError) {
+          return { error: profileError.message }
+        }
+        return { error: null }
+      }
+
+      const { error: profileError } = await supabase
+        .from('profiles')
+        .upsert(profileData, { onConflict: 'id' })
+
+      if (profileError) {
+        return { error: profileError.message }
+      }
+
+      return { error: null }
+    }
     
     if (adminClient) {
       const { data: authData, error: authError } = await adminClient.auth.admin.createUser({
@@ -51,6 +87,11 @@ export async function registrarUsuarioGuest(datos: {
       })
       
         if (!authError && authData.user) {
+          const profileResult = await upsertGuestProfile(authData.user.id)
+          if (profileResult.error) {
+            return { error: profileResult.error, data: null }
+          }
+
           // Registrar en arbol de referidos si tiene codigo
           if (datos.codigoReferido) {
             await adminClient
@@ -107,6 +148,11 @@ export async function registrarUsuarioGuest(datos: {
     
     // Si el signup devuelve sesion directamente, excelente
     if (signUpData.session && signUpData.user) {
+      const profileResult = await upsertGuestProfile(signUpData.user.id)
+      if (profileResult.error) {
+        return { error: profileResult.error, data: null }
+      }
+
       // Registrar en arbol de referidos si tiene codigo
       if (datos.codigoReferido) {
         await supabase
@@ -145,6 +191,13 @@ export async function registrarUsuarioGuest(datos: {
       return { error: 'Cuenta creada. Por favor espera unos segundos e intenta de nuevo.', data: null }
     }
     
+    if (signUpData.user) {
+      const profileResult = await upsertGuestProfile(signUpData.user.id)
+      if (profileResult.error) {
+        return { error: profileResult.error, data: null }
+      }
+    }
+
     revalidatePath('/dashboard')
     return { 
       error: null, 
