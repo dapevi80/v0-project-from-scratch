@@ -74,6 +74,7 @@ interface UserProfile {
   role?: string
   codigoUsuario?: string
   verificationStatus?: string
+  phone?: string
 }
 
 interface AIAssistantProps {

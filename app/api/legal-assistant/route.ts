@@ -32,13 +32,26 @@ export async function POST(request: NextRequest) {
     if (userProfile) {
       const userName = userProfile.fullName?.split(' ')[0] || ''
       const isLawyer = userProfile.role === 'lawyer' || userProfile.role === 'guestlawyer'
+      const profileDetails = [
+        userProfile.fullName ? `Nombre completo: ${userProfile.fullName}` : null,
+        userProfile.email ? `Email: ${userProfile.email}` : null,
+        userProfile.phone ? `Teléfono: ${userProfile.phone}` : null,
+        userProfile.role ? `Rol: ${userProfile.role}` : null,
+        userProfile.verificationStatus ? `Estado de verificación: ${userProfile.verificationStatus}` : null,
+        userProfile.codigoUsuario ? `Código de usuario: ${userProfile.codigoUsuario}` : null
+      ].filter(Boolean).join('\n')
       
       if (isLawyer) {
         systemPrompt += `\n\n## CONTEXTO DEL USUARIO
-El usuario ${userName ? `"${userName}" ` : ''}es ABOGADO. Adapta tu lenguaje para ser más técnico y profesional. Puedes usar terminología legal avanzada.`
+El usuario ${userName ? `"${userName}" ` : ''}es ABOGADO. Adapta tu lenguaje para ser más técnico y profesional. Puedes usar terminología legal avanzada.
+${profileDetails ? `\n\nPerfil:\n${profileDetails}` : ''}`
       } else if (userName) {
         systemPrompt += `\n\n## CONTEXTO DEL USUARIO
-El usuario se llama ${userName}. Dirígete a él por su nombre de forma amigable.`
+El usuario se llama ${userName}. Dirígete a él por su nombre de forma amigable.
+${profileDetails ? `\n\nPerfil:\n${profileDetails}` : ''}`
+      } else if (profileDetails) {
+        systemPrompt += `\n\n## CONTEXTO DEL USUARIO
+Perfil:\n${profileDetails}`
       }
     }
     if (documentContext && documentName) {

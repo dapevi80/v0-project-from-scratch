@@ -116,7 +116,7 @@ export default function AdminUsuariosPage() {
       .eq('id', user.id)
       .single()
 
-    if (!profile || profile.role !== 'superadmin') {
+    if (!profile || !['superadmin', 'webagent'].includes(profile.role)) {
       router.replace('/admin')
       return
     }
@@ -130,7 +130,10 @@ export default function AdminUsuariosPage() {
       .order('created_at', { ascending: false })
 
     if (profiles) {
-      const usuariosFormateados: Usuario[] = profiles.map(p => ({
+      const visibleProfiles = profile.role === 'webagent'
+        ? profiles.filter(p => p.role !== 'superadmin')
+        : profiles
+      const usuariosFormateados: Usuario[] = visibleProfiles.map(p => ({
         id: p.id,
         full_name: p.full_name || 'Sin nombre',
         email: p.email || '',
@@ -150,8 +153,8 @@ export default function AdminUsuariosPage() {
         activos: usuariosFormateados.filter(u => u.status === 'active').length,
         inactivos: usuariosFormateados.filter(u => u.status === 'inactive').length,
         suspendidos: usuariosFormateados.filter(u => u.status === 'suspended').length,
-        abogados: usuariosFormateados.filter(u => u.role === 'abogado').length,
-        clientes: usuariosFormateados.filter(u => u.role === 'user' || u.role === 'cliente').length,
+        abogados: usuariosFormateados.filter(u => u.role === 'abogado' || u.role === 'lawyer').length,
+        clientes: usuariosFormateados.filter(u => ['user', 'cliente', 'worker', 'guest'].includes(u.role)).length,
         admins: usuariosFormateados.filter(u => u.role === 'admin' || u.role === 'superadmin').length
       })
     }
