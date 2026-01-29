@@ -1,5 +1,3 @@
-'use server'
-
 // ===========================================
 // REGLAS DE VERIFICACION PARA ABOGADOS
 // Sistema de Upgrades y Downgrades

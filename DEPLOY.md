@@ -24,13 +24,13 @@ Si mantienes un solo proyecto Next.js:
 
 En Vercel > Project > Settings > Environment Variables:
 
-```
+\`\`\`
 NEXT_PUBLIC_APP_ENV=prod
 NEXT_PUBLIC_APP_NAME=mecorrieron
 NEXT_PUBLIC_SUPABASE_URL=https://xxx.supabase.co
 NEXT_PUBLIC_SUPABASE_ANON_KEY=eyJ...
 SUPABASE_SERVICE_ROLE_KEY=eyJ...
-```
+\`\`\`
 
 ### 3. Configurar Dominio
 
@@ -50,10 +50,10 @@ En Vercel > Project > Settings > Domains:
 
 ### 5. Verificar Despliegue
 
-```bash
+\`\`\`bash
 curl https://app.mecorrieron.mx/health
 # Respuesta esperada: {"ok":true,"app":"mecorrieron","env":"prod",...}
-```
+\`\`\`
 
 ---
 
@@ -63,7 +63,7 @@ Estructura actual con WEB (marketing) separado de APP (aplicacion):
 
 ### Estructura Actual
 
-```
+\`\`\`
 /
 ├── apps/
 │   └── web/           # Landing/Marketing (mecorrieron.mx)
@@ -78,7 +78,7 @@ Estructura actual con WEB (marketing) separado de APP (aplicacion):
 ├── components/
 ├── lib/
 └── package.json
-```
+\`\`\`
 
 ### Crear 2 Proyectos en Vercel
 
@@ -88,10 +88,10 @@ Estructura actual con WEB (marketing) separado de APP (aplicacion):
 2. **Root Directory**: `apps/web`
 3. Framework: Next.js
 4. Environment Variables:
-   ```
+   \`\`\`
    NEXT_PUBLIC_APP_ENV=prod
    NEXT_PUBLIC_APP_NAME=web
-   ```
+   \`\`\`
 
 #### Proyecto 2: mecorrieron-app
 
@@ -99,13 +99,13 @@ Estructura actual con WEB (marketing) separado de APP (aplicacion):
 2. **Root Directory**: `apps/app`
 3. Framework: Next.js
 4. Environment Variables:
-   ```
+   \`\`\`
    NEXT_PUBLIC_APP_ENV=prod
    NEXT_PUBLIC_APP_NAME=app
    NEXT_PUBLIC_SUPABASE_URL=...
    NEXT_PUBLIC_SUPABASE_ANON_KEY=...
    SUPABASE_SERVICE_ROLE_KEY=...
-   ```
+   \`\`\`
 
 ### DNS en Hostinger
 
@@ -121,7 +121,7 @@ Estructura actual con WEB (marketing) separado de APP (aplicacion):
 
 Ambas apps deben responder en `/health`:
 
-```bash
+\`\`\`bash
 # WEB
 curl https://mecorrieron.mx/health
 # {"ok":true,"app":"web","env":"prod",...}
@@ -129,7 +129,7 @@ curl https://mecorrieron.mx/health
 # APP
 curl https://app.mecorrieron.mx/health
 # {"ok":true,"app":"app","env":"prod",...}
-```
+\`\`\`
 
 ---
 
