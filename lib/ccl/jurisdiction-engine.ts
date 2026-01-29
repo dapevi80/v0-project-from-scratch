@@ -33,44 +33,6 @@ export interface JurisdiccionResult {
   claveEstado: string
 }
 
-// Lista de claves de estado para mapeo
-export const ESTADOS_MEXICO: Record<string, string> = {
-  'Aguascalientes': 'AGS',
-  'Baja California': 'BC',
-  'Baja California Sur': 'BCS',
-  'Campeche': 'CAM',
-  'Chiapas': 'CHIS',
-  'Chihuahua': 'CHIH',
-  'Ciudad de Mexico': 'CDMX',
-  'CDMX': 'CDMX',
-  'Coahuila': 'COAH',
-  'Colima': 'COL',
-  'Durango': 'DGO',
-  'Estado de Mexico': 'MEX',
-  'Mexico': 'MEX',
-  'Guanajuato': 'GTO',
-  'Guerrero': 'GRO',
-  'Hidalgo': 'HGO',
-  'Jalisco': 'JAL',
-  'Michoacan': 'MICH',
-  'Morelos': 'MOR',
-  'Nayarit': 'NAY',
-  'Nuevo Leon': 'NL',
-  'Oaxaca': 'OAX',
-  'Puebla': 'PUE',
-  'Queretaro': 'QRO',
-  'Quintana Roo': 'QROO',
-  'San Luis Potosi': 'SLP',
-  'Sinaloa': 'SIN',
-  'Sonora': 'SON',
-  'Tabasco': 'TAB',
-  'Tamaulipas': 'TAMPS',
-  'Tlaxcala': 'TLAX',
-  'Veracruz': 'VER',
-  'Yucatan': 'YUC',
-  'Zacatecas': 'ZAC'
-}
-
 // Normaliza el nombre del estado
 function normalizarEstado(estado: string): string {
   const normalized = estado
