@@ -1097,13 +1097,16 @@ export default function BovedaPage() {
           </DialogContent>
         </Dialog>
         
-        {/* Modal: Subidor de documentos */}
-        <Dialog open={showUploader} onOpenChange={(open) => {
-          setShowUploader(open)
-          if (!open) setUploaderCategoria(undefined)
-        }}>
-          <DialogContent className="w-[90vw] max-w-[340px] p-0 gap-0 overflow-hidden max-h-[85vh] [&>button]:hidden [&>div]:w-full">
-            <DocumentUploader 
+  {/* Modal: Subidor de documentos */}
+  <Dialog open={showUploader} onOpenChange={(open) => {
+  setShowUploader(open)
+  if (!open) setUploaderCategoria(undefined)
+  }}>
+  <DialogContent 
+    showCloseButton={false}
+    className="w-[calc(100vw-2rem)] max-w-[360px] sm:max-w-sm p-0 gap-0 overflow-hidden max-h-[calc(100vh-4rem)] sm:max-h-[80vh] rounded-xl border-0 shadow-2xl"
+  >
+  <DocumentUploader
               onUploaded={() => {
                 setShowUploader(false)
                 setUploaderCategoria(undefined)

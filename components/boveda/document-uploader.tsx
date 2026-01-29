@@ -269,23 +269,23 @@ export function DocumentUploader({ onUploaded, onClose, defaultCategoria }: Docu
 
   return (
     <div 
-      className="bg-background rounded-xl shadow-lg border max-h-[85vh] overflow-hidden flex flex-col w-full max-w-sm"
+      className="bg-background rounded-xl shadow-lg border max-h-[75vh] sm:max-h-[80vh] overflow-hidden flex flex-col w-full"
       onDragEnter={handleDrag}
       onDragLeave={handleDrag}
       onDragOver={handleDrag}
       onDrop={handleDrop}
     >
       {/* Header */}
-      <div className="flex items-center justify-between p-3 border-b">
-        <div className="flex items-center gap-2">
+      <div className="flex items-center justify-between p-3 border-b flex-shrink-0 bg-muted/30">
+        <div className="flex items-center gap-2 min-w-0">
           {categoriaActual && (
-            <div className={`w-6 h-6 rounded-full flex items-center justify-center ${categoriaActual.color}`}>
-              <categoriaActual.icon className="w-3 h-3" />
+            <div className={`w-7 h-7 rounded-full flex items-center justify-center flex-shrink-0 ${categoriaActual.color}`}>
+              <categoriaActual.icon className="w-3.5 h-3.5" />
             </div>
           )}
-          <span className="font-medium text-sm">{categoriaActual?.label || 'Subir'}</span>
+          <span className="font-medium text-sm truncate">{categoriaActual?.label || 'Subir documento'}</span>
         </div>
-        <Button variant="ghost" size="icon" onClick={onClose} className="h-7 w-7">
+        <Button variant="ghost" size="icon" onClick={onClose} className="h-8 w-8 flex-shrink-0 hover:bg-destructive/10">
           <X className="w-4 h-4" />
         </Button>
       </div>
@@ -309,22 +309,22 @@ export function DocumentUploader({ onUploaded, onClose, defaultCategoria }: Docu
       />
       
       {/* Carrusel de sugerencias */}
-      <div className="border-b py-2">
+      <div className="border-b py-2 flex-shrink-0">
         {/* Titulo */}
         <p className="text-[10px] text-muted-foreground text-center mb-2">Reune tus pruebas</p>
         
         {/* Carrusel con flechas */}
-        <div className="relative">
+        <div className="relative px-1">
           <button 
             onClick={() => scrollCarousel('left')}
-            className="absolute left-0 top-1/2 -translate-y-1/2 z-10 w-5 h-5 bg-background/90 rounded-full shadow-sm flex items-center justify-center hover:bg-muted"
+            className="absolute left-0 top-1/2 -translate-y-1/2 z-10 w-6 h-6 bg-background/95 rounded-full shadow-md border flex items-center justify-center hover:bg-muted transition-colors"
           >
-            <ChevronLeft className="w-3 h-3" />
+            <ChevronLeft className="w-3.5 h-3.5" />
           </button>
           
           <div 
             ref={carouselRef}
-            className="flex gap-1 px-6 overflow-x-auto scrollbar-hide scroll-smooth"
+            className="flex gap-1.5 px-7 overflow-x-auto scrollbar-hide scroll-smooth"
             style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}
           >
             {CATEGORIAS_SUGERIDAS.map(cat => {
@@ -334,13 +334,13 @@ export function DocumentUploader({ onUploaded, onClose, defaultCategoria }: Docu
                 <button
                   key={cat.value}
                   onClick={() => setCategoria(cat.value as CategoriaDocumento)}
-                  className={`flex flex-col items-center gap-0.5 p-1.5 rounded-lg transition-all shrink-0 w-11
-                    ${isSelected ? `${cat.color} ring-1 ring-current` : 'hover:bg-muted/50'}`}
+                  className={`flex flex-col items-center gap-0.5 p-1.5 rounded-lg transition-all shrink-0 w-12 sm:w-14
+                    ${isSelected ? `${cat.color} ring-2 ring-current shadow-sm` : 'hover:bg-muted/50'}`}
                 >
-                  <div className={`w-6 h-6 rounded-full flex items-center justify-center ${isSelected ? 'bg-white/50' : cat.color}`}>
-                    <Icon className="w-3 h-3" />
+                  <div className={`w-7 h-7 rounded-full flex items-center justify-center ${isSelected ? 'bg-white/50' : cat.color}`}>
+                    <Icon className="w-3.5 h-3.5" />
                   </div>
-                  <span className="text-[8px] leading-tight text-center truncate w-full">{cat.shortLabel}</span>
+                  <span className="text-[8px] sm:text-[9px] leading-tight text-center truncate w-full">{cat.shortLabel}</span>
                 </button>
               )
             })}
@@ -348,9 +348,9 @@ export function DocumentUploader({ onUploaded, onClose, defaultCategoria }: Docu
           
           <button 
             onClick={() => scrollCarousel('right')}
-            className="absolute right-0 top-1/2 -translate-y-1/2 z-10 w-5 h-5 bg-background/90 rounded-full shadow-sm flex items-center justify-center hover:bg-muted"
+            className="absolute right-0 top-1/2 -translate-y-1/2 z-10 w-6 h-6 bg-background/95 rounded-full shadow-md border flex items-center justify-center hover:bg-muted transition-colors"
           >
-            <ChevronRight className="w-3 h-3" />
+            <ChevronRight className="w-3.5 h-3.5" />
           </button>
         </div>
         
@@ -361,39 +361,39 @@ export function DocumentUploader({ onUploaded, onClose, defaultCategoria }: Docu
       </div>
       
       {/* Contenido */}
-      <div className={`flex-1 overflow-y-auto p-3 ${dragActive ? 'bg-primary/5' : ''}`}>
+      <div className={`flex-1 overflow-y-auto p-3 min-h-0 ${dragActive ? 'bg-primary/5' : ''}`}>
         
         {/* Zona de drop/seleccion */}
         {files.length === 0 ? (
           <div 
-            className={`border-2 border-dashed rounded-xl p-5 text-center transition-all
+            className={`border-2 border-dashed rounded-xl p-4 sm:p-5 text-center transition-all
               ${dragActive ? 'border-primary bg-primary/5' : 'border-muted-foreground/20'}`}
           >
             {/* Acciones */}
-            <div className="flex justify-center gap-3 mb-2">
+            <div className="flex justify-center gap-4 mb-3">
               <button
                 onClick={() => cameraInputRef.current?.click()}
-                className="w-10 h-10 rounded-full bg-green-100 flex items-center justify-center hover:bg-green-200 transition-colors"
+                className="w-11 h-11 sm:w-12 sm:h-12 rounded-full bg-green-100 flex items-center justify-center hover:bg-green-200 transition-colors hover:scale-105 active:scale-95"
                 title="Tomar foto"
               >
-                <Camera className="w-4 h-4 text-green-600" />
+                <Camera className="w-5 h-5 text-green-600" />
               </button>
               <button
                 onClick={() => fileInputRef.current?.click()}
-                className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center hover:bg-primary/20 transition-colors"
+                className="w-11 h-11 sm:w-12 sm:h-12 rounded-full bg-primary/10 flex items-center justify-center hover:bg-primary/20 transition-colors hover:scale-105 active:scale-95"
                 title="Elegir archivo"
               >
-                <Upload className="w-4 h-4 text-primary" />
+                <Upload className="w-5 h-5 text-primary" />
               </button>
               <button
                 onClick={() => setShowLocationPicker(true)}
-                className="w-10 h-10 rounded-full bg-orange-100 flex items-center justify-center hover:bg-orange-200 transition-colors"
+                className="w-11 h-11 sm:w-12 sm:h-12 rounded-full bg-orange-100 flex items-center justify-center hover:bg-orange-200 transition-colors hover:scale-105 active:scale-95"
                 title="Ubicacion trabajo"
               >
-                <MapPin className="w-4 h-4 text-orange-600" />
+                <MapPin className="w-5 h-5 text-orange-600" />
               </button>
             </div>
-            <p className="text-[10px] text-muted-foreground">
+            <p className="text-xs text-muted-foreground">
               {dragActive ? 'Suelta aqui' : 'Foto | Archivo | Ubicacion'}
             </p>
           </div>
@@ -439,7 +439,7 @@ export function DocumentUploader({ onUploaded, onClose, defaultCategoria }: Docu
       
       {/* Footer */}
       {files.length > 0 && (
-        <div className="p-3 border-t">
+        <div className="p-3 border-t flex-shrink-0 bg-muted/20">
           {files.every(f => f.status === 'success') ? (
             <Button
               onClick={() => {
@@ -447,26 +447,26 @@ export function DocumentUploader({ onUploaded, onClose, defaultCategoria }: Docu
                 onUploaded?.()
                 onClose?.()
               }}
-              className="w-full h-9 text-xs gap-2 bg-green-600 hover:bg-green-700"
+              className="w-full h-10 text-sm gap-2 bg-green-600 hover:bg-green-700"
             >
-              <CheckCircle className="w-3.5 h-3.5" />
+              <CheckCircle className="w-4 h-4" />
               Guardar y cerrar
             </Button>
           ) : (
             <Button
               onClick={uploadFiles}
               disabled={uploading}
-              className="w-full h-9 text-xs gap-2"
+              className="w-full h-10 text-sm gap-2"
             >
               {uploading ? (
                 <>
-                  <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                  <Loader2 className="w-4 h-4 animate-spin" />
                   Subiendo...
                 </>
               ) : (
                 <>
-                  <Upload className="w-3.5 h-3.5" />
-                  Subir {files.length}
+                  <Upload className="w-4 h-4" />
+                  Subir {files.length} {files.length === 1 ? 'archivo' : 'archivos'}
                 </>
               )}
             </Button>
