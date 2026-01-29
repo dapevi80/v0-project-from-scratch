@@ -87,6 +87,28 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ exito: false, error: error.message })
     }
     
+    // Determinar instrucciones específicas según el flujo del portal
+    const flujoEsGuardarCrearCuenta = portal.flujoEnvio === 'guardar_crear_cuenta'
+    
+    const instruccionesEspecificas = flujoEsGuardarCrearCuenta 
+      ? [
+          `1. Accede a ${portal.urlSinacol}`,
+          '2. Completa TODOS los campos del formulario de solicitud',
+          '3. Al final del formulario, verás botones "Enviar" y "Guardar"',
+          '4. IMPORTANTE: Elige "GUARDAR" (NO "Enviar")',
+          '5. Se abrirá un formulario para crear tu cuenta de buzón electrónico',
+          '6. Completa los datos de tu cuenta (email y contraseña)',
+          '7. Al crear la cuenta, tu solicitud quedará registrada oficialmente',
+          '8. Guarda tu email y contraseña para acceder al buzón posteriormente'
+        ]
+      : [
+          `1. Accede a ${portal.urlSinacol}`,
+          '2. Completa todos los campos del formulario de solicitud',
+          '3. Verifica que tus datos sean correctos',
+          '4. Envía la solicitud',
+          '5. Guarda tu folio de confirmación'
+        ]
+    
     return NextResponse.json({
       exito: true,
       accountId: account.id,
@@ -100,10 +122,15 @@ export async function POST(request: NextRequest) {
       nombre_trabajador: datosTrabajador.nombre,
       estado_ccl: estado,
       portal_nombre: portal.nombre,
+      // Flujo e instrucciones específicas
+      flujo_envio: portal.flujoEnvio || 'enviar_directo',
+      instrucciones_paso_a_paso: instruccionesEspecificas,
       // Notas importantes
       requiere_ratificacion_presencial: portal.requiereRatificacionPresencial,
       notas: portal.notas,
-      mensaje: `Enlace generado al portal SINACOL de ${estado}. El trabajador debe completar su solicitud en el portal oficial usando su CURP.`
+      mensaje: flujoEsGuardarCrearCuenta
+        ? `IMPORTANTE: En el portal de ${estado}, debes elegir "GUARDAR" al final del formulario para abrir la creación de cuenta. Este paso registra tu solicitud.`
+        : `Enlace generado al portal SINACOL de ${estado}. El trabajador debe completar su solicitud en el portal oficial usando su CURP.`
     })
     
   } catch (error) {
