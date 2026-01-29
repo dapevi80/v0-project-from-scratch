@@ -195,6 +195,9 @@ export default function CCLDiagnosticoPage() {
   const [showPdfDialog, setShowPdfDialog] = useState(false)
   const [selectedPdf, setSelectedPdf] = useState<Resultado | null>(null)
   const [captchasSolicitados, setCaptchasSolicitados] = useState<string[]>([])
+  // Nuevo: Selector de estado individual para diagnóstico específico
+  const [estadoSeleccionado, setEstadoSeleccionado] = useState<string>('todos')
+  const [modoDiagnostico, setModoDiagnostico] = useState<'todos' | 'individual'>('todos')
 
   useEffect(() => {
     async function checkAccess() {
@@ -495,7 +498,215 @@ export default function CCLDiagnosticoPage() {
     }
   }
 
+  // NUEVO: Función para diagnóstico de un solo estado
+  const iniciarDiagnosticoIndividual = async (estado: string) => {
+    setEjecutando(true)
+    setProgreso(0)
+    
+    const idx = ESTADOS_MEXICO.indexOf(estado)
+    if (idx === -1) {
+      setEjecutando(false)
+      return
+    }
+    
+    setCurrentIndex(idx)
+    
+    // Resetear solo este estado
+    setResultados(prev => prev.map((r, i) => 
+      i === idx ? {
+        ...r,
+        status: 'pendiente',
+        pasos: crearPasosIniciales(),
+        pasoDetenido: null,
+        errorDetallado: null,
+        folioGenerado: '',
+        pdfUrl: ''
+      } : r
+    ))
+
+    let tiempoTotal = 0
+    let pasoDetenido: PasoRobot | null = null
+    let errorData: ReturnType<typeof generarErrorDetallado> | null = null
+    let finalStatus: TestStatus = 'exito'
+    const pasosActualizados = crearPasosIniciales()
+    
+    // Marcar como en progreso
+    setResultados(prev => prev.map((r, i) => 
+      i === idx ? { ...r, status: 'en_progreso', pasoActual: 'conexion' } : r
+    ))
+    setProgreso(10)
+
+    // Ejecutar cada paso secuencialmente
+    try {
+      for (let p = 0; p < PASOS_ROBOT.length; p++) {
+        const pasoInfo = PASOS_ROBOT[p]
+        
+        // Actualizar paso actual
+        setResultados(prev => prev.map((r, i) => 
+          i === idx ? { ...r, pasoActual: pasoInfo.paso } : r
+        ))
+        setProgreso(10 + Math.round((p / PASOS_ROBOT.length) * 80))
+        
+        // Ejecutar el paso
+        const resultado = await ejecutarPaso(pasoInfo.paso)
+        tiempoTotal += resultado.tiempo
+        
+        // Actualizar el paso en el array
+        pasosActualizados[p] = {
+          ...pasosActualizados[p],
+          completado: resultado.exito,
+          error: !resultado.exito,
+          tiempo: resultado.tiempo,
+          screenshot: resultado.screenshot,
+          mensaje: resultado.exito ? 'Completado' : 'Error detectado'
+        }
+        
+        // Si fallo, capturar y salir
+        if (!resultado.exito) {
+          pasoDetenido = pasoInfo.paso
+          errorData = generarErrorDetallado(pasoInfo.paso)
+          
+          if (pasoInfo.paso === 'conexion' || pasoInfo.paso === 'carga_portal') {
+            finalStatus = 'error'
+          } else if (pasoInfo.paso === 'captcha') {
+            finalStatus = 'parcial'
+          } else {
+            finalStatus = 'parcial'
+          }
+          
+          pasosActualizados[p].screenshot = `/api/placeholder/800/600?text=${encodeURIComponent(
+            `ROBOT DETENIDO\n${estado}\nPaso: ${pasoInfo.nombre}\nError: ${errorData.errorDetallado?.codigo || 'UNKNOWN'}`
+          )}`
+          
+          break
+        }
+      }
+    } catch (err) {
+      finalStatus = 'error'
+      pasoDetenido = 'conexion'
+      errorData = {
+        errorType: 'conexion',
+        errorMessage: 'Error inesperado en la ejecucion',
+        accionSugerida: 'Revisar logs del sistema',
+        errorDetallado: {
+          tipo: 'desconocido',
+          codigo: 'UNEXPECTED_ERROR',
+          descripcion: err instanceof Error ? err.message : 'Error desconocido',
+          timestamp: new Date().toISOString(),
+          intentos: 1
+        }
+      }
+    }
+    
+    setProgreso(90)
+    
+    // Si fue exitoso, crear cuenta real
+    let cuentaCCLData: Resultado['cuentaCCL'] | undefined = undefined
+    let folio = ''
+    
+    if (finalStatus === 'exito') {
+      const resultadoActual = resultados.find(r => r.estado === estado)
+      const datosTrabajadorPrueba: DatosTrabajador = {
+        nombre_completo: resultadoActual?.cuentaCCL?.nombreTrabajador || 'David Perez Villasenor',
+        curp: resultadoActual?.cuentaCCL?.curp || 'PEVD930106HDFRLV00',
+        rfc: 'PEVD930106XXX',
+        fecha_nacimiento: '1993-01-06',
+        sexo: 'H',
+        email_personal: 'david.perez@mecorrieron.mx',
+        telefono: '9985933232',
+        direccion: 'Av. Principal 123',
+        ciudad: estado,
+        codigo_postal: '77500',
+        empresa_nombre: 'Experiencias Xcaret SAPI de CV',
+        puesto: 'Empleado General',
+        salario_diario: 500,
+        fecha_ingreso: '2020-01-15',
+        fecha_despido: '2026-01-15'
+      }
+      
+      try {
+        const resultadoCuenta = await crearCuentaCCLAPI(
+          estado,
+          datosTrabajadorPrueba,
+          {
+            esPrueba: true,
+            sesionDiagnosticoId: `diag-individual-${Date.now()}`
+          }
+        )
+        
+        if (resultadoCuenta.exito) {
+          folio = resultadoCuenta.folio || ''
+          cuentaCCLData = {
+            email: resultadoCuenta.email_portal || '',
+            password: resultadoCuenta.password_portal || '',
+            urlLogin: resultadoCuenta.url_login || '',
+            urlBuzon: resultadoCuenta.url_buzon || '',
+            curp: datosTrabajadorPrueba.curp,
+            nombreTrabajador: datosTrabajadorPrueba.nombre_completo
+          }
+        } else if (resultadoCuenta.requiereCaptcha) {
+          finalStatus = 'parcial'
+          errorData = {
+            errorType: 'captcha',
+            errorMessage: resultadoCuenta.error || 'CAPTCHA detectado',
+            accionSugerida: 'Resolver CAPTCHA manualmente en el portal',
+            errorDetallado: {
+              tipo: 'captcha',
+              codigo: 'CAPTCHA_REQUIRED',
+              descripcion: 'El portal requiere resolver un CAPTCHA',
+              timestamp: new Date().toISOString(),
+              intentos: 1
+            }
+          }
+          cuentaCCLData = {
+            email: resultadoCuenta.email_portal || '',
+            password: resultadoCuenta.password_portal || '',
+            urlLogin: resultadoCuenta.url_login || '',
+            urlBuzon: resultadoCuenta.captchaUrl || '',
+            curp: datosTrabajadorPrueba.curp,
+            nombreTrabajador: datosTrabajadorPrueba.nombre_completo
+          }
+        } else {
+          folio = generarReferenciaInterna(estado)
+          cuentaCCLData = resultadoActual?.cuentaCCL
+        }
+      } catch {
+        folio = generarReferenciaInterna(estado)
+        cuentaCCLData = resultados.find(r => r.estado === estado)?.cuentaCCL
+      }
+    }
+    
+    // Actualizar resultado final
+    setResultados(prev => prev.map((r, i) => 
+      i === idx ? { 
+        ...r, 
+        status: finalStatus, 
+        tiempo: tiempoTotal,
+        errorType: errorData?.errorType || 'ninguno',
+        errorMessage: errorData?.errorMessage || '',
+        accionSugerida: errorData?.accionSugerida || '',
+        captchaPendiente: errorData?.errorType === 'captcha',
+        screenshot: pasoDetenido ? pasosActualizados.find(p => p.paso === pasoDetenido)?.screenshot || '' : '',
+        pdfUrl: finalStatus === 'exito' ? `/api/ccl-pdf/${folio}` : '',
+        folioGenerado: folio,
+        pasoDetenido,
+        pasos: pasosActualizados,
+        errorDetallado: errorData?.errorDetallado || null,
+        cuentaCCL: cuentaCCLData || r.cuentaCCL
+      } : r
+    ))
+    
+    setProgreso(100)
+    setEjecutando(false)
+  }
+
   const iniciarDiagnostico = async () => {
+    // Si hay un estado seleccionado específico, ejecutar solo ese
+    if (modoDiagnostico === 'individual' && estadoSeleccionado !== 'todos') {
+      await iniciarDiagnosticoIndividual(estadoSeleccionado)
+      return
+    }
+    
     setEjecutando(true)
     setProgreso(0)
     setCurrentIndex(0)
@@ -897,6 +1108,62 @@ export default function CCLDiagnosticoPage() {
         {/* Controles */}
         <Card className="bg-black/80 border-green-800 mb-4 sm:mb-6">
           <CardContent className="p-3 sm:p-4">
+            {/* Selector de modo: Todos vs Individual */}
+            <div className="flex items-center gap-2 mb-3 pb-3 border-b border-green-900">
+              <span className="text-green-500 font-mono text-xs">MODO:</span>
+              <div className="flex rounded overflow-hidden border border-green-700">
+                <button
+                  onClick={() => {
+                    setModoDiagnostico('todos')
+                    setEstadoSeleccionado('todos')
+                  }}
+                  disabled={ejecutando}
+                  className={`px-3 py-1 text-xs font-mono transition-colors ${
+                    modoDiagnostico === 'todos' 
+                      ? 'bg-green-600 text-black font-bold' 
+                      : 'bg-green-950 text-green-400 hover:bg-green-900'
+                  }`}
+                >
+                  TODOS (33)
+                </button>
+                <button
+                  onClick={() => setModoDiagnostico('individual')}
+                  disabled={ejecutando}
+                  className={`px-3 py-1 text-xs font-mono transition-colors ${
+                    modoDiagnostico === 'individual' 
+                      ? 'bg-cyan-600 text-black font-bold' 
+                      : 'bg-green-950 text-green-400 hover:bg-green-900'
+                  }`}
+                >
+                  INDIVIDUAL
+                </button>
+              </div>
+              
+              {/* Selector de estado individual */}
+              {modoDiagnostico === 'individual' && (
+                <select
+                  value={estadoSeleccionado}
+                  onChange={(e) => setEstadoSeleccionado(e.target.value)}
+                  disabled={ejecutando}
+                  className="bg-cyan-950 border border-cyan-700 text-cyan-400 font-mono text-xs rounded px-2 py-1.5 flex-1 max-w-[200px]"
+                >
+                  <option value="todos">-- Seleccionar Estado --</option>
+                  <option value="Federal" className="text-yellow-400">FEDERAL (CFCRL)</option>
+                  <optgroup label="Estados">
+                    {ESTADOS_MEXICO.filter(e => e !== 'Federal').map(estado => (
+                      <option key={estado} value={estado}>{estado}</option>
+                    ))}
+                  </optgroup>
+                </select>
+              )}
+              
+              {modoDiagnostico === 'individual' && estadoSeleccionado !== 'todos' && (
+                <Badge className="bg-cyan-900 text-cyan-300 border border-cyan-600 font-mono text-[10px]">
+                  {estadoSeleccionado === 'Federal' ? 'CFCRL' : estadoSeleccionado}
+                </Badge>
+              )}
+            </div>
+            
             {/* Stats mobile - arriba */}
             <div className="flex flex-wrap items-center justify-center gap-2 sm:gap-4 font-mono text-xs sm:text-sm mb-3 sm:hidden">
               <span className="text-green-400">OK:{stats.exito}</span>
@@ -919,20 +1186,24 @@ export default function CCLDiagnosticoPage() {
                 
                 <Button
                   onClick={iniciarDiagnostico}
-                  disabled={ejecutando}
+                  disabled={ejecutando || (modoDiagnostico === 'individual' && estadoSeleccionado === 'todos')}
                   size="sm"
-                  className="bg-green-600 hover:bg-green-500 text-black font-mono font-bold text-xs sm:text-sm flex-1 sm:flex-none"
+                  className={`font-mono font-bold text-xs sm:text-sm flex-1 sm:flex-none ${
+                    modoDiagnostico === 'individual' 
+                      ? 'bg-cyan-600 hover:bg-cyan-500 text-black' 
+                      : 'bg-green-600 hover:bg-green-500 text-black'
+                  }`}
                 >
                   {ejecutando ? (
                     <>
                       <Loader2 className="w-3 h-3 sm:w-4 sm:h-4 mr-1 sm:mr-2 animate-spin" />
-                      <span className="hidden sm:inline">EJECUTANDO...</span>
+                      <span className="hidden sm:inline">EJECUTANDO {modoDiagnostico === 'individual' ? estadoSeleccionado.toUpperCase() : ''}...</span>
                       <span className="sm:hidden">RUN...</span>
                     </>
                   ) : (
                     <>
                       <Play className="w-3 h-3 sm:w-4 sm:h-4 mr-1 sm:mr-2" />
-                      INICIAR
+                      {modoDiagnostico === 'individual' ? 'PROBAR ESTADO' : 'INICIAR TODOS'}
                     </>
                   )}
                 </Button>
@@ -962,14 +1233,68 @@ export default function CCLDiagnosticoPage() {
             {ejecutando && (
               <div className="mt-4">
                 <div className="flex justify-between text-xs font-mono text-green-600 mb-1">
-                  <span>Progreso: {progreso}%</span>
-                  <span>{currentIndex + 1} / {ESTADOS_MEXICO.length}</span>
+                  <span>
+                    {modoDiagnostico === 'individual' 
+                      ? `Probando: ${estadoSeleccionado} - ${progreso}%` 
+                      : `Progreso: ${progreso}%`
+                    }
+                  </span>
+                  <span>
+                    {modoDiagnostico === 'individual' 
+                      ? `Estado: ${estadoSeleccionado}` 
+                      : `${currentIndex + 1} / ${ESTADOS_MEXICO.length}`
+                    }
+                  </span>
                 </div>
-                <Progress value={progreso} className="h-2 bg-green-950" />
+                <Progress 
+                  value={progreso} 
+                  className={`h-2 ${modoDiagnostico === 'individual' ? 'bg-cyan-950' : 'bg-green-950'}`} 
+                />
               </div>
             )}
           </CardContent>
         </Card>
+
+        {/* Mensaje cuando modo individual está activo */}
+        {modoDiagnostico === 'individual' && (
+          <Card className={`mb-4 ${estadoSeleccionado !== 'todos' ? 'bg-cyan-950/50 border-cyan-700' : 'bg-yellow-950/50 border-yellow-700'}`}>
+            <CardContent className="p-3 flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <div className={`p-2 rounded-full ${estadoSeleccionado !== 'todos' ? 'bg-cyan-900' : 'bg-yellow-900'}`}>
+                  {estadoSeleccionado !== 'todos' ? (
+                    <Play className="w-4 h-4 text-cyan-400" />
+                  ) : (
+                    <HelpCircle className="w-4 h-4 text-yellow-400" />
+                  )}
+                </div>
+                <div>
+                  <p className={`font-mono text-sm font-bold ${estadoSeleccionado !== 'todos' ? 'text-cyan-400' : 'text-yellow-400'}`}>
+                    {estadoSeleccionado !== 'todos' 
+                      ? `Diagnostico Individual: ${estadoSeleccionado}` 
+                      : 'Selecciona un estado del grid para probar'
+                    }
+                  </p>
+                  <p className="text-xs text-muted-foreground font-mono">
+                    {estadoSeleccionado !== 'todos' 
+                      ? `Se probara el portal CCL de ${estadoSeleccionado} con tus datos personales (CURP: PEVD930106HDFRLV00)`
+                      : 'Haz clic en cualquier estado del grid o usa el selector para elegir cual probar'
+                    }
+                  </p>
+                </div>
+              </div>
+              {estadoSeleccionado !== 'todos' && !ejecutando && (
+                <Button
+                  onClick={() => iniciarDiagnosticoIndividual(estadoSeleccionado)}
+                  size="sm"
+                  className="bg-cyan-600 hover:bg-cyan-500 text-black font-mono font-bold"
+                >
+                  <Play className="w-4 h-4 mr-1" />
+                  PROBAR {estadoSeleccionado === 'Federal' ? 'CFCRL' : estadoSeleccionado.slice(0, 6).toUpperCase()}
+                </Button>
+              )}
+            </CardContent>
+          </Card>
+        )}
 
         {/* Grid de Estados */}
         <div className="grid grid-cols-4 sm:grid-cols-5 md:grid-cols-6 lg:grid-cols-8 gap-1.5 sm:gap-2 mb-4 sm:mb-6">
@@ -978,8 +1303,17 @@ export default function CCLDiagnosticoPage() {
               key={resultado.estado}
               className={`${getStatusColor(resultado.status)} border transition-all cursor-pointer active:scale-95 sm:hover:scale-105 ${
                 resultado.estado === 'Federal' ? 'ring-1 sm:ring-2 ring-blue-500 col-span-2' : ''
-              }`}
-              onClick={() => resultado.status !== 'pendiente' && resultado.status !== 'en_progreso' && verDetalle(resultado)}
+              } ${estadoSeleccionado === resultado.estado ? 'ring-2 ring-cyan-400' : ''}`}
+              onClick={() => {
+                if (resultado.status === 'pendiente') {
+                  // Si está pendiente, seleccionar para prueba individual
+                  setModoDiagnostico('individual')
+                  setEstadoSeleccionado(resultado.estado)
+                } else if (resultado.status !== 'en_progreso') {
+                  // Si ya tiene resultado, mostrar detalle
+                  verDetalle(resultado)
+                }
+              }}
             >
               <CardContent className="p-1.5 sm:p-2 text-center">
                 {resultado.estado === 'Federal' && (
@@ -1007,6 +1341,12 @@ export default function CCLDiagnosticoPage() {
                   <Badge className="mt-0.5 sm:mt-1 bg-yellow-900 text-yellow-300 text-[6px] sm:text-[7px] px-0.5 sm:px-1">
                     <Key className="w-2 h-2 inline mr-0.5" />
                     ACC
+                  </Badge>
+                )}
+                {/* Indicador de estado seleccionado para prueba individual */}
+                {estadoSeleccionado === resultado.estado && resultado.status === 'pendiente' && (
+                  <Badge className="mt-0.5 sm:mt-1 bg-cyan-900 text-cyan-300 text-[6px] sm:text-[7px] px-0.5 sm:px-1 animate-pulse">
+                    PROBAR
                   </Badge>
                 )}
               </CardContent>
