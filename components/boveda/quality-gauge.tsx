@@ -6,8 +6,9 @@ interface QualityGaugeProps {
 }
 
 export function QualityGauge({ quality, size = "md" }: QualityGaugeProps) {
-  // Normalizar calidad entre 0-100
-  const normalizedQuality = Math.min(100, Math.max(0, quality))
+  // Normalizar calidad entre 0-100 y proteger contra NaN
+  const safeQuality = typeof quality === 'number' && !isNaN(quality) ? quality : 0
+  const normalizedQuality = Math.min(100, Math.max(0, Math.round(safeQuality)))
   
   // Determinar color basado en calidad
   const getColor = () => {

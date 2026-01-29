@@ -4,7 +4,7 @@ import { useRouter } from "next/navigation"
 import { useEffect, useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { useAuth } from '@/lib/auth/auth-provider'
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import Link from 'next/link'
@@ -38,11 +38,8 @@ export default function DashboardPage() {
       return
     }
     
-    // Admin y superadmin van a panel de admin
-    if (userRole === 'admin' || userRole === 'superadmin') {
-      router.replace('/admin')
-      return
-    }
+    // Admin y superadmin YA NO se redirigen automaticamente
+    // Se quedan en dashboard y acceden al panel desde la tarjeta
     
     // Verificar celebracion pendiente
     if (profile.verification_status === 'verified' && profile.role === 'worker' && !profile.celebration_shown) {
@@ -304,6 +301,110 @@ export default function DashboardPage() {
                   ))}
               </div>
             </div>
+          )}
+
+          {/* Panel Admin - Para admin regular */}
+          {role === 'admin' && (
+            <Card className="border-purple-300 bg-gradient-to-r from-purple-50 via-indigo-50 to-purple-50">
+              <CardHeader className="pb-2">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-purple-500 to-indigo-600 flex items-center justify-center shadow-lg">
+                      <span className="text-2xl">🛡️</span>
+                    </div>
+                    <div>
+                      <CardTitle className="text-purple-900">Panel de Administracion</CardTitle>
+                      <CardDescription className="text-purple-700">
+                        Gestiona usuarios, leads y casos
+                      </CardDescription>
+                    </div>
+                  </div>
+                  <Link href="/admin">
+                    <Button className="bg-purple-600 hover:bg-purple-700">
+                      Entrar
+                    </Button>
+                  </Link>
+                </div>
+              </CardHeader>
+              <CardContent>
+                <div className="grid grid-cols-4 gap-2 mt-2">
+                  <div className="text-center p-2 rounded-lg bg-white/60">
+                    <p className="text-xl font-bold text-purple-600">--</p>
+                    <p className="text-[10px] text-muted-foreground">Usuarios</p>
+                  </div>
+                  <div className="text-center p-2 rounded-lg bg-white/60">
+                    <p className="text-xl font-bold text-amber-600">--</p>
+                    <p className="text-[10px] text-muted-foreground">Leads</p>
+                  </div>
+                  <div className="text-center p-2 rounded-lg bg-white/60">
+                    <p className="text-xl font-bold text-emerald-600">--</p>
+                    <p className="text-[10px] text-muted-foreground">Casos</p>
+                  </div>
+                  <div className="text-center p-2 rounded-lg bg-white/60">
+                    <p className="text-xl font-bold text-indigo-600">--</p>
+                    <p className="text-[10px] text-muted-foreground">Abogados</p>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          )}
+
+          {/* Panel SuperAdmin - Solo para superadmin */}
+          {role === 'superadmin' && (
+            <Card className="border-green-600 bg-gradient-to-br from-black via-green-950/30 to-black overflow-hidden relative">
+              <div className="absolute inset-0 opacity-10">
+                <div className="font-mono text-green-500 text-xs leading-tight overflow-hidden h-full">
+                  {Array(20).fill(null).map((_, i) => (
+                    <div key={i} className="whitespace-nowrap">
+                      {'01001101 01000011 '.repeat(10)}
+                    </div>
+                  ))}
+                </div>
+              </div>
+              <CardHeader className="pb-2 relative z-10">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    <div className="w-12 h-12 rounded-xl bg-green-950 border-2 border-green-500 flex items-center justify-center shadow-[0_0_15px_rgba(0,255,0,0.3)]">
+                      <span className="text-green-400 font-mono font-bold text-lg">C:/</span>
+                    </div>
+                    <div>
+                      <CardTitle className="text-green-400 font-mono">ROOT ACCESS</CardTitle>
+                      <CardDescription className="text-green-600 font-mono text-xs">
+                        Panel de Super Administrador
+                      </CardDescription>
+                    </div>
+                  </div>
+                  <Link href="/admin">
+                    <Button className="bg-green-600 hover:bg-green-500 text-black font-mono font-bold">
+                      Entrar
+                    </Button>
+                  </Link>
+                </div>
+              </CardHeader>
+              <CardContent className="relative z-10">
+                <div className="grid grid-cols-4 gap-2 mt-2">
+                  <div className="text-center p-2 rounded-lg bg-black/60 border border-green-900">
+                    <p className="text-xl font-bold text-green-400 font-mono">--</p>
+                    <p className="text-[10px] text-green-600 font-mono">Usuarios</p>
+                  </div>
+                  <div className="text-center p-2 rounded-lg bg-black/60 border border-green-900">
+                    <p className="text-xl font-bold text-green-400 font-mono">--</p>
+                    <p className="text-[10px] text-green-600 font-mono">Leads</p>
+                  </div>
+                  <div className="text-center p-2 rounded-lg bg-black/60 border border-green-900">
+                    <p className="text-xl font-bold text-green-400 font-mono">--</p>
+                    <p className="text-[10px] text-green-600 font-mono">Casos</p>
+                  </div>
+                  <div className="text-center p-2 rounded-lg bg-black/60 border border-green-900">
+                    <p className="text-xl font-bold text-green-400 font-mono">--</p>
+                    <p className="text-[10px] text-green-600 font-mono">Abogados</p>
+                  </div>
+                </div>
+                <p className="text-center text-[10px] text-green-700 font-mono mt-3">
+                  {'>'} Sistema operativo activo_
+                </p>
+              </CardContent>
+            </Card>
           )}
 
           {/* Crypto Wallet Panel */}

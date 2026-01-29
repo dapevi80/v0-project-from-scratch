@@ -43,6 +43,7 @@ import {
   detectDocumentCorners,
   applyPerspectiveTransform,
   autoEnhanceDocument,
+  autoCorrectOrientation,
   type ScanPage,
   type OCRResult,
   type DocumentBounds,
@@ -80,6 +81,8 @@ export function OCRScanner({ onClose, onComplete, initialImages }: OCRScannerPro
   const [showRetryPrompt, setShowRetryPrompt] = useState(false)
   const [showAIAssistant, setShowAIAssistant] = useState(false)
   const [scanQuality, setScanQuality] = useState(0)
+  const [isCorrectingOrientation, setIsCorrectingOrientation] = useState(false)
+  const [orientationCorrected, setOrientationCorrected] = useState(false)
   
   // Estados para recorte inteligente
   const [documentBounds, setDocumentBounds] = useState<DocumentBounds | null>(null)
@@ -106,26 +109,49 @@ export function OCRScanner({ onClose, onComplete, initialImages }: OCRScannerPro
     }
   }, [initialImages])
 
-  // Agregar imágenes desde archivo
+  // Agregar imágenes desde archivo con corrección de orientación
   const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files
     if (!files || files.length === 0) return
     
+    setIsCorrectingOrientation(true)
     const newPages: ScanPage[] = []
     
     for (const file of Array.from(files)) {
       if (file.type.startsWith('image/')) {
         const base64 = await fileToBase64(file)
-        newPages.push({
-          id: generatePageId(),
-          imageUrl: base64,
-          imageData: base64,
-          isProcessing: false,
-          rotation: 0
-        })
+        
+        // Detectar y corregir orientación automáticamente
+        try {
+          const canvas = await imageToCanvas(base64)
+          const { correctedCanvas, wasRotated } = await autoCorrectOrientation(canvas)
+          const correctedUrl = correctedCanvas.toDataURL('image/jpeg', 0.9)
+          
+          if (wasRotated) {
+            setOrientationCorrected(true)
+          }
+          
+          newPages.push({
+            id: generatePageId(),
+            imageUrl: correctedUrl,
+            imageData: correctedUrl,
+            isProcessing: false,
+            rotation: 0
+          })
+        } catch {
+          // Si falla la corrección, usar imagen original
+          newPages.push({
+            id: generatePageId(),
+            imageUrl: base64,
+            imageData: base64,
+            isProcessing: false,
+            rotation: 0
+          })
+        }
       }
     }
     
+    setIsCorrectingOrientation(false)
     setPages(prev => [...prev, ...newPages])
     if (newPages.length > 0) setStep('scan')
     
@@ -133,18 +159,36 @@ export function OCRScanner({ onClose, onComplete, initialImages }: OCRScannerPro
     if (e.target) e.target.value = ''
   }
 
-  // Tomar foto con cámara
+  // Tomar foto con cámara con corrección de orientación
   const handleCameraCapture = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files
     if (!files || files.length === 0) return
     
+    setIsCorrectingOrientation(true)
     const file = files[0]
     const base64 = await fileToBase64(file)
     
+    let finalUrl = base64
+    
+    // Detectar y corregir orientación automáticamente
+    try {
+      const canvas = await imageToCanvas(base64)
+      const { correctedCanvas, wasRotated } = await autoCorrectOrientation(canvas)
+      finalUrl = correctedCanvas.toDataURL('image/jpeg', 0.9)
+      
+      if (wasRotated) {
+        setOrientationCorrected(true)
+      }
+    } catch {
+      // Si falla, usar imagen original
+    }
+    
+    setIsCorrectingOrientation(false)
+    
     const newPage: ScanPage = {
       id: generatePageId(),
-      imageUrl: base64,
-      imageData: base64,
+      imageUrl: finalUrl,
+      imageData: finalUrl,
       isProcessing: false,
       rotation: 0
     }
@@ -273,25 +317,31 @@ export function OCRScanner({ onClose, onComplete, initialImages }: OCRScannerPro
     }
   }
 
-  // Procesar OCR en página actual
+// Procesar OCR en página actual
   const handleProcessOCR = async () => {
     const page = pages[currentPageIndex]
     if (!page || page.ocrResult) return
-    
+
     setIsProcessingOCR(true)
     setOcrProgress(0)
-    
+
     try {
       const result = await processImageOCR(page.imageUrl, (progress) => {
         setOcrProgress(progress)
       })
-      
-      setPages(prev => prev.map((p, i) => 
+
+      setPages(prev => prev.map((p, i) =>
         i === currentPageIndex ? { ...p, ocrResult: result } : p
       ))
-      
+
       // Actualizar texto extraído
       updateExtractedText(currentPageIndex, result)
+      
+      // Actualizar calidad del escaneo
+      const quality = typeof result.confidence === 'number' && !isNaN(result.confidence) 
+        ? Math.round(result.confidence) 
+        : 0
+      setScanQuality(quality)
     } catch (error) {
       console.error('Error en OCR:', error)
     } finally {
@@ -327,11 +377,18 @@ export function OCRScanner({ onClose, onComplete, initialImages }: OCRScannerPro
     const allTexts = pages.map(p => p.ocrResult?.text || '').join('\n\n--- Página ---\n\n')
     setExtractedText(allTexts)
     
-    // Calcular calidad promedio del escaneo
-    const qualities = pages.map(p => p.ocrResult?.confidence || 0).filter(q => q > 0)
-    const avgQuality = qualities.length > 0 
-      ? Math.round(qualities.reduce((a, b) => a + b, 0) / qualities.length)
-      : 0
+    // Calcular calidad promedio del escaneo (evitar NaN)
+    const qualities = pages
+      .map(p => p.ocrResult?.confidence)
+      .filter((q): q is number => typeof q === 'number' && !isNaN(q) && q > 0)
+    
+    let avgQuality = 0
+    if (qualities.length > 0) {
+      const sum = qualities.reduce((a, b) => a + b, 0)
+      avgQuality = Math.round(sum / qualities.length)
+    }
+    // Asegurar que no sea NaN
+    if (isNaN(avgQuality)) avgQuality = 0
     setScanQuality(avgQuality)
     
     setIsProcessingOCR(false)
@@ -675,8 +732,21 @@ export function OCRScanner({ onClose, onComplete, initialImages }: OCRScannerPro
 
   return (
     <div className="flex flex-col h-full max-h-[80vh] bg-background overflow-hidden">
+      {/* ===== CORRIGIENDO ORIENTACIÓN ===== */}
+      {isCorrectingOrientation && (
+        <div className="flex flex-col items-center justify-center p-8 min-h-[300px]">
+          <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center mb-4">
+            <RotateCw className="w-8 h-8 text-white animate-spin" />
+          </div>
+          <p className="font-medium text-sm mb-2">Analizando orientación...</p>
+          <p className="text-xs text-muted-foreground text-center">
+            Detectando si el documento está volteado
+          </p>
+        </div>
+      )}
+
       {/* ===== SELECCIÓN DE FUENTE ===== */}
-      {step === 'select' && (
+      {step === 'select' && !isCorrectingOrientation && (
         <div className="flex flex-col h-full">
           {/* Header */}
           <div className="flex items-center justify-between p-3 border-b">
@@ -969,13 +1039,32 @@ export function OCRScanner({ onClose, onComplete, initialImages }: OCRScannerPro
               </div>
             )}
             
-            {/* Badge de OCR completado */}
-            {currentPage?.ocrResult && !isProcessingOCR && (
-              <div className="absolute top-2 right-2 bg-green-500 text-white px-2 py-1 rounded-full text-xs flex items-center gap-1">
-                <Check className="w-3 h-3" />
-                OCR listo
-              </div>
-            )}
+{/* Badge de orientación corregida */}
+  {orientationCorrected && !currentPage?.ocrResult && (
+    <div className="absolute top-2 left-2 bg-blue-500 text-white px-2 py-1 rounded-full text-xs flex items-center gap-1">
+      <RotateCw className="w-3 h-3" />
+      Orientación corregida
+    </div>
+  )}
+  
+  {/* Badge de OCR completado con calidad */}
+  {currentPage?.ocrResult && !isProcessingOCR && (
+    <div className="absolute top-2 right-2 flex flex-col gap-1 items-end">
+      <div className="bg-green-500 text-white px-2 py-1 rounded-full text-xs flex items-center gap-1">
+        <Check className="w-3 h-3" />
+        OCR listo
+      </div>
+      <div className={`px-2 py-1 rounded-full text-xs flex items-center gap-1 ${
+        (currentPage.ocrResult.confidence || 0) >= 80 
+          ? 'bg-green-100 text-green-700' 
+          : (currentPage.ocrResult.confidence || 0) >= 50 
+            ? 'bg-yellow-100 text-yellow-700'
+            : 'bg-red-100 text-red-700'
+      }`}>
+        Calidad: {Math.round(currentPage.ocrResult.confidence || 0)}%
+      </div>
+    </div>
+  )}
           </div>
           
           {/* Miniaturas y navegación */}
