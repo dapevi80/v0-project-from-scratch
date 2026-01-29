@@ -24,6 +24,15 @@ export interface PortalCCLConfig {
    * El Portal Federal NO usa email/contraseña. Requiere CURP + Folio oficial.
    */
   tipoAutenticacion?: 'email_password' | 'curp_folio'
+  /**
+   * Flujo de envío de solicitud:
+   * - 'enviar_directo': Botón "Enviar" registra la solicitud directamente
+   * - 'guardar_crear_cuenta': Botón "Guardar" abre formulario de creación de cuenta buzón
+   *   (este flujo es CRUCIAL - elegir "Guardar" es lo que realmente registra la solicitud)
+   * 
+   * Ejemplo: Quintana Roo usa flujo 'guardar_crear_cuenta'
+   */
+  flujoEnvio?: 'enviar_directo' | 'guardar_crear_cuenta'
   telefonoContacto?: string
   emailContacto?: string
   direccion?: string
@@ -350,16 +359,18 @@ export const PORTALES_CCL: Record<string, PortalCCLConfig> = {
     nombre: 'Centro de Conciliación Laboral del Estado de Quintana Roo',
     url: 'https://cclqroo.qroo.gob.mx',
     urlSinacol: 'https://conciliacion.cclqroo.gob.mx/solicitudes/create-public?solicitud=1',
-    urlRegistro: 'https://conciliacion.cclqroo.gob.mx/register',
+    urlRegistro: 'https://conciliacion.cclqroo.gob.mx/solicitudes/create-public?solicitud=1', // El registro se hace dentro del flujo de solicitud
     urlLogin: 'https://conciliacion.cclqroo.gob.mx/login',
     urlBuzon: 'https://conciliacion.cclqroo.gob.mx/buzon',
     tieneRegistroEnLinea: true,
     tieneBuzonElectronico: true,
     requiereCaptcha: true,
     requiereRatificacionPresencial: true,
+    tipoAutenticacion: 'email_password',
+    flujoEnvio: 'guardar_crear_cuenta', // IMPORTANTE: Elegir "Guardar" abre creación de cuenta buzón
     emailContacto: 'buzon_oficial@cclqroo.gob.mx',
     telefonoContacto: '9836883672',
-    notas: 'URL VERIFICADA ENERO 2026: conciliacion.cclqroo.gob.mx/login - Versión SINACOL 12.8.2. Sedes en Chetumal, Cancún, Playa del Carmen y Cozumel. Horario 8:00-16:00 L-V.'
+    notas: 'VERIFICADO ENERO 2026: Flujo de solicitud en conciliacion.cclqroo.gob.mx/solicitudes/create-public?solicitud=1. IMPORTANTE: Al final del formulario aparecen opciones "Enviar" o "Guardar". Elegir "GUARDAR" abre formulario para crear cuenta de buzón electrónico - este paso es CRUCIAL porque registra la solicitud. Versión SINACOL 12.8.2. Sedes: Chetumal, Cancún, Playa del Carmen, Cozumel. Horario 8:00-16:00 L-V.'
   },
 
   'San Luis Potosi': {

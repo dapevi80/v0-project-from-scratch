@@ -31,6 +31,13 @@ export interface PortalCCL {
    * - 'curp_folio': CURP + Folio de expediente (Centro Federal CFCRL)
    */
   tipo_autenticacion: 'email_password' | 'curp_folio'
+  /**
+   * Flujo de envío de solicitud:
+   * - 'enviar_directo': Botón "Enviar" registra la solicitud directamente (default)
+   * - 'guardar_crear_cuenta': Botón "Guardar" abre formulario de creación de cuenta buzón
+   *   (este flujo es CRUCIAL en portales como Quintana Roo - elegir "Guardar" registra la solicitud)
+   */
+  flujo_envio?: 'enviar_directo' | 'guardar_crear_cuenta'
   // Si el portal está verificado y funcional
   verificado: boolean
   // Fecha de última verificación
@@ -357,13 +364,14 @@ export const PORTALES_CCL: PortalCCL[] = [
     nombre_ccl: 'Centro de Conciliación Laboral de Quintana Roo',
     url_portal: 'https://cclqroo.qroo.gob.mx',
     url_login: 'https://conciliacion.cclqroo.gob.mx/login',
-    url_solicitud_publica: 'https://cclqroo.qroo.gob.mx/solicitudes/create-public?solicitud=1',
+    url_solicitud_publica: 'https://conciliacion.cclqroo.gob.mx/solicitudes/create-public?solicitud=1',
     url_buzon: 'https://conciliacion.cclqroo.gob.mx/buzon',
     tipo_sistema: 'sinacol',
     tipo_autenticacion: 'email_password',
+    flujo_envio: 'guardar_crear_cuenta', // IMPORTANTE: "Guardar" abre creación de cuenta y registra solicitud
     verificado: true,
     fecha_verificacion: '2026-01-29',
-    notas: 'URL de login VERIFICADA: conciliacion.cclqroo.gob.mx/login - Versión 12.8.2'
+    notas: 'VERIFICADO: URL solicitud pública = conciliacion.cclqroo.gob.mx/solicitudes/create-public?solicitud=1. FLUJO: Al finalizar formulario aparecen "Enviar" y "Guardar". Elegir "GUARDAR" abre formulario de creación de cuenta buzón electrónico - este paso CRUCIAL registra la solicitud. Versión 12.8.2'
   },
   {
     estado: 'San Luis Potosí',
