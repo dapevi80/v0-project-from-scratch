@@ -16,6 +16,14 @@ export interface PortalCCLConfig {
   tieneBuzonElectronico: boolean
   requiereCaptcha: boolean
   requiereRatificacionPresencial: boolean // Todos requieren ratificación presencial
+  /**
+   * Tipo de autenticación para el buzón electrónico:
+   * - 'email_password': Email + Contraseña generada (portales estatales SINACOL)
+   * - 'curp_folio': CURP + Folio de expediente (Centro Federal CFCRL)
+   * 
+   * El Portal Federal NO usa email/contraseña. Requiere CURP + Folio oficial.
+   */
+  tipoAutenticacion?: 'email_password' | 'curp_folio'
   telefonoContacto?: string
   emailContacto?: string
   direccion?: string
@@ -25,22 +33,24 @@ export interface PortalCCLConfig {
 
 export const PORTALES_CCL: Record<string, PortalCCLConfig> = {
   // ============ CENTRO FEDERAL ============
+  // IMPORTANTE: El buzón federal usa CURP + Folio de expediente (no email/password)
   'Federal': {
     nombre: 'Centro Federal de Conciliación y Registro Laboral (CFCRL)',
     url: 'https://www.gob.mx/cfcrl',
     urlSinacol: 'https://conciliacion.centrolaboral.gob.mx/asesoria/inicio',
     urlRegistro: 'https://conciliacion.centrolaboral.gob.mx/asesoria/inicio',
-    urlLogin: 'https://conciliacion.centrolaboral.gob.mx/asesoria/inicio',
-    urlBuzon: 'https://www.gob.mx/cfcrl/articulos/buzon-electronico',
+    urlLogin: 'https://conciliacion.centrolaboral.gob.mx/solicitud_buzon', // Buzón usa CURP + Folio
+    urlBuzon: 'https://conciliacion.centrolaboral.gob.mx/solicitud_buzon', // URL VERIFICADA ENERO 2026
     tieneRegistroEnLinea: true,
     tieneBuzonElectronico: true,
     requiereCaptcha: true,
     requiereRatificacionPresencial: true,
+    tipoAutenticacion: 'curp_folio', // IMPORTANTE: Federal usa CURP + Folio, NO email/password
     emailContacto: 'gianni.ruedadeleon@centrolaboral.gob.mx',
     telefonoContacto: '55 8874 8600 ext 20016',
     direccion: 'Picacho Ajusco 714, Torres de Padierna, Tlalpan, CP 14209, CDMX',
     horario: 'Lunes a Viernes 9:00 - 18:00',
-    notas: 'Competencia federal: industrias especificas (hidrocarburos, electricidad, ferrocarriles, banca, mineria, etc.) y empresas que operan en multiples estados. URL verificada enero 2026.'
+    notas: 'URL VERIFICADA ENERO 2026: El buzón electrónico federal requiere CURP + Folio de expediente (formato XXX/CI/2026/000000), NO email/contraseña. Competencia federal: hidrocarburos, electricidad, ferrocarriles, banca, minería, y empresas multiestado.'
   },
 
   // ============ ESTADOS CON PORTALES VERIFICADOS ============
@@ -339,17 +349,17 @@ export const PORTALES_CCL: Record<string, PortalCCLConfig> = {
   'Quintana Roo': {
     nombre: 'Centro de Conciliación Laboral del Estado de Quintana Roo',
     url: 'https://cclqroo.qroo.gob.mx',
-    urlSinacol: 'https://cclqroo.qroo.gob.mx/solicitudes/create-public?solicitud=1',
-    urlRegistro: 'https://cclqroo.qroo.gob.mx/solicitudes/create-public?solicitud=1',
-    urlLogin: 'https://cclqroo.qroo.gob.mx/solicitudes/create-public?solicitud=1',
-    urlBuzon: 'https://cclqroo.qroo.gob.mx/buzon',
+    urlSinacol: 'https://conciliacion.cclqroo.gob.mx/solicitudes/create-public?solicitud=1',
+    urlRegistro: 'https://conciliacion.cclqroo.gob.mx/register',
+    urlLogin: 'https://conciliacion.cclqroo.gob.mx/login',
+    urlBuzon: 'https://conciliacion.cclqroo.gob.mx/buzon',
     tieneRegistroEnLinea: true,
     tieneBuzonElectronico: true,
-    requiereCaptcha: false,
+    requiereCaptcha: true,
     requiereRatificacionPresencial: true,
     emailContacto: 'buzon_oficial@cclqroo.gob.mx',
     telefonoContacto: '9836883672',
-    notas: 'URL verificada por usuario. Sedes en Chetumal, Cancún, Playa del Carmen y Cozumel. Horario 8:00-16:00 L-V.'
+    notas: 'URL VERIFICADA ENERO 2026: conciliacion.cclqroo.gob.mx/login - Versión SINACOL 12.8.2. Sedes en Chetumal, Cancún, Playa del Carmen y Cozumel. Horario 8:00-16:00 L-V.'
   },
 
   'San Luis Potosi': {

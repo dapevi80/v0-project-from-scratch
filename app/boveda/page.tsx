@@ -357,11 +357,20 @@ export default function BovedaPage() {
             <span className="text-base sm:text-lg font-semibold hidden xs:inline">mecorrieron.mx</span>
           </Link>
           
-          {/* Acciones: ayuda urgente y cerrar sesion */}
-          <div className="flex items-center gap-2">
-            <AyudaUrgenteButton />
-            <LogoutButton />
-          </div>
+        {/* Acciones: volver al dashboard, ayuda urgente y cerrar sesion */}
+        <div className="flex items-center gap-2">
+          <Link href="/dashboard">
+            <Button variant="outline" size="sm" className="gap-2 bg-transparent hidden sm:flex">
+              <ChevronRight className="w-4 h-4 rotate-180" />
+              Dashboard
+            </Button>
+            <Button variant="ghost" size="icon" className="sm:hidden">
+              <ChevronRight className="w-5 h-5 rotate-180" />
+            </Button>
+          </Link>
+          <AyudaUrgenteButton />
+          <LogoutButton />
+        </div>
         </div>
       </header>
       
@@ -1097,13 +1106,16 @@ export default function BovedaPage() {
           </DialogContent>
         </Dialog>
         
-        {/* Modal: Subidor de documentos */}
-        <Dialog open={showUploader} onOpenChange={(open) => {
-          setShowUploader(open)
-          if (!open) setUploaderCategoria(undefined)
-        }}>
-          <DialogContent className="w-[90vw] max-w-[340px] p-0 gap-0 overflow-hidden max-h-[85vh] [&>button]:hidden [&>div]:w-full">
-            <DocumentUploader 
+  {/* Modal: Subidor de documentos */}
+  <Dialog open={showUploader} onOpenChange={(open) => {
+  setShowUploader(open)
+  if (!open) setUploaderCategoria(undefined)
+  }}>
+  <DialogContent 
+    showCloseButton={false}
+    className="w-[calc(100vw-2rem)] max-w-[360px] sm:max-w-sm p-0 gap-0 overflow-hidden max-h-[calc(100vh-4rem)] sm:max-h-[80vh] rounded-xl border-0 shadow-2xl"
+  >
+  <DocumentUploader
               onUploaded={() => {
                 setShowUploader(false)
                 setUploaderCategoria(undefined)

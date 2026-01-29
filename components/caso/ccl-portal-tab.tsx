@@ -9,6 +9,8 @@ import {
   CheckCircle, AlertTriangle, Clock, FileText, Bell, Loader2, Shield
 } from 'lucide-react'
 import { SinacolAuthorization } from './sinacol-authorization'
+import { SinacolAutomationInfo } from './sinacol-automation-info'
+import { SinacolProcesoAutomatizado } from './sinacol-proceso-automatizado'
 
 interface CCLAccount {
   id: string
@@ -360,19 +362,26 @@ export function CCLPortalTab({ casoId, caso, worker, onRefresh }: CCLPortalTabPr
         </CardContent>
       </Card>
 
-      {/* Instrucciones */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-base">Como funciona el Portal CCL</CardTitle>
-        </CardHeader>
-        <CardContent className="text-sm text-muted-foreground space-y-2">
-          <p>1. Al crear la cuenta, se registra automaticamente en el portal oficial del Centro de Conciliacion Laboral</p>
-          <p>2. El sistema activa el buzon electronico para recibir notificaciones oficiales</p>
-          <p>3. El abogado puede entrar al portal con las credenciales para descargar el PDF de la solicitud</p>
-          <p>4. Las notificaciones de citatorios y actas de audiencia llegaran al buzon y se sincronizaran aqui</p>
-          <p>5. El folio generado es el numero oficial del CCL para dar seguimiento al caso</p>
-        </CardContent>
-      </Card>
+      {/* Informacion del Agente Inteligente */}
+      <SinacolAutomationInfo 
+        isAuthorized={hasAuthorization}
+        hasAccount={accounts.length > 0}
+        folioGenerado={mainAccount?.folio_solicitud}
+        currentStep={
+          !hasAuthorization ? 0 :
+          hasAuthorization && accounts.length === 0 ? 1 :
+          accounts.length > 0 && !mainAccount?.folio_solicitud ? 2 :
+          3
+        }
+      />
+
+      {/* Descripcion tecnica detallada del proceso automatizado */}
+      <SinacolProcesoAutomatizado
+        estado={caso?.direccion_trabajo_estado || caso?.estado || 'Quintana Roo'}
+        isAuthorized={hasAuthorization}
+        emailGenerado={mainAccount?.email_portal || undefined}
+        folioGenerado={mainAccount?.folio_solicitud || undefined}
+      />
     </div>
   )
 }
