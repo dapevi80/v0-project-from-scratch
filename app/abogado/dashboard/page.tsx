@@ -306,8 +306,27 @@ export default function AbogadoDashboardPage() {
           </div>
         )}
 
-        {/* Wallet */}
-        <CryptoWallet />
+        {/* Wallet con VCard Profesional */}
+        <CryptoWallet 
+          userId={user?.id}
+          isVerified={isVerified}
+          userRole={role}
+          profile={profile ? {
+            id: profile.id,
+            full_name: profile.full_name,
+            email: profile.email,
+            phone: profile.phone,
+            role: profile.role
+          } : undefined}
+          lawyerProfile={lawyerProfile ? {
+            cedula_profesional: lawyerProfile.cedula_profesional,
+            firma_digital: false,
+            firm_name: undefined,
+            photo_url: lawyerProfile.photo_url,
+            status: lawyerProfile.verification_status,
+            universidad: undefined
+          } : null}
+        />
       </main>
 
       {/* Asistente de bienvenida con IA */}
