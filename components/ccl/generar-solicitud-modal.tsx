@@ -19,7 +19,7 @@ import {
   generarSolicitudCCL, 
   calcularPrescripcion, 
   obtenerPortalCCL,
-  ESTADOS_MEXICO,
+  getEstadosMexico,
   type DatosCasoSolicitud,
   type TipoTerminacion,
   type ResultadoSolicitud
@@ -53,6 +53,41 @@ interface GenerarSolicitudModalProps {
   caso: Caso | null
   onSuccess?: (resultado: ResultadoSolicitud) => void
 }
+
+const ESTADOS_MEXICO = [
+  { codigo: '01', nombre: 'Aguascalientes' },
+  { codigo: '02', nombre: 'Baja California' },
+  { codigo: '03', nombre: 'Baja California Sur' },
+  { codigo: '04', nombre: 'Campeche' },
+  { codigo: '05', nombre: 'Coahuila de Zaragoza' },
+  { codigo: '06', nombre: 'Colima' },
+  { codigo: '07', nombre: 'Chiapas' },
+  { codigo: '08', nombre: 'Chihuahua' },
+  { codigo: '09', nombre: 'Ciudad de México' },
+  { codigo: '10', nombre: 'Durango' },
+  { codigo: '11', nombre: 'Guanajuato' },
+  { codigo: '12', nombre: 'Guerrero' },
+  { codigo: '13', nombre: 'Hidalgo' },
+  { codigo: '14', nombre: 'Jalisco' },
+  { codigo: '15', nombre: 'México' },
+  { codigo: '16', nombre: 'Michoacán de Ocampo' },
+  { codigo: '17', nombre: 'Morelos' },
+  { codigo: '18', nombre: 'Nayarit' },
+  { codigo: '19', nombre: 'Nuevo León' },
+  { codigo: '20', nombre: 'Oaxaca' },
+  { codigo: '21', nombre: 'Puebla' },
+  { codigo: '22', nombre: 'Querétaro' },
+  { codigo: '23', nombre: 'Quintana Roo' },
+  { codigo: '24', nombre: 'San Luis Potosí' },
+  { codigo: '25', nombre: 'Sinaloa' },
+  { codigo: '26', nombre: 'Sonora' },
+  { codigo: '27', nombre: 'Tabasco' },
+  { codigo: '28', nombre: 'Tamaulipas' },
+  { codigo: '29', nombre: 'Tlaxcala' },
+  { codigo: '30', nombre: 'Veracruz de Ignacio de Zaragoza' },
+  { codigo: '31', nombre: 'Yucatán' },
+  { codigo: '32', nombre: 'Zacatecas' }
+]
 
 export function GenerarSolicitudModal({ isOpen, onClose, caso, onSuccess }: GenerarSolicitudModalProps) {
   const [step, setStep] = useState(1)

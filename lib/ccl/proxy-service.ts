@@ -1,5 +1,6 @@
 // Servicio de Proxy Rotativo para AutoCCL
 // Evita deteccion por parte de los portales SINACOL
+// NOTA: Este archivo NO tiene 'use server' porque contiene funciones utilitarias sincronas
 import { createClient } from '@/lib/supabase/server'
 
 export interface ProxyConfig {

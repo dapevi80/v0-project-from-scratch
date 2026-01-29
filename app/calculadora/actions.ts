@@ -1,7 +1,7 @@
 'use server'
 
 import { createClient } from '@/lib/supabase/server'
-import { puedeCrearCalculo } from '@/lib/lawyer-verification-rules'
+import { puedeCrearCalculo } from '@/lib/lawyer-verification-utils'
 
 interface GuardarCalculoParams {
   pdfLiquidacionBlob: string // Base64 encoded

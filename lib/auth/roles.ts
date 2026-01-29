@@ -136,8 +136,8 @@ export async function isSuperAdmin(): Promise<boolean> {
   return user?.role === 'superadmin'
 }
 
-// Obtener permisos basados en rol
-export function getRolePermissions(role: UserRole) {
+// Obtener permisos basados en rol (funcion sincrona, no exportada como Server Action)
+function getRolePermissionsSync(role: UserRole) {
   const permissions = {
     guest: {
       canCalculate: true,
@@ -208,4 +208,9 @@ export function getRolePermissions(role: UserRole) {
   }
   
   return permissions[role] || permissions.guest
+}
+
+// Wrapper async para Server Action
+export async function getRolePermissions(role: UserRole) {
+  return getRolePermissionsSync(role)
 }

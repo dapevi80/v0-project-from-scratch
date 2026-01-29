@@ -17,7 +17,7 @@ import {
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { createClient } from '@/lib/supabase/client'
-import { MENSAJES_CELEBRACION_ABOGADO, type LawyerUpgradeType } from '@/lib/lawyer-verification-rules'
+import { MENSAJES_CELEBRACION_ABOGADO, type LawyerUpgradeType } from '@/lib/lawyer-verification-utils'
 
 interface LawyerCelebrationProps {
   userId?: string

@@ -3,7 +3,7 @@
 import { createClient } from '@/lib/supabase/server'
 import { revalidatePath } from 'next/cache'
 import type { CalculoLiquidacion, Caso } from './helpers'
-import { LIMITES_CUENTA, puedeCrearCaso, puedeCrearCalculo } from '@/lib/lawyer-verification-rules'
+import { LIMITES_CUENTA, puedeCrearCaso, puedeCrearCalculo } from '@/lib/lawyer-verification-utils'
 
 // Limites de casos y calculos por rol (sincronizado con lawyer-verification-rules.ts)
 const ROLE_LIMITS = {

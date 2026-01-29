@@ -9,7 +9,7 @@ import {
   type LawyerDowngradeType,
   type VerificationCriteria,
   LAWYER_DOWNGRADE_HIERARCHY
-} from '@/lib/lawyer-verification-rules'
+} from '@/lib/lawyer-verification-utils'
 
 // ===========================================
 // APROBAR ABOGADO (Upgrade: guestlawyer -> lawyer)
