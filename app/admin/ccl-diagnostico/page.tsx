@@ -1216,7 +1216,7 @@ export default function CCLDiagnosticoPage() {
 
       {/* Dialog de PDF REAL del Portal CCL */}
       <Dialog open={showPdfDialog} onOpenChange={setShowPdfDialog}>
-        <DialogContent className="bg-gray-900 text-white max-w-2xl max-h-[90vh] overflow-auto border border-green-600">
+        <DialogContent className="bg-gray-900 text-white max-w-4xl max-h-[95vh] overflow-auto border border-green-600">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2 text-green-400">
               <FileText className="w-5 h-5" />
@@ -1240,16 +1240,62 @@ export default function CCLDiagnosticoPage() {
                 </p>
               </div>
               
-              {/* Visor de PDF embebido */}
-              <div className="bg-white rounded-lg overflow-hidden">
+              {/* Visor de PDF embebido - Mejorado */}
+              <div className="bg-gray-100 rounded-lg overflow-hidden border-2 border-green-700">
                 {selectedPdf.pdfUrl ? (
-                  <iframe 
-                    src={selectedPdf.pdfUrl}
-                    className="w-full h-[400px]"
-                    title="PDF de Constancia CCL"
-                  />
+                  <div className="relative">
+                    {/* Barra de herramientas del visor */}
+                    <div className="bg-gray-800 px-3 py-2 flex items-center justify-between border-b border-gray-700">
+                      <div className="flex items-center gap-2">
+                        <FileText className="w-4 h-4 text-green-400" />
+                        <span className="text-green-400 text-xs font-mono">constancia-ccl-{selectedPdf.folioGenerado}.pdf</span>
+                      </div>
+                      <div className="flex items-center gap-1">
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          className="h-7 px-2 text-green-400 hover:bg-green-900/50"
+                          onClick={() => window.open(selectedPdf.pdfUrl, '_blank')}
+                        >
+                          <ExternalLink className="w-3 h-3 mr-1" />
+                          <span className="text-xs">Abrir</span>
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          className="h-7 px-2 text-green-400 hover:bg-green-900/50"
+                          onClick={async () => {
+                            try {
+                              const response = await fetch(selectedPdf.pdfUrl)
+                              const blob = await response.blob()
+                              const url = window.URL.createObjectURL(blob)
+                              const a = document.createElement('a')
+                              a.href = url
+                              a.download = `constancia-ccl-${selectedPdf.folioGenerado}.pdf`
+                              document.body.appendChild(a)
+                              a.click()
+                              document.body.removeChild(a)
+                              window.URL.revokeObjectURL(url)
+                            } catch {
+                              window.open(selectedPdf.pdfUrl, '_blank')
+                            }
+                          }}
+                        >
+                          <Download className="w-3 h-3 mr-1" />
+                          <span className="text-xs">Descargar</span>
+                        </Button>
+                      </div>
+                    </div>
+                    {/* iframe del PDF */}
+                    <iframe 
+                      src={`${selectedPdf.pdfUrl}#toolbar=1&navpanes=0&scrollbar=1`}
+                      className="w-full bg-white"
+                      style={{ height: '500px' }}
+                      title="PDF de Constancia CCL"
+                    />
+                  </div>
                 ) : (
-                  <div className="h-[400px] flex flex-col items-center justify-center bg-gray-100">
+                  <div className="h-[500px] flex flex-col items-center justify-center bg-gray-100">
                     <FileText className="w-16 h-16 text-gray-400 mb-4" />
                     <p className="text-gray-600 text-sm">PDF no disponible en preview</p>
                     <p className="text-gray-500 text-xs mt-1">Use los botones para descargar o abrir</p>
@@ -1289,11 +1335,27 @@ export default function CCLDiagnosticoPage() {
             </div>
           )}
           
-          {/* Botones */}
+          {/* Botones principales */}
           <div className="flex gap-2 mt-4">
             <Button 
               className="flex-1 bg-green-600 hover:bg-green-500"
-              onClick={() => selectedPdf?.pdfUrl && window.open(selectedPdf.pdfUrl, '_blank')}
+              onClick={async () => {
+                if (!selectedPdf?.pdfUrl) return
+                try {
+                  const response = await fetch(selectedPdf.pdfUrl)
+                  const blob = await response.blob()
+                  const url = window.URL.createObjectURL(blob)
+                  const a = document.createElement('a')
+                  a.href = url
+                  a.download = `constancia-ccl-${selectedPdf.folioGenerado}.pdf`
+                  document.body.appendChild(a)
+                  a.click()
+                  document.body.removeChild(a)
+                  window.URL.revokeObjectURL(url)
+                } catch {
+                  window.open(selectedPdf.pdfUrl, '_blank')
+                }
+              }}
             >
               <Download className="w-4 h-4 mr-2" />
               Descargar PDF
