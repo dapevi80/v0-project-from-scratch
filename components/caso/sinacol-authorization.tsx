@@ -6,101 +6,85 @@ import { Button } from '@/components/ui/button'
 import { Checkbox } from '@/components/ui/checkbox'
 import { Label } from '@/components/ui/label'
 import { Alert, AlertDescription } from '@/components/ui/alert'
-import { Badge } from '@/components/ui/badge'
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from '@/components/ui/dialog'
 import { 
   Shield, FileText, ExternalLink, CheckCircle, AlertTriangle,
-  Scale, User, Building2, Calendar
+  Scale, User, Building2, Loader2
 } from 'lucide-react'
+import { PORTALES_CCL } from '@/lib/ccl/account-service'
 
 interface SinacolAuthorizationProps {
   casoId: string
-  trabajador: {
-    nombre: string
-    curp: string
-    telefono?: string
+  caso?: {
+    empresa_nombre?: string
+    empresa_rfc?: string
+    direccion_trabajo?: string
+    direccion_trabajo_estado?: string
+    estado?: string
+  }
+  worker?: {
+    full_name?: string
+    curp?: string
+    phone?: string
     email?: string
   }
-  empresa: {
-    razonSocial: string
-    rfc?: string
-    direccion?: string
-  }
-  estado: string
-  urlSinacol: string
-  onAuthorized: (authData: AuthorizationData) => void
-  existingAuth?: AuthorizationData | null
-}
-
-export interface AuthorizationData {
-  id?: string
-  caso_id: string
-  autoriza_mecorrieron: boolean
-  autoriza_abogado: boolean
-  autoriza_sinacol: boolean
-  autoriza_notificaciones: boolean
-  fecha_autorizacion: string
-  ip_autorizacion?: string
-  firma_electronica?: string
-  terminos_aceptados: boolean
+  onAuthorized: () => void
+  onCancel?: () => void
 }
 
 const DISCLOSURES = [
   {
     id: 'mecorrieron',
     field: 'autoriza_mecorrieron',
-    title: 'Autorización a MeCorrieron.mx',
-    description: 'Autorizo a MeCorrieron.mx a gestionar mi caso de conciliación laboral, incluyendo el acceso a mis datos personales (CURP, nombre, datos laborales) para la preparación de mi solicitud ante el Centro de Conciliación Laboral.',
-    required: true
+    title: 'Autorizacion a MeCorrieron.mx',
+    description: 'Autorizo a MeCorrieron.mx a gestionar mi caso de conciliacion laboral, incluyendo el acceso a mis datos personales (CURP, nombre, datos laborales) para la preparacion de mi solicitud ante el Centro de Conciliacion Laboral.',
+    required: true,
+    icon: Scale
   },
   {
     id: 'abogado',
     field: 'autoriza_abogado',
-    title: 'Autorización al Abogado Asignado',
-    description: 'Autorizo al abogado asignado por MeCorrieron.mx a representarme en el proceso de conciliación laboral, actuar en mi nombre y recibir notificaciones relacionadas con mi caso.',
-    required: true
+    title: 'Autorizacion al Abogado Asignado',
+    description: 'Autorizo al abogado asignado por MeCorrieron.mx a representarme en el proceso de conciliacion laboral, actuar en mi nombre y recibir notificaciones relacionadas con mi caso.',
+    required: true,
+    icon: User
   },
   {
     id: 'sinacol',
     field: 'autoriza_sinacol',
-    title: 'Autorización para Registro en SINACOL',
-    description: 'Autorizo a MeCorrieron.mx y al abogado asignado a crear y gestionar mi solicitud de conciliación laboral en el portal oficial SINACOL (Sistema Nacional de Conciliación Laboral), utilizando mi CURP y datos personales.',
-    required: true
+    title: 'Autorizacion para Registro en SINACOL',
+    description: 'Autorizo a MeCorrieron.mx y al abogado asignado a crear y gestionar mi solicitud de conciliacion laboral en el portal oficial SINACOL (Sistema Nacional de Conciliacion Laboral), utilizando mi CURP y datos personales.',
+    required: true,
+    icon: FileText
   },
   {
     id: 'notificaciones',
     field: 'autoriza_notificaciones',
-    title: 'Autorización para Notificaciones',
-    description: 'Autorizo recibir notificaciones por correo electrónico, SMS y WhatsApp sobre el estado de mi caso, citas de conciliación, y documentos relacionados.',
-    required: false
+    title: 'Autorizacion para Notificaciones',
+    description: 'Autorizo recibir notificaciones por correo electronico, SMS y WhatsApp sobre el estado de mi caso, citas de conciliacion, y documentos relacionados.',
+    required: false,
+    icon: ExternalLink
   }
 ]
 
 export function SinacolAuthorization({
   casoId,
-  trabajador,
-  empresa,
-  estado,
-  urlSinacol,
+  caso,
+  worker,
   onAuthorized,
-  existingAuth
+  onCancel
 }: SinacolAuthorizationProps) {
-  const [showDialog, setShowDialog] = useState(false)
   const [authorizations, setAuthorizations] = useState({
-    autoriza_mecorrieron: existingAuth?.autoriza_mecorrieron || false,
-    autoriza_abogado: existingAuth?.autoriza_abogado || false,
-    autoriza_sinacol: existingAuth?.autoriza_sinacol || false,
-    autoriza_notificaciones: existingAuth?.autoriza_notificaciones || false,
-    terminos_aceptados: existingAuth?.terminos_aceptados || false
+    autoriza_mecorrieron: false,
+    autoriza_abogado: false,
+    autoriza_sinacol: false,
+    autoriza_notificaciones: true,
+    terminos_aceptados: false
   })
   const [saving, setSaving] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+
+  const estado = caso?.direccion_trabajo_estado || caso?.estado || 'Ciudad de Mexico'
+  const portal = PORTALES_CCL[estado]
 
   const allRequiredAccepted = 
     authorizations.autoriza_mecorrieron && 
@@ -108,278 +92,213 @@ export function SinacolAuthorization({
     authorizations.autoriza_sinacol &&
     authorizations.terminos_aceptados
 
+  const handleCheckboxChange = (field: string, checked: boolean) => {
+    setAuthorizations(prev => ({ ...prev, [field]: checked }))
+    setError(null)
+  }
+
   const handleSubmit = async () => {
-    if (!allRequiredAccepted) return
+    if (!allRequiredAccepted) {
+      setError('Debe aceptar todas las autorizaciones obligatorias')
+      return
+    }
     
     setSaving(true)
+    setError(null)
+    
     try {
-      const authData: AuthorizationData = {
-        caso_id: casoId,
-        ...authorizations,
-        fecha_autorizacion: new Date().toISOString()
-      }
+      const response = await fetch('/api/ccl/authorization', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          casoId,
+          autorizaMecorrieron: authorizations.autoriza_mecorrieron,
+          autorizaAbogado: authorizations.autoriza_abogado,
+          autorizaSinacol: authorizations.autoriza_sinacol,
+          autorizaNotificaciones: authorizations.autoriza_notificaciones,
+          terminosAceptados: authorizations.terminos_aceptados,
+          curpFirmante: worker?.curp || '',
+          nombreFirmante: worker?.full_name || '',
+          empresaRazonSocial: caso?.empresa_nombre || '',
+          empresaRfc: caso?.empresa_rfc || '',
+          estadoCcl: estado,
+          urlSinacol: portal?.urlSinacol || ''
+        })
+      })
+
+      const result = await response.json()
       
-      await onAuthorized(authData)
-      setShowDialog(false)
-    } catch (error) {
-      console.error('[v0] Error saving authorization:', error)
+      if (result.success) {
+        onAuthorized()
+      } else {
+        setError(result.error || 'Error al guardar la autorizacion')
+      }
+    } catch (err) {
+      console.error('[v0] Error saving authorization:', err)
+      setError('Error de conexion. Intente nuevamente.')
     } finally {
       setSaving(false)
     }
   }
 
-  // Si ya tiene autorización completa, mostrar resumen
-  if (existingAuth && existingAuth.autoriza_sinacol) {
-    return (
-      <Card className="border-green-200 dark:border-green-800 bg-green-50 dark:bg-green-950">
-        <CardHeader className="pb-3">
-          <CardTitle className="flex items-center gap-2 text-green-700 dark:text-green-300 text-base">
-            <CheckCircle className="h-5 w-5" />
-            Autorización SINACOL Completada
-          </CardTitle>
-          <CardDescription className="text-green-600 dark:text-green-400">
-            Autorizado el {new Date(existingAuth.fecha_autorizacion).toLocaleDateString('es-MX', { 
-              day: 'numeric', month: 'long', year: 'numeric', hour: '2-digit', minute: '2-digit'
-            })}
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="pt-0">
-          <div className="flex flex-wrap gap-2">
-            {existingAuth.autoriza_mecorrieron && (
-              <Badge variant="outline" className="text-green-600 border-green-300">
-                <CheckCircle className="h-3 w-3 mr-1" /> MeCorrieron.mx
-              </Badge>
-            )}
-            {existingAuth.autoriza_abogado && (
-              <Badge variant="outline" className="text-green-600 border-green-300">
-                <CheckCircle className="h-3 w-3 mr-1" /> Abogado
-              </Badge>
-            )}
-            {existingAuth.autoriza_sinacol && (
-              <Badge variant="outline" className="text-green-600 border-green-300">
-                <CheckCircle className="h-3 w-3 mr-1" /> SINACOL
-              </Badge>
-            )}
-          </div>
-          
-          <Button 
-            className="w-full mt-4 bg-green-600 hover:bg-green-700"
-            onClick={() => window.open(urlSinacol, '_blank')}
-          >
-            <ExternalLink className="h-4 w-4 mr-2" />
-            Ir a SINACOL - {estado}
-          </Button>
-        </CardContent>
-      </Card>
-    )
-  }
-
   return (
-    <>
-      <Card className="border-amber-200 dark:border-amber-800">
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2 text-amber-700 dark:text-amber-300">
-            <Shield className="h-5 w-5" />
-            Autorización Requerida
-          </CardTitle>
-          <CardDescription>
-            Para iniciar tu solicitud de conciliación laboral en SINACOL, necesitamos tu autorización explícita.
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <Alert className="mb-4 border-amber-300 bg-amber-50 dark:bg-amber-950">
-            <AlertTriangle className="h-4 w-4 text-amber-600" />
-            <AlertDescription className="text-amber-700 dark:text-amber-300">
-              <strong>Importante:</strong> Al autorizar, MeCorrieron.mx y tu abogado podrán crear tu solicitud 
-              de conciliación laboral en el portal oficial SINACOL usando tu CURP.
-            </AlertDescription>
-          </Alert>
-
-          {/* Resumen del caso */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4 p-3 bg-muted rounded-lg">
-            <div className="flex items-start gap-2">
-              <User className="h-4 w-4 mt-0.5 text-muted-foreground" />
-              <div>
-                <p className="text-xs text-muted-foreground">Trabajador</p>
-                <p className="font-medium text-sm">{trabajador.nombre}</p>
-                <p className="font-mono text-xs">{trabajador.curp}</p>
-              </div>
-            </div>
-            <div className="flex items-start gap-2">
-              <Building2 className="h-4 w-4 mt-0.5 text-muted-foreground" />
-              <div>
-                <p className="text-xs text-muted-foreground">Empresa Demandada</p>
-                <p className="font-medium text-sm">{empresa.razonSocial}</p>
-                {empresa.rfc && <p className="font-mono text-xs">{empresa.rfc}</p>}
-              </div>
-            </div>
+    <Card className="border-amber-200 dark:border-amber-800 bg-amber-50/50 dark:bg-amber-950/20">
+      <CardHeader className="pb-3">
+        <CardTitle className="flex items-center gap-2 text-amber-700 dark:text-amber-300 text-base">
+          <Shield className="h-5 w-5" />
+          Autorizacion Legal SINACOL
+        </CardTitle>
+        <CardDescription>
+          Para gestionar tu caso ante el Centro de Conciliacion Laboral, necesitamos tu autorizacion expresa 
+          conforme a la Ley Federal del Trabajo y la Ley Federal de Proteccion de Datos Personales.
+        </CardDescription>
+      </CardHeader>
+      
+      <CardContent className="space-y-4">
+        {/* Datos del caso */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-3 p-3 bg-white dark:bg-black rounded-lg border">
+          <div>
+            <p className="text-xs text-muted-foreground mb-1">Trabajador</p>
+            <p className="font-medium text-sm">{worker?.full_name || 'No especificado'}</p>
+            <p className="text-xs text-muted-foreground font-mono">{worker?.curp || 'Sin CURP'}</p>
           </div>
+          <div>
+            <p className="text-xs text-muted-foreground mb-1">Empresa Demandada</p>
+            <p className="font-medium text-sm">{caso?.empresa_nombre || 'No especificada'}</p>
+            <p className="text-xs text-muted-foreground">Estado: {estado}</p>
+          </div>
+        </div>
 
-          <Button 
-            className="w-full"
-            onClick={() => setShowDialog(true)}
-          >
-            <Scale className="h-4 w-4 mr-2" />
-            Revisar y Firmar Autorización
-          </Button>
-        </CardContent>
-      </Card>
-
-      {/* Dialog de autorización detallada */}
-      <Dialog open={showDialog} onOpenChange={setShowDialog}>
-        <DialogContent className="max-w-2xl max-h-[90vh] overflow-auto">
-          <DialogHeader>
-            <DialogTitle className="flex items-center gap-2">
-              <Shield className="h-5 w-5 text-primary" />
-              Autorización para Conciliación Laboral
-            </DialogTitle>
-            <DialogDescription>
-              Lee cuidadosamente y acepta cada autorización para continuar con tu solicitud SINACOL.
-            </DialogDescription>
-          </DialogHeader>
-
-          <div className="space-y-4 py-4">
-            {/* Datos del caso */}
-            <div className="p-4 bg-muted rounded-lg space-y-3">
-              <div className="flex items-center gap-2 text-sm font-medium">
-                <FileText className="h-4 w-4" />
-                Datos de la Solicitud
-              </div>
-              <div className="grid grid-cols-2 gap-x-4 gap-y-2 text-sm">
-                <div>
-                  <span className="text-muted-foreground">Trabajador:</span>
-                  <p className="font-medium">{trabajador.nombre}</p>
-                </div>
-                <div>
-                  <span className="text-muted-foreground">CURP:</span>
-                  <p className="font-mono font-medium">{trabajador.curp}</p>
-                </div>
-                <div>
-                  <span className="text-muted-foreground">Empresa:</span>
-                  <p className="font-medium">{empresa.razonSocial}</p>
-                </div>
-                <div>
-                  <span className="text-muted-foreground">Estado CCL:</span>
-                  <p className="font-medium">{estado}</p>
-                </div>
-              </div>
-            </div>
-
-            {/* Disclosures */}
-            <div className="space-y-4">
-              {DISCLOSURES.map((disclosure) => (
-                <div 
-                  key={disclosure.id}
-                  className={`p-4 rounded-lg border ${
-                    authorizations[disclosure.field as keyof typeof authorizations]
-                      ? 'border-green-300 bg-green-50 dark:bg-green-950 dark:border-green-800'
-                      : 'border-border'
-                  }`}
-                >
-                  <div className="flex items-start gap-3">
-                    <Checkbox
-                      id={disclosure.id}
-                      checked={authorizations[disclosure.field as keyof typeof authorizations]}
-                      onCheckedChange={(checked) => 
-                        setAuthorizations(prev => ({
-                          ...prev,
-                          [disclosure.field]: checked
-                        }))
-                      }
-                    />
-                    <div className="flex-1">
-                      <Label 
-                        htmlFor={disclosure.id} 
-                        className="font-medium cursor-pointer flex items-center gap-2"
-                      >
-                        {disclosure.title}
-                        {disclosure.required && (
-                          <Badge variant="secondary" className="text-xs">Requerido</Badge>
-                        )}
-                      </Label>
-                      <p className="text-sm text-muted-foreground mt-1">
-                        {disclosure.description}
-                      </p>
-                    </div>
-                  </div>
-                </div>
-              ))}
-
-              {/* Términos y condiciones */}
+        {/* Autorizaciones */}
+        <div className="space-y-3">
+          {DISCLOSURES.map((disclosure) => {
+            const Icon = disclosure.icon
+            const isChecked = authorizations[disclosure.field as keyof typeof authorizations]
+            
+            return (
               <div 
-                className={`p-4 rounded-lg border ${
-                  authorizations.terminos_aceptados
-                    ? 'border-green-300 bg-green-50 dark:bg-green-950 dark:border-green-800'
-                    : 'border-border'
+                key={disclosure.id} 
+                className={`p-3 rounded-lg border transition-colors ${
+                  isChecked 
+                    ? 'bg-green-50 dark:bg-green-950/30 border-green-300 dark:border-green-700' 
+                    : 'bg-white dark:bg-black border-gray-200 dark:border-gray-800'
                 }`}
               >
                 <div className="flex items-start gap-3">
                   <Checkbox
-                    id="terminos"
-                    checked={authorizations.terminos_aceptados}
-                    onCheckedChange={(checked) => 
-                      setAuthorizations(prev => ({
-                        ...prev,
-                        terminos_aceptados: checked as boolean
-                      }))
-                    }
+                    id={disclosure.id}
+                    checked={isChecked}
+                    onCheckedChange={(checked) => handleCheckboxChange(disclosure.field, checked === true)}
+                    className="mt-1"
                   />
                   <div className="flex-1">
-                    <Label htmlFor="terminos" className="font-medium cursor-pointer flex items-center gap-2">
-                      Acepto los Términos y Condiciones
-                      <Badge variant="secondary" className="text-xs">Requerido</Badge>
+                    <Label 
+                      htmlFor={disclosure.id} 
+                      className="flex items-center gap-2 cursor-pointer font-medium"
+                    >
+                      <Icon className="h-4 w-4 text-amber-600" />
+                      {disclosure.title}
+                      {disclosure.required && (
+                        <span className="text-red-500 text-xs">*Obligatorio</span>
+                      )}
                     </Label>
-                    <p className="text-sm text-muted-foreground mt-1">
-                      He leído y acepto los{' '}
-                      <a href="/terminos" target="_blank" className="text-primary underline">
-                        Términos y Condiciones
-                      </a>
-                      {' '}y el{' '}
-                      <a href="/privacidad" target="_blank" className="text-primary underline">
-                        Aviso de Privacidad
-                      </a>
-                      {' '}de MeCorrieron.mx. Entiendo que este es un proceso legal real 
-                      y que debo ratificar mi solicitud en persona ante el CCL.
+                    <p className="text-xs text-muted-foreground mt-1">
+                      {disclosure.description}
                     </p>
                   </div>
+                  {isChecked && (
+                    <CheckCircle className="h-5 w-5 text-green-600 flex-shrink-0" />
+                  )}
                 </div>
               </div>
+            )
+          })}
+
+          {/* Terminos y condiciones */}
+          <div 
+            className={`p-3 rounded-lg border transition-colors ${
+              authorizations.terminos_aceptados 
+                ? 'bg-green-50 dark:bg-green-950/30 border-green-300 dark:border-green-700' 
+                : 'bg-white dark:bg-black border-gray-200 dark:border-gray-800'
+            }`}
+          >
+            <div className="flex items-start gap-3">
+              <Checkbox
+                id="terminos"
+                checked={authorizations.terminos_aceptados}
+                onCheckedChange={(checked) => handleCheckboxChange('terminos_aceptados', checked === true)}
+                className="mt-1"
+              />
+              <div className="flex-1">
+                <Label htmlFor="terminos" className="flex items-center gap-2 cursor-pointer font-medium">
+                  <Scale className="h-4 w-4 text-amber-600" />
+                  Acepto los Terminos y Condiciones
+                  <span className="text-red-500 text-xs">*Obligatorio</span>
+                </Label>
+                <p className="text-xs text-muted-foreground mt-1">
+                  He leido y acepto los{' '}
+                  <a href="/terminos" target="_blank" className="text-blue-600 underline">
+                    Terminos de Servicio
+                  </a>{' '}
+                  y el{' '}
+                  <a href="/privacidad" target="_blank" className="text-blue-600 underline">
+                    Aviso de Privacidad
+                  </a>{' '}
+                  de MeCorrieron.mx. Entiendo que esta autorizacion tiene efectos legales.
+                </p>
+              </div>
+              {authorizations.terminos_aceptados && (
+                <CheckCircle className="h-5 w-5 text-green-600 flex-shrink-0" />
+              )}
             </div>
-
-            {/* Aviso legal */}
-            <Alert>
-              <Scale className="h-4 w-4" />
-              <AlertDescription className="text-xs">
-                <strong>Aviso Legal:</strong> Esta autorización tiene validez legal conforme a la 
-                Ley Federal del Trabajo y la normatividad del Centro de Conciliación Laboral. 
-                Al firmar, usted acepta que MeCorrieron.mx actúe como intermediario en su 
-                proceso de conciliación laboral. La ratificación presencial sigue siendo 
-                obligatoria conforme a la ley.
-              </AlertDescription>
-            </Alert>
           </div>
+        </div>
 
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setShowDialog(false)}>
+        {/* Aviso legal */}
+        <Alert>
+          <AlertTriangle className="h-4 w-4" />
+          <AlertDescription className="text-xs">
+            <strong>Aviso Legal:</strong> Al firmar esta autorizacion, usted otorga consentimiento expreso 
+            para que MeCorrieron.mx y el abogado asignado actuen en su representacion ante el Centro de 
+            Conciliacion Laboral de {estado}. Esta autorizacion se registra con firma electronica 
+            conforme a la legislacion mexicana vigente.
+          </AlertDescription>
+        </Alert>
+
+        {/* Error */}
+        {error && (
+          <Alert variant="destructive">
+            <AlertTriangle className="h-4 w-4" />
+            <AlertDescription>{error}</AlertDescription>
+          </Alert>
+        )}
+
+        {/* Botones */}
+        <div className="flex gap-3 pt-2">
+          {onCancel && (
+            <Button variant="outline" onClick={onCancel} className="flex-1 bg-transparent" disabled={saving}>
               Cancelar
             </Button>
-            <Button 
-              onClick={handleSubmit}
-              disabled={!allRequiredAccepted || saving}
-              className="bg-green-600 hover:bg-green-700"
-            >
-              {saving ? (
-                <>Guardando...</>
-              ) : (
-                <>
-                  <CheckCircle className="h-4 w-4 mr-2" />
-                  Firmar Autorización
-                </>
-              )}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-    </>
+          )}
+          <Button 
+            onClick={handleSubmit} 
+            className="flex-1 bg-green-600 hover:bg-green-700"
+            disabled={!allRequiredAccepted || saving}
+          >
+            {saving ? (
+              <>
+                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                Guardando...
+              </>
+            ) : (
+              <>
+                <Shield className="h-4 w-4 mr-2" />
+                Firmar Autorizacion
+              </>
+            )}
+          </Button>
+        </div>
+      </CardContent>
+    </Card>
   )
 }

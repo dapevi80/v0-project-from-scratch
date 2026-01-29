@@ -868,10 +868,15 @@ export default function CCLDiagnosticoPage() {
                   <span className="hidden sm:inline ml-1">ADMIN</span>
                 </Button>
               </Link>
-              <div>
-                <h1 className="text-sm sm:text-lg font-bold text-green-400 font-mono">DIAGNOSTICO CCL</h1>
-                <p className="text-[10px] sm:text-xs text-green-700 font-mono hidden sm:block">32 Centros Estatales + 1 Federal</p>
-              </div>
+  <div>
+  <div className="flex items-center gap-2">
+    <h1 className="text-sm sm:text-lg font-bold text-green-400 font-mono">DIAGNOSTICO CCL</h1>
+    <Badge className="bg-red-600 text-white text-[8px] px-1 py-0">DATOS REALES</Badge>
+  </div>
+  <p className="text-[10px] sm:text-xs text-green-700 font-mono hidden sm:block">
+    32 Centros Estatales + 1 Federal | Usuario Prueba: David Perez Villasenor
+  </p>
+  </div>
             </div>
             
             <div className="flex items-center gap-1 sm:gap-2">
@@ -1498,15 +1503,30 @@ export default function CCLDiagnosticoPage() {
                 </p>
               </div>
               
-              {/* Trabajador de prueba */}
+              {/* Trabajador de prueba - DATOS REALES SuperAdmin */}
               <div className="bg-blue-950/50 rounded-lg p-4 border border-blue-700">
                 <div className="flex items-center gap-2 mb-2">
                   <User className="w-4 h-4 text-blue-400" />
-                  <span className="text-blue-400 text-xs font-bold">DATOS DEL TRABAJADOR</span>
+                  <span className="text-blue-400 text-xs font-bold">DATOS DEL TRABAJADOR (SuperAdmin Pruebas)</span>
                 </div>
                 <p className="text-blue-300 text-base font-mono font-bold">{selectedPdf.cuentaCCL.nombreTrabajador}</p>
                 <p className="text-blue-500 text-xs font-mono mt-1">CURP: {selectedPdf.cuentaCCL.curp}</p>
+                <p className="text-blue-500 text-xs font-mono">Tel: {selectedPdf.cuentaCCL.telefono}</p>
+                <p className="text-blue-500 text-xs font-mono">Email Prueba: {selectedPdf.cuentaCCL.email}</p>
               </div>
+              
+              {/* Empresa ejemplo para demanda */}
+              {selectedPdf.cuentaCCL.empresaEjemplo && (
+                <div className="bg-red-950/50 rounded-lg p-4 border border-red-700">
+                  <div className="flex items-center gap-2 mb-2">
+                    <FileText className="w-4 h-4 text-red-400" />
+                    <span className="text-red-400 text-xs font-bold">EMPRESA EJEMPLO (Demandado)</span>
+                  </div>
+                  <p className="text-red-300 text-sm font-bold">{selectedPdf.cuentaCCL.empresaEjemplo.razonSocial}</p>
+                  <p className="text-red-500 text-xs font-mono mt-1">RFC: {selectedPdf.cuentaCCL.empresaEjemplo.rfc}</p>
+                  <p className="text-red-500 text-xs mt-1">{selectedPdf.cuentaCCL.empresaEjemplo.direccion}</p>
+                </div>
+              )}
               
               {/* CURP para iniciar solicitud */}
               <div className="bg-black rounded-lg p-4 border-2 border-yellow-500">
@@ -1551,8 +1571,9 @@ export default function CCLDiagnosticoPage() {
                     <p className="font-mono text-green-300 truncate">{selectedPdf.cuentaCCL.urlBuzon}</p>
                   </div>
                   <div>
-                    <span className="text-green-600">Folio Asignado:</span>
-                    <p className="font-mono text-green-300 font-bold">{selectedPdf.folioGenerado}</p>
+                    <span className="text-green-600">Referencia Interna (MeCorrieron.mx):</span>
+                    <p className="font-mono text-green-300 font-bold text-xs">{selectedPdf.folioGenerado}</p>
+                    <p className="text-green-700 text-[10px]">El folio oficial lo genera SINACOL al completar la solicitud</p>
                   </div>
                 </div>
               </div>

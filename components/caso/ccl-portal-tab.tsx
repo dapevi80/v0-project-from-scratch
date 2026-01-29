@@ -6,8 +6,9 @@ import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { 
   Key, Mail, User, Copy, LogIn, ExternalLink, RefreshCw, 
-  CheckCircle, AlertTriangle, Clock, FileText, Bell, Loader2
+  CheckCircle, AlertTriangle, Clock, FileText, Bell, Loader2, Shield
 } from 'lucide-react'
+import { SinacolAuthorization } from './sinacol-authorization'
 
 interface CCLAccount {
   id: string
@@ -39,10 +40,23 @@ export function CCLPortalTab({ casoId, caso, worker, onRefresh }: CCLPortalTabPr
   const [loading, setLoading] = useState(true)
   const [creating, setCreating] = useState(false)
   const [copiedField, setCopiedField] = useState<string | null>(null)
+  const [hasAuthorization, setHasAuthorization] = useState(false)
+  const [showAuthForm, setShowAuthForm] = useState(false)
 
   useEffect(() => {
     loadAccounts()
+    checkAuthorization()
   }, [casoId])
+  
+  async function checkAuthorization() {
+    try {
+      const res = await fetch(`/api/ccl/authorization?casoId=${casoId}`)
+      const data = await res.json()
+      setHasAuthorization(data.authorized === true)
+    } catch (err) {
+      console.error('[v0] Error checking authorization:', err)
+    }
+  }
 
   async function loadAccounts() {
     setLoading(true)
@@ -259,13 +273,55 @@ export function CCLPortalTab({ casoId, caso, worker, onRefresh }: CCLPortalTabPr
                 )}
               </div>
             </div>
-          ) : (
+          ) : showAuthForm ? (
+            /* Formulario de autorizacion */
+            <SinacolAuthorization
+              casoId={casoId}
+              caso={caso}
+              worker={worker}
+              onAuthorized={() => {
+                setHasAuthorization(true)
+                setShowAuthForm(false)
+                checkAuthorization()
+              }}
+              onCancel={() => setShowAuthForm(false)}
+            />
+          ) : !hasAuthorization ? (
+            /* Paso 1: Solicitar autorizacion */
             <div className="text-center py-6">
-              <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-muted flex items-center justify-center">
-                <FileText className="h-8 w-8 text-muted-foreground" />
+              <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-amber-100 dark:bg-amber-950 flex items-center justify-center">
+                <Shield className="h-8 w-8 text-amber-600" />
               </div>
+              <h3 className="font-semibold text-lg mb-2">Autorizacion Requerida</h3>
+              <p className="text-muted-foreground mb-4 max-w-md mx-auto">
+                Para gestionar tu solicitud en el portal SINACOL, necesitamos tu autorizacion 
+                expresa conforme a la Ley Federal del Trabajo.
+              </p>
+              <Button onClick={() => setShowAuthForm(true)} className="mb-4">
+                <Shield className="h-4 w-4 mr-2" />
+                Autorizar Gestion SINACOL
+              </Button>
+              
+              {/* Info de lo que se autoriza */}
+              <div className="mt-4 p-3 bg-muted rounded-lg text-left text-sm max-w-md mx-auto">
+                <p className="font-medium mb-2">Al autorizar, permites que:</p>
+                <ul className="space-y-1 text-muted-foreground text-xs">
+                  <li>MeCorrieron.mx te guie en el proceso de conciliacion</li>
+                  <li>El abogado asignado te represente ante el CCL</li>
+                  <li>Se genere tu solicitud en el portal SINACOL oficial</li>
+                  <li>Recibas notificaciones sobre tu caso</li>
+                </ul>
+              </div>
+            </div>
+          ) : (
+            /* Paso 2: Ya autorizado - mostrar boton para obtener enlace */
+            <div className="text-center py-6">
+              <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-green-100 dark:bg-green-950 flex items-center justify-center">
+                <CheckCircle className="h-8 w-8 text-green-600" />
+              </div>
+              <Badge className="mb-3 bg-green-600">Autorizado</Badge>
               <p className="text-muted-foreground mb-4">
-                No hay enlace SINACOL configurado para este caso
+                Ya tienes autorizacion para gestionar tu solicitud SINACOL
               </p>
               <Button onClick={createAccount} disabled={creating}>
                 {creating ? (
@@ -282,20 +338,20 @@ export function CCLPortalTab({ casoId, caso, worker, onRefresh }: CCLPortalTabPr
               </Button>
               
               {/* Requisitos */}
-              <div className="mt-4 p-3 bg-muted rounded-lg text-left text-sm">
-                <p className="font-medium mb-2">Requisitos para crear cuenta:</p>
+              <div className="mt-4 p-3 bg-muted rounded-lg text-left text-sm max-w-md mx-auto">
+                <p className="font-medium mb-2">Verificacion de datos:</p>
                 <ul className="space-y-1 text-muted-foreground">
                   <li className="flex items-center gap-2">
                     {worker?.full_name ? <CheckCircle className="h-3 w-3 text-green-600" /> : <AlertTriangle className="h-3 w-3 text-yellow-600" />}
-                    Nombre completo del trabajador
+                    Nombre: {worker?.full_name || 'Pendiente'}
                   </li>
                   <li className="flex items-center gap-2">
                     {worker?.curp ? <CheckCircle className="h-3 w-3 text-green-600" /> : <AlertTriangle className="h-3 w-3 text-yellow-600" />}
-                    CURP del trabajador
+                    CURP: {worker?.curp || 'Pendiente'}
                   </li>
                   <li className="flex items-center gap-2">
                     {caso?.estado || caso?.direccion_trabajo_estado ? <CheckCircle className="h-3 w-3 text-green-600" /> : <AlertTriangle className="h-3 w-3 text-yellow-600" />}
-                    Estado donde se realizara la conciliacion
+                    Estado: {caso?.direccion_trabajo_estado || caso?.estado || 'Pendiente'}
                   </li>
                 </ul>
               </div>

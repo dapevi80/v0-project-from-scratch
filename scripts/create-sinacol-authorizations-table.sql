@@ -55,7 +55,7 @@ CREATE POLICY "Users can view own authorizations" ON sinacol_authorizations
     EXISTS (
       SELECT 1 FROM casos c 
       WHERE c.id = sinacol_authorizations.caso_id 
-      AND c.user_id = auth.uid()
+      AND c.worker_id = auth.uid()
     )
   );
 
@@ -66,7 +66,7 @@ CREATE POLICY "Users can create own authorizations" ON sinacol_authorizations
     EXISTS (
       SELECT 1 FROM casos c 
       WHERE c.id = caso_id 
-      AND c.user_id = auth.uid()
+      AND c.worker_id = auth.uid()
     )
   );
 
@@ -77,7 +77,7 @@ CREATE POLICY "Lawyers can view assigned case authorizations" ON sinacol_authori
     EXISTS (
       SELECT 1 FROM casos c 
       WHERE c.id = sinacol_authorizations.caso_id 
-      AND c.abogado_id = auth.uid()
+      AND c.lawyer_id = auth.uid()
     )
   );
 
