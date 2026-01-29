@@ -31,7 +31,10 @@ import {
   Bell,
   ChevronRight,
   ExternalLink,
-  MoreVertical
+  MoreVertical,
+  Download,
+  Loader2,
+  Gavel
 } from 'lucide-react'
 import { 
   obtenerCaso, 
@@ -40,6 +43,7 @@ import {
   obtenerDocumentosCaso,
   enviarMensaje,
   marcarMensajesLeidos,
+  iniciarConciliacionCaso,
   type Case, 
   type CaseMessage, 
   type CaseEvent,
@@ -79,6 +83,7 @@ export default function CasoDetailPage() {
   const [activeTab, setActiveTab] = useState('resumen')
   const [nuevoMensaje, setNuevoMensaje] = useState('')
   const [enviando, setEnviando] = useState(false)
+  const [iniciandoConciliacion, setIniciandoConciliacion] = useState(false)
   
   const chatEndRef = useRef<HTMLDivElement>(null)
   const chatContainerRef = useRef<HTMLDivElement>(null)
@@ -127,6 +132,22 @@ export default function CasoDetailPage() {
       scrollToBottom()
     }
     setEnviando(false)
+  }
+
+  const handleIniciarConciliacion = async () => {
+    setIniciandoConciliacion(true)
+    try {
+      const res = await iniciarConciliacionCaso(casoId)
+      if (res.data?.pdfUrl) {
+        // Abrir el PDF en una nueva ventana
+        window.open(res.data.pdfUrl, '_blank')
+        // Recargar datos del caso
+        await cargarDatos()
+      }
+    } catch (error) {
+      console.error('Error iniciando conciliacion:', error)
+    }
+    setIniciandoConciliacion(false)
   }
 
   const formatMonto = (monto: number) => {
@@ -339,6 +360,40 @@ export default function CasoDetailPage() {
                       </div>
                     )
                   })}
+                </CardContent>
+              </Card>
+            )}
+
+            {/* Boton Iniciar Conciliacion - prominente */}
+            {caso.categoria !== 'conciliacion' && caso.categoria !== 'juicio' && caso.categoria !== 'concluido' && (
+              <Card className="border-primary/20 bg-primary/5">
+                <CardContent className="p-4">
+                  <div className="flex items-center gap-3 mb-3">
+                    <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center">
+                      <Gavel className="w-5 h-5 text-primary" />
+                    </div>
+                    <div>
+                      <h3 className="font-semibold text-sm">Iniciar Conciliacion</h3>
+                      <p className="text-xs text-muted-foreground">Genera tu guia para el CCL</p>
+                    </div>
+                  </div>
+                  <Button 
+                    className="w-full gap-2" 
+                    onClick={handleIniciarConciliacion}
+                    disabled={iniciandoConciliacion}
+                  >
+                    {iniciandoConciliacion ? (
+                      <>
+                        <Loader2 className="w-4 h-4 animate-spin" />
+                        Generando guia...
+                      </>
+                    ) : (
+                      <>
+                        <Download className="w-4 h-4" />
+                        Descargar Guia de Conciliacion
+                      </>
+                    )}
+                  </Button>
                 </CardContent>
               </Card>
             )}

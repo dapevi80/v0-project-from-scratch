@@ -1,5 +1,7 @@
 'use client'
 
+import { DialogFooter } from "@/components/ui/dialog"
+
 import { useState, useEffect, useCallback } from 'react'
 import Link from 'next/link'
 import { Button } from '@/components/ui/button'
@@ -8,6 +10,7 @@ import { Badge } from '@/components/ui/badge'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Separator } from '@/components/ui/separator'
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog'
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog'
 import { 
   Vault, 
   Calculator, 
@@ -30,28 +33,43 @@ import {
   Building2,
   Calendar,
   Camera,
-  Trash2, // Declare Trash2 here
-  CheckCircle, // Declare CheckCircle here
-  ExternalLink // Declare ExternalLink here
+  Trash2,
+  CheckCircle,
+  ExternalLink,
+  ScanLine,
+  Edit3,
+  Sparkles,
+  Briefcase,
+  ChevronRight,
+  Scale
 } from 'lucide-react'
 import { AudioRecorder } from '@/components/boveda/audio-recorder'
 import { DocumentUploader } from '@/components/boveda/document-uploader'
-import { CalculoPDFViewer } from '@/components/boveda/calculo-pdf-viewer' // Import CalculoPDFViewer here
-import { DocumentoCard } from '@/components/boveda/documento-card' // Import DocumentoCard here
+import { CalculoPDFViewer } from '@/components/boveda/calculo-pdf-viewer'
+import { DocumentoCard } from '@/components/boveda/documento-card'
+import { OCRScanner } from '@/components/boveda/ocr-scanner'
+import { INEScanner } from '@/components/boveda/ine-scanner'
 import {
   obtenerDocumentos,
   obtenerCalculos,
   eliminarDocumento,
   obtenerEstadisticas,
   obtenerUrlDocumento,
-  obtenerUrlPorPath // Declare obtenerUrlPorPath here
+  obtenerUrlPorPath,
+  actualizarPerfilConINE,
+  renombrarDocumento,
+  obtenerTextoOCRDocumento,
+  type DatosINEExtraidos
 } from './actions'
 import { AyudaUrgenteButton } from '@/components/ayuda-urgente-button'
 import { CedulaDigital } from '@/components/cedula-digital'
+import { DowngradeAlert } from '@/components/downgrade-alert'
 import { AyudaUrgenteFlow } from '@/components/ayuda-urgente-flow'
+import { LogoutButton } from '@/app/dashboard/logout-button'
+import { openAIChatWithDocument } from '@/components/global-ai-assistant'
 
 // Declare types
-type CategoriaDocumento = 'calculo_liquidacion' | 'propuesta_empresa' | 'evidencia_foto' | 'evidencia_video' | 'evidencia_audio' | 'grabacion_audio' | 'contrato_laboral' | 'hoja_renuncia' | 'ine_frente' | 'ine_reverso' | 'pasaporte' | 'comprobante_domicilio' | 'otro'
+type CategoriaDocumento = 'calculo_liquidacion' | 'propuesta_empresa' | 'evidencia_foto' | 'evidencia_video' | 'evidencia_audio' | 'grabacion_audio' | 'contrato_laboral' | 'hoja_renuncia' | 'ine_frente' | 'ine_reverso' | 'pasaporte' | 'comprobante_domicilio' | 'cedula_profesional' | 'credencial_elector' | 'otro'
 type DocumentoBoveda = {
   id: string
   nombre: string
@@ -74,20 +92,48 @@ type CalculoLiquidacion = {
   created_at: string
 }
 
-// Configuración de categorías
+// Configuración de categorías - incluye todas las categorías de documentos
 const CATEGORIAS_CONFIG: Record<CategoriaDocumento, { label: string; icon: typeof FileText; color: string }> = {
+  // Documentos principales
   calculo_liquidacion: { label: 'Cálculos de Liquidación', icon: Calculator, color: 'text-primary' },
   propuesta_empresa: { label: 'Propuestas para Empresa', icon: FileText, color: 'text-blue-600' },
-  evidencia_foto: { label: 'Fotos / Capturas', icon: ImageIcon, color: 'text-green-600' },
-  evidencia_video: { label: 'Videos', icon: Video, color: 'text-purple-600' },
-  evidencia_audio: { label: 'Audios', icon: Music2, color: 'text-orange-600' },
-  grabacion_audio: { label: 'Grabaciones', icon: Mic, color: 'text-destructive' },
   contrato_laboral: { label: 'Contrato Laboral', icon: FileText, color: 'text-blue-600' },
   hoja_renuncia: { label: 'Hoja de Renuncia', icon: FileText, color: 'text-amber-600' },
+  hojas_firmadas: { label: 'Hojas en blanco firmadas', icon: FileText, color: 'text-amber-600' },
+  recibo_nomina: { label: 'Recibos de Nómina', icon: FileText, color: 'text-green-600' },
+  recibo_dinero: { label: 'Recibos de Dinero', icon: FileText, color: 'text-emerald-600' },
+  // Evidencias multimedia
+  evidencia_foto: { label: 'Fotos / Capturas', icon: ImageIcon, color: 'text-green-600' },
+  evidencia_video: { label: 'Videos', icon: Video, color: 'text-purple-600' },
+  video_despido: { label: 'Video del Despido', icon: Video, color: 'text-red-600' },
+  evidencia_audio: { label: 'Audios', icon: Music2, color: 'text-orange-600' },
+  grabacion_audio: { label: 'Grabaciones', icon: Mic, color: 'text-destructive' },
+  grabacion_llamada: { label: 'Grabación de Llamada', icon: Mic, color: 'text-cyan-600' },
+  // Identificaciones
   ine_frente: { label: 'INE Frente', icon: CreditCard, color: 'text-slate-600' },
   ine_reverso: { label: 'INE Reverso', icon: CreditCard, color: 'text-slate-600' },
   pasaporte: { label: 'Pasaporte', icon: CreditCard, color: 'text-slate-600' },
+  credencial_elector: { label: 'Credencial de Elector', icon: CreditCard, color: 'text-slate-600' },
+  cedula_profesional: { label: 'Cédula Profesional', icon: CreditCard, color: 'text-blue-600' },
+  // Proceso legal
+  solicitud_conciliacion: { label: 'Solicitud de Conciliación', icon: FileText, color: 'text-sky-600' },
+  notificacion: { label: 'Notificación Oficial', icon: FileText, color: 'text-violet-600' },
+  acuse: { label: 'Acuse de Recibo', icon: FileText, color: 'text-teal-600' },
+  expediente: { label: 'Expediente del Caso', icon: FileText, color: 'text-gray-600' },
+  // Audiencia y conciliación
+  foto_lugar: { label: 'Ubicación del Trabajo', icon: MapPin, color: 'text-orange-600' },
+  acta_audiencia: { label: 'Acta de Audiencia', icon: FileText, color: 'text-amber-700' },
+  acta_conciliacion: { label: 'Acta de Conciliación', icon: FileText, color: 'text-green-700' },
+  constancia_no_conciliacion: { label: 'Constancia No Conciliación', icon: FileText, color: 'text-red-700' },
+  // Resolución
+  convenio: { label: 'Convenio', icon: FileText, color: 'text-emerald-700' },
+  sentencia: { label: 'Sentencia', icon: FileText, color: 'text-purple-700' },
+  // Domicilio y testigos
   comprobante_domicilio: { label: 'Comprobante Domicilio', icon: MapPin, color: 'text-teal-600' },
+  testigos: { label: 'Datos de Testigos', icon: FileText, color: 'text-blue-700' },
+  // Documentos escaneados
+  documento_escaneado: { label: 'Documentos Escaneados', icon: ScanLine, color: 'text-purple-600' },
+  // Otro
   otro: { label: 'Otros', icon: FileText, color: 'text-muted-foreground' },
 }
 
@@ -121,12 +167,27 @@ export default function BovedaPage() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [requiresAuth, setRequiresAuth] = useState(false)
+  const [userId, setUserId] = useState<string | null>(null)
+  const [verificationStatus, setVerificationStatus] = useState<string | null>(null)
   
   // Estados para modales
   const [showRecorder, setShowRecorder] = useState(false)
   const [showUploader, setShowUploader] = useState(false)
+  const [showScanner, setShowScanner] = useState(false)
+  const [showINEScanner, setShowINEScanner] = useState<'frente' | 'reverso' | null>(null)
+  const [ineDataExtraido, setIneDataExtraido] = useState<DatosINEExtraidos | null>(null)
+  const [confirmDialog, setConfirmDialog] = useState<{ open: boolean; casoId: string | null }>({ open: false, casoId: null })
   const [uploaderCategoria, setUploaderCategoria] = useState<string | undefined>(undefined)
   const [loadingDocUrl, setLoadingDocUrl] = useState<string | null>(null)
+  
+  // Estado para confirmacion de eliminacion
+  const [deleteConfirm, setDeleteConfirm] = useState<{ open: boolean; docId: string | null; docName?: string }>({ open: false, docId: null })
+  const [deleting, setDeleting] = useState(false)
+  
+  // Estado para renombrar documento
+  const [renameDoc, setRenameDoc] = useState<{ open: boolean; docId: string | null; currentName: string }>({ open: false, docId: null, currentName: '' })
+  const [newDocName, setNewDocName] = useState('')
+  const [renaming, setRenaming] = useState(false)
   
   // Función para ver documento (obtiene URL firmada)
   const verDocumento = async (documentoId: string) => {
@@ -148,12 +209,14 @@ export default function BovedaPage() {
   const [visorUrl, setVisorUrl] = useState<string | null>(null)
   const [visorTipo, setVisorTipo] = useState<string | null>(null)
   const [visorOpen, setVisorOpen] = useState(false)
+  const [currentViewDoc, setCurrentViewDoc] = useState<DocumentoBoveda | null>(null)
+  const [currentDocText, setCurrentDocText] = useState<string | null>(null) // Texto OCR del documento actual
   const [calculoSeleccionado, setCalculoSeleccionado] = useState<CalculoLiquidacion | null>(null) // Declare setCalculoSeleccionado
   const [visorCalculoOpen, setVisorCalculoOpen] = useState(false) // Declare setVisorCalculoOpen
   
-  // Cargar datos
-  const loadData = useCallback(async () => {
-    setLoading(true)
+  // Cargar datos optimizado
+  const loadData = useCallback(async (isMounted = true) => {
+    if (isMounted) setLoading(true)
     setError(null)
     
     try {
@@ -162,6 +225,8 @@ export default function BovedaPage() {
         obtenerCalculos(),
         obtenerEstadisticas()
       ])
+      
+      if (!isMounted) return
       
       if (docsResult.requiresAuth || calcsResult.requiresAuth || statsResult.requiresAuth) {
         setRequiresAuth(true)
@@ -173,34 +238,71 @@ export default function BovedaPage() {
       if (statsResult.success) setEstadisticas(statsResult.estadisticas || null)
       
     } catch (err) {
-      setError('Error al cargar los datos')
+      if (isMounted) setError('Error al cargar los datos')
       console.error(err)
     } finally {
-      setLoading(false)
+      if (isMounted) setLoading(false)
     }
   }, [])
   
   useEffect(() => {
-    loadData()
+    let isMounted = true
+    loadData(isMounted)
+    return () => { isMounted = false }
   }, [loadData])
   
-  // Ver documento
+// Ver documento
   const handleVerDocumento = async (doc: DocumentoBoveda) => {
-    const result = await obtenerUrlDocumento(doc.id)
-    if (result.success && result.url) {
-      setVisorUrl(result.url)
+    // Obtener URL y texto OCR en paralelo
+    const [urlResult, ocrResult] = await Promise.all([
+      obtenerUrlDocumento(doc.id),
+      obtenerTextoOCRDocumento(doc.id)
+    ])
+    
+    if (urlResult.success && urlResult.url) {
+      setVisorUrl(urlResult.url)
       setVisorTipo(doc.mime_type || 'application/pdf')
+      setCurrentViewDoc(doc)
+      setCurrentDocText(ocrResult.success ? ocrResult.texto || null : null)
       setVisorOpen(true)
     }
   }
   
-  // Eliminar documento
-  const handleEliminar = async (docId: string) => {
-    if (!confirm('¿Estás seguro de eliminar este documento?')) return
+  // Eliminar documento - mostrar dialogo de confirmacion
+  const handleEliminar = (docId: string, docName?: string) => {
+    setDeleteConfirm({ open: true, docId, docName })
+  }
+  
+  // Confirmar eliminacion
+  const confirmarEliminacion = async () => {
+    if (!deleteConfirm.docId) return
     
-    const result = await eliminarDocumento(docId)
+    setDeleting(true)
+    const result = await eliminarDocumento(deleteConfirm.docId)
+    setDeleting(false)
+    
     if (result.success) {
       loadData()
+    }
+    setDeleteConfirm({ open: false, docId: null })
+  }
+  
+  // Función para renombrar documento
+  const handleRename = async () => {
+    if (!renameDoc.docId || !newDocName.trim()) return
+    
+    setRenaming(true)
+    try {
+      const result = await renombrarDocumento(renameDoc.docId, newDocName.trim())
+      if (result.success) {
+        loadData()
+      }
+    } catch (error) {
+      console.error('Error renombrando:', error)
+    } finally {
+      setRenaming(false)
+      setRenameDoc({ open: false, docId: null, currentName: '' })
+      setNewDocName('')
     }
   }
   
@@ -244,7 +346,7 @@ export default function BovedaPage() {
   
   return (
     <div className="min-h-screen bg-background">
-      {/* Header principal con logo y ayuda */}
+      {/* Header principal con logo, ayuda y cerrar sesion */}
       <header className="border-b bg-card sticky top-0 z-50">
         <div className="container max-w-6xl mx-auto px-3 sm:px-4 py-3 flex items-center justify-between">
           {/* Logo - lleva al dashboard */}
@@ -255,8 +357,11 @@ export default function BovedaPage() {
             <span className="text-base sm:text-lg font-semibold hidden xs:inline">mecorrieron.mx</span>
           </Link>
           
-          {/* Botón de ayuda urgente */}
-          <AyudaUrgenteButton />
+          {/* Acciones: ayuda urgente y cerrar sesion */}
+          <div className="flex items-center gap-2">
+            <AyudaUrgenteButton />
+            <LogoutButton />
+          </div>
         </div>
       </header>
       
@@ -286,14 +391,22 @@ export default function BovedaPage() {
         </div>
         
         {/* Acciones rápidas - PRIMERO */}
-        <div className="grid grid-cols-3 gap-2 sm:gap-3 mb-4">
+        <div className="grid grid-cols-4 gap-1.5 sm:gap-2 mb-4">
           <Button
             onClick={() => setShowRecorder(true)}
             variant="outline"
-            className="h-auto py-3 sm:py-4 flex-col gap-1 sm:gap-2 bg-destructive/5 border-destructive/20 hover:bg-destructive/10"
+            className="h-auto py-2.5 sm:py-3 flex-col gap-1 bg-destructive/5 border-destructive/20 hover:bg-destructive/10"
           >
-            <Mic className="w-5 h-5 sm:w-6 sm:h-6 text-destructive" />
-            <span className="text-xs sm:text-sm font-medium">Grabar</span>
+            <Mic className="w-4 h-4 sm:w-5 sm:h-5 text-destructive" />
+            <span className="text-[10px] sm:text-xs font-medium">Grabar</span>
+          </Button>
+          <Button
+            onClick={() => setShowScanner(true)}
+            variant="outline"
+            className="h-auto py-2.5 sm:py-3 flex-col gap-1 bg-purple-50 border-purple-200 hover:bg-purple-100"
+          >
+            <ScanLine className="w-4 h-4 sm:w-5 sm:h-5 text-purple-600" />
+            <span className="text-[10px] sm:text-xs font-medium">Escanear</span>
           </Button>
           <Button
             onClick={() => {
@@ -310,18 +423,18 @@ export default function BovedaPage() {
               input.click()
             }}
             variant="outline"
-            className="h-auto py-3 sm:py-4 flex-col gap-1 sm:gap-2 bg-green-50 border-green-200 hover:bg-green-100"
+            className="h-auto py-2.5 sm:py-3 flex-col gap-1 bg-green-50 border-green-200 hover:bg-green-100"
           >
-            <Camera className="w-5 h-5 sm:w-6 sm:h-6 text-green-600" />
-            <span className="text-xs sm:text-sm font-medium">Foto</span>
+            <Camera className="w-4 h-4 sm:w-5 sm:h-5 text-green-600" />
+            <span className="text-[10px] sm:text-xs font-medium">Foto</span>
           </Button>
           <Button
             onClick={() => setShowUploader(true)}
             variant="outline"
-            className="h-auto py-3 sm:py-4 flex-col gap-1 sm:gap-2 bg-primary/5 border-primary/20 hover:bg-primary/10"
+            className="h-auto py-2.5 sm:py-3 flex-col gap-1 bg-primary/5 border-primary/20 hover:bg-primary/10"
           >
-            <Upload className="w-5 h-5 sm:w-6 sm:h-6 text-primary" />
-            <span className="text-xs sm:text-sm font-medium">Subir</span>
+            <Upload className="w-4 h-4 sm:w-5 sm:h-5 text-primary" />
+            <span className="text-[10px] sm:text-xs font-medium">Subir</span>
           </Button>
         </div>
         
@@ -375,6 +488,22 @@ export default function BovedaPage() {
           </div>
         )}
         
+        {/* Banner: Ir a Mis Casos */}
+        <Link href="/casos" className="block mb-4">
+          <Card className="border-primary/20 bg-gradient-to-r from-primary/5 to-primary/10 hover:from-primary/10 hover:to-primary/15 transition-colors cursor-pointer">
+            <CardContent className="p-4 flex items-center gap-4">
+              <div className="w-12 h-12 rounded-full bg-primary/20 flex items-center justify-center flex-shrink-0">
+                <Briefcase className="w-6 h-6 text-primary" />
+              </div>
+              <div className="flex-1 min-w-0">
+                <h3 className="font-semibold text-sm sm:text-base">Mis Casos</h3>
+                <p className="text-xs text-muted-foreground">Ver tus casos de liquidacion y proceso de conciliacion</p>
+              </div>
+              <ChevronRight className="w-5 h-5 text-primary" />
+            </CardContent>
+          </Card>
+        </Link>
+
         {/* Contenido principal */}
         <Tabs value={activeTab} onValueChange={setActiveTab}>
           <TabsList className="grid w-full grid-cols-3 mb-4">
@@ -454,6 +583,17 @@ export default function BovedaPage() {
                                 onClick={() => handleVerDocumento(doc)}
                               >
                                 <Eye className="w-4 h-4" />
+                              </Button>
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                className="h-8 w-8 p-0 text-blue-600"
+                                onClick={() => {
+                                  setRenameDoc({ open: true, docId: doc.id, currentName: doc.nombre })
+                                  setNewDocName(doc.nombre)
+                                }}
+                              >
+                                <Edit3 className="w-4 h-4" />
                               </Button>
                               <Button
                                 variant="ghost"
@@ -573,13 +713,10 @@ export default function BovedaPage() {
                             variant="default"
                             size="sm"
                             className="flex-1 gap-2"
-                            onClick={() => {
-                              setCalculoSeleccionado(calc)
-                              setVisorCalculoOpen(true)
-                            }}
+                            onClick={() => setConfirmDialog({ open: true, casoId: calc.id })}
                           >
-                            <Eye className="w-4 h-4" />
-                            Ver Documentos
+                            <ExternalLink className="w-4 h-4" />
+                            Ver Caso
                           </Button>
                           <Button
                             variant="outline"
@@ -632,16 +769,7 @@ export default function BovedaPage() {
                             variant="outline"
                             size="sm"
                             className="gap-2 bg-transparent text-destructive hover:text-destructive hover:bg-destructive/10"
-                            onClick={async () => {
-                              if (confirm('¿Eliminar este cálculo de tu bóveda?')) {
-                                const result = await eliminarDocumento(calc.id)
-                                if (result.success) {
-                                  loadData()
-                                } else {
-                                  alert(result.error || 'Error al eliminar')
-                                }
-                              }
-                            }}
+                            onClick={() => handleEliminar(calc.id, calc.nombre_empresa || 'Calculo')}
                           >
                             <Trash2 className="w-4 h-4" />
                           </Button>
@@ -716,12 +844,13 @@ export default function BovedaPage() {
                         </div>
                       </div>
                     ) : (
-                      <Button variant="outline" className="w-full justify-start h-auto py-2 sm:py-3 bg-transparent text-sm" onClick={() => {
-                        setUploaderCategoria('ine_frente')
-                        setShowUploader(true)
-                      }}>
-                        <Plus className="w-4 h-4 mr-2 flex-shrink-0" />
-                        Subir frente
+                      <Button 
+                        variant="outline" 
+                        className="w-full justify-start h-auto py-2 sm:py-3 bg-gradient-to-r from-blue-50 to-indigo-50 border-blue-200 hover:from-blue-100 hover:to-indigo-100 text-sm" 
+                        onClick={() => setShowINEScanner('frente')}
+                      >
+                        <ScanLine className="w-4 h-4 mr-2 flex-shrink-0 text-blue-600" />
+                        <span className="text-blue-700">Escanear frente (OCR)</span>
                       </Button>
                     )}
                     {/* Reverso */}
@@ -758,16 +887,46 @@ export default function BovedaPage() {
                         </div>
                       </div>
                     ) : (
-                      <Button variant="outline" className="w-full justify-start h-auto py-2 sm:py-3 bg-transparent text-sm" onClick={() => {
-                        setUploaderCategoria('ine_reverso')
-                        setShowUploader(true)
-                      }}>
-                        <Plus className="w-4 h-4 mr-2 flex-shrink-0" />
-                        Subir reverso
+                      <Button 
+                        variant="outline" 
+                        className="w-full justify-start h-auto py-2 sm:py-3 bg-gradient-to-r from-indigo-50 to-purple-50 border-indigo-200 hover:from-indigo-100 hover:to-purple-100 text-sm" 
+                        onClick={() => setShowINEScanner('reverso')}
+                      >
+                        <ScanLine className="w-4 h-4 mr-2 flex-shrink-0 text-indigo-600" />
+                        <span className="text-indigo-700">Escanear reverso (CURP)</span>
                       </Button>
                     )}
                   </div>
                 </div>
+                
+                {/* Info de datos extraidos */}
+                {ineDataExtraido && (
+                  <div className="p-3 bg-green-50 border border-green-200 rounded-lg">
+                    <div className="flex items-start gap-2">
+                      <CheckCircle className="w-4 h-4 text-green-600 mt-0.5 shrink-0" />
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-medium text-green-700">Datos extraidos de la INE</p>
+                        <div className="mt-1 space-y-0.5 text-xs text-green-600">
+                          {ineDataExtraido.curp && (
+                            <p><span className="font-medium">CURP:</span> {ineDataExtraido.curp}</p>
+                          )}
+                          {ineDataExtraido.nombreCompleto && (
+                            <p><span className="font-medium">Nombre:</span> {ineDataExtraido.nombreCompleto}</p>
+                          )}
+                          {ineDataExtraido.fechaNacimiento && (
+                            <p><span className="font-medium">Nacimiento:</span> {new Date(ineDataExtraido.fechaNacimiento).toLocaleDateString('es-MX')}</p>
+                          )}
+                          {ineDataExtraido.domicilio?.domicilioCompleto && (
+                            <p><span className="font-medium">Domicilio:</span> {ineDataExtraido.domicilio.domicilioCompleto}</p>
+                          )}
+                        </div>
+                        <p className="text-[10px] text-green-500 mt-1">
+                          Estos datos se usarán para llenar formularios del CCL
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                )}
                 
                 {/* Pasaporte */}
                 <div className="p-3 sm:p-4 rounded-lg border bg-muted/30">
@@ -821,23 +980,101 @@ export default function BovedaPage() {
                   )}
                 </div>
                 
-                {/* Comprobante domicilio */}
-                <div className="p-4 rounded-lg border bg-muted/30">
-                  <div className="flex items-center gap-3 mb-3">
-                    <MapPin className="w-5 h-5 text-teal-600" />
+                {/* Cedula Profesional (para abogados) */}
+                <div className="p-3 sm:p-4 rounded-lg border bg-muted/30">
+                  <div className="flex items-center gap-2 mb-3">
+                    <CreditCard className="w-4 h-4 sm:w-5 sm:h-5 text-blue-600 flex-shrink-0" />
                     <div>
-                      <p className="font-medium">Comprobante de Domicilio</p>
-                      <p className="text-xs text-muted-foreground">Recibo de luz, agua, teléfono (máx 3 meses)</p>
+                      <p className="font-medium text-sm sm:text-base">Cedula Profesional</p>
+                      <p className="text-xs text-muted-foreground">Para abogados verificados</p>
+                    </div>
+                  </div>
+                  {documentosPorCategoria.cedula_profesional?.[0] ? (
+                    <div className="flex items-center justify-between p-2 sm:p-3 rounded bg-green-500/10 border border-green-500/30">
+                      <div className="flex items-center gap-2">
+                        <CheckCircle className="w-4 h-4 text-green-600 flex-shrink-0" />
+                        <span className="text-sm font-medium">Cedula</span>
+                      </div>
+                      <div className="flex items-center gap-1">
+                        <Button 
+                          variant="ghost" 
+                          size="sm" 
+                          className="h-7 px-2 text-xs"
+                          disabled={loadingDocUrl === documentosPorCategoria.cedula_profesional[0].id}
+                          onClick={() => verDocumento(documentosPorCategoria.cedula_profesional[0].id)}
+                        >
+                          {loadingDocUrl === documentosPorCategoria.cedula_profesional[0].id ? (
+                            <Loader2 className="w-3 h-3 animate-spin" />
+                          ) : (
+                            <Eye className="w-3 h-3" />
+                          )}
+                        </Button>
+                        <Button 
+                          variant="ghost" 
+                          size="sm" 
+                          className="h-7 px-2 text-destructive hover:text-destructive hover:bg-destructive/10"
+                          onClick={() => handleEliminar(documentosPorCategoria.cedula_profesional[0].id)}
+                        >
+                          <Trash2 className="w-3 h-3" />
+                        </Button>
+                      </div>
+                    </div>
+                  ) : (
+                    <Button variant="outline" className="w-full justify-start h-auto py-2 sm:py-3 bg-transparent text-sm" onClick={() => {
+                      setUploaderCategoria('cedula_profesional')
+                      setShowUploader(true)
+                    }}>
+                      <Plus className="w-4 h-4 mr-2 flex-shrink-0" />
+                      Subir cedula profesional
+                    </Button>
+                  )}
+                </div>
+                
+                {/* Comprobante domicilio */}
+                <div className="p-3 sm:p-4 rounded-lg border bg-muted/30">
+                  <div className="flex items-center gap-2 mb-3">
+                    <MapPin className="w-4 h-4 sm:w-5 sm:h-5 text-teal-600 flex-shrink-0" />
+                    <div>
+                      <p className="font-medium text-sm sm:text-base">Comprobante de Domicilio</p>
+                      <p className="text-xs text-muted-foreground">Recibo de luz, agua, telefono (max 3 meses)</p>
                     </div>
                   </div>
                   {documentosPorCategoria.comprobante_domicilio?.[0] ? (
-                    <div className="p-3 rounded bg-green-500/10 border border-green-500/30 flex items-center justify-between">
-                      <span className="text-sm">Comprobante</span>
-                      <Badge variant="outline" className="text-green-600">Cargado</Badge>
+                    <div className="flex items-center justify-between p-2 sm:p-3 rounded bg-green-500/10 border border-green-500/30">
+                      <div className="flex items-center gap-2">
+                        <CheckCircle className="w-4 h-4 text-green-600 flex-shrink-0" />
+                        <span className="text-sm font-medium">Comprobante</span>
+                      </div>
+                      <div className="flex items-center gap-1">
+                        <Button 
+                          variant="ghost" 
+                          size="sm" 
+                          className="h-7 px-2 text-xs"
+                          disabled={loadingDocUrl === documentosPorCategoria.comprobante_domicilio[0].id}
+                          onClick={() => verDocumento(documentosPorCategoria.comprobante_domicilio[0].id)}
+                        >
+                          {loadingDocUrl === documentosPorCategoria.comprobante_domicilio[0].id ? (
+                            <Loader2 className="w-3 h-3 animate-spin" />
+                          ) : (
+                            <Eye className="w-3 h-3" />
+                          )}
+                        </Button>
+                        <Button 
+                          variant="ghost" 
+                          size="sm" 
+                          className="h-7 px-2 text-destructive hover:text-destructive hover:bg-destructive/10"
+                          onClick={() => handleEliminar(documentosPorCategoria.comprobante_domicilio[0].id)}
+                        >
+                          <Trash2 className="w-3 h-3" />
+                        </Button>
+                      </div>
                     </div>
                   ) : (
-                    <Button variant="outline" className="w-full bg-transparent" onClick={() => setShowUploader(true)}>
-                      <Plus className="w-4 h-4 mr-2" />
+                    <Button variant="outline" className="w-full justify-start h-auto py-2 sm:py-3 bg-transparent text-sm" onClick={() => {
+                      setUploaderCategoria('comprobante_domicilio')
+                      setShowUploader(true)
+                    }}>
+                      <Plus className="w-4 h-4 mr-2 flex-shrink-0" />
                       Subir comprobante
                     </Button>
                   )}
@@ -865,27 +1102,115 @@ export default function BovedaPage() {
           setShowUploader(open)
           if (!open) setUploaderCategoria(undefined)
         }}>
-          <DialogContent className="max-w-md p-0 gap-0 overflow-hidden max-h-[90vh]">
+          <DialogContent className="w-[90vw] max-w-[340px] p-0 gap-0 overflow-hidden max-h-[85vh] [&>button]:hidden [&>div]:w-full">
             <DocumentUploader 
               onUploaded={() => {
                 setShowUploader(false)
                 setUploaderCategoria(undefined)
-                loadData()
+                loadData() // Refrescar boveda automaticamente
               }}
               onClose={() => {
                 setShowUploader(false)
                 setUploaderCategoria(undefined)
+                loadData() // Refrescar boveda al cerrar tambien
               }}
               defaultCategoria={uploaderCategoria}
             />
           </DialogContent>
         </Dialog>
         
+        {/* Modal: Escáner OCR */}
+        <Dialog open={showScanner} onOpenChange={setShowScanner}>
+          <DialogContent className="w-[95vw] max-w-[400px] p-0 gap-0 overflow-hidden max-h-[85vh] [&>button]:hidden">
+            <OCRScanner 
+              onClose={() => setShowScanner(false)}
+              onComplete={() => {
+                setShowScanner(false)
+                loadData() // Refrescar bóveda automáticamente
+              }}
+            />
+          </DialogContent>
+        </Dialog>
+        
+        {/* Modal: Escáner inteligente de INE */}
+        <Dialog open={showINEScanner !== null} onOpenChange={(open) => !open && setShowINEScanner(null)}>
+          <DialogContent className="w-[95vw] max-w-[400px] p-0 gap-0 overflow-hidden max-h-[85vh] [&>button]:hidden">
+            {showINEScanner && (
+              <INEScanner 
+                lado={showINEScanner}
+                datosExistentes={ineDataExtraido || undefined}
+                onClose={() => setShowINEScanner(null)}
+                onComplete={async (result) => {
+                  setShowINEScanner(null)
+                  
+                  // Guardar datos extraídos
+                  const newData = result.ineData as DatosINEExtraidos
+                  setIneDataExtraido(prev => prev ? { ...prev, ...newData } : newData)
+                  
+                  // Actualizar perfil con los datos de la INE
+                  if (newData.curp || newData.nombreCompleto || newData.domicilio) {
+                    await actualizarPerfilConINE(newData)
+                  }
+                  
+                  // Refrescar datos
+                  loadData()
+                }}
+              />
+            )}
+          </DialogContent>
+        </Dialog>
+        
         {/* Modal: Visor de documentos */}
-        <Dialog open={visorOpen} onOpenChange={setVisorOpen}>
+        <Dialog open={visorOpen} onOpenChange={(open) => { setVisorOpen(open); if (!open) { setCurrentViewDoc(null); setCurrentDocText(null) } }}>
           <DialogContent className="max-w-4xl w-[95vw] h-[90vh] p-0 overflow-hidden">
             <DialogHeader className="p-4 pb-2 border-b">
-              <DialogTitle>Visualizar Documento</DialogTitle>
+              <div className="flex items-center justify-between">
+                <div className="flex-1 min-w-0 mr-4">
+                  <DialogTitle className="truncate text-base">
+                    {currentViewDoc?.nombre || 'Documento'}
+                  </DialogTitle>
+                  {currentViewDoc && (
+                    <p className="text-xs text-muted-foreground mt-0.5">
+                      {new Date(currentViewDoc.created_at).toLocaleDateString('es-MX', { 
+                        day: 'numeric', month: 'long', year: 'numeric' 
+                      })}
+                    </p>
+                  )}
+                </div>
+                <div className="flex items-center gap-1 shrink-0">
+                  {/* Boton Resumen IA - abre el chat con el documento */}
+                  {currentDocText && (
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="h-8 gap-1.5 text-emerald-600 hover:bg-emerald-50"
+                      onClick={() => {
+                        if (currentViewDoc && currentDocText) {
+                          // Cerrar el visor y abrir el chat con el documento
+                          setVisorOpen(false)
+                          openAIChatWithDocument(currentDocText, currentViewDoc.nombre)
+                        }
+                      }}
+                    >
+                      <Sparkles className="w-4 h-4" />
+                      <span className="text-xs">Resumen IA</span>
+                    </Button>
+                  )}
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="h-8 w-8 p-0 text-blue-600"
+                    onClick={() => {
+                      if (currentViewDoc) {
+                        setRenameDoc({ open: true, docId: currentViewDoc.id, currentName: currentViewDoc.nombre })
+                        setNewDocName(currentViewDoc.nombre)
+                      }
+                    }}
+                  >
+                    <Edit3 className="w-4 h-4" />
+                  </Button>
+                </div>
+              </div>
             </DialogHeader>
             <div className="flex-1 h-full bg-muted">
               {visorUrl && (
@@ -893,22 +1218,22 @@ export default function BovedaPage() {
                   <img 
                     src={visorUrl || "/placeholder.svg"} 
                     alt="Documento"
-                    className="w-full h-[calc(90vh-60px)] object-contain"
+                    className="w-full h-[calc(90vh-80px)] object-contain"
                   />
                 ) : visorTipo?.startsWith('video/') ? (
                   <video 
                     src={visorUrl}
                     controls
-                    className="w-full h-[calc(90vh-60px)]"
+                    className="w-full h-[calc(90vh-80px)]"
                   />
                 ) : visorTipo?.startsWith('audio/') ? (
-                  <div className="flex items-center justify-center h-[calc(90vh-60px)]">
+                  <div className="flex items-center justify-center h-[calc(90vh-80px)]">
                     <audio src={visorUrl} controls className="w-full max-w-md" />
                   </div>
                 ) : (
                   <iframe
                     src={visorUrl}
-                    className="w-full h-[calc(90vh-60px)]"
+                    className="w-full h-[calc(90vh-80px)]"
                     title="Documento"
                   />
                 )
@@ -960,6 +1285,119 @@ export default function BovedaPage() {
               
 
             </div>
+          </DialogContent>
+        </Dialog>
+        
+        {/* AlertDialog: Confirmar eliminacion */}
+        <AlertDialog open={deleteConfirm.open} onOpenChange={(open) => !open && setDeleteConfirm({ open: false, docId: null })}>
+          <AlertDialogContent className="max-w-md">
+            <AlertDialogHeader>
+              <AlertDialogTitle className="flex items-center gap-2">
+                <Trash2 className="w-5 h-5 text-destructive" />
+                Eliminar documento
+              </AlertDialogTitle>
+              <AlertDialogDescription className="text-muted-foreground">
+                {deleteConfirm.docName 
+                  ? `¿Estas seguro de eliminar "${deleteConfirm.docName}"?`
+                  : '¿Estas seguro de eliminar este documento?'
+                }
+                <br />
+                <span className="text-destructive/80 text-sm">Esta accion no se puede deshacer.</span>
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter className="gap-2 sm:gap-0">
+              <AlertDialogCancel 
+                disabled={deleting}
+                className="bg-muted hover:bg-muted/80"
+              >
+                Cancelar
+              </AlertDialogCancel>
+              <AlertDialogAction
+                onClick={confirmarEliminacion}
+                disabled={deleting}
+                className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              >
+                {deleting ? (
+                  <>
+                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                    Eliminando...
+                  </>
+                ) : (
+                  'Eliminar'
+                )}
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
+        
+        {/* Diálogo personalizado para salir a ver caso */}
+        <AlertDialog open={confirmDialog.open} onOpenChange={(open) => setConfirmDialog({ open, casoId: null })}>
+          <AlertDialogContent className="max-w-[340px]">
+            <AlertDialogHeader>
+              <AlertDialogTitle className="flex items-center gap-2 text-base">
+                <ExternalLink className="w-5 h-5 text-blue-600" />
+                Ir a tu caso
+              </AlertDialogTitle>
+              <AlertDialogDescription className="text-sm">
+                Vas a salir de la Bóveda para ver los detalles de tu caso.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter className="flex-row gap-2 sm:gap-2">
+              <AlertDialogCancel className="flex-1 mt-0 bg-muted hover:bg-muted/80">
+                Cancelar
+              </AlertDialogCancel>
+              <AlertDialogAction
+                onClick={() => {
+                  if (confirmDialog.casoId) {
+                    window.location.href = `/caso/${confirmDialog.casoId}`
+                  }
+                }}
+                className="flex-1 bg-blue-600 hover:bg-blue-700"
+              >
+                Ver caso
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
+        
+        {/* Dialog: Renombrar documento */}
+        <Dialog open={renameDoc.open} onOpenChange={(open) => !open && setRenameDoc({ open: false, docId: null, currentName: '' })}>
+          <DialogContent className="max-w-[340px]">
+            <DialogHeader>
+              <DialogTitle className="flex items-center gap-2 text-base">
+                <Edit3 className="w-5 h-5 text-blue-600" />
+                Renombrar documento
+              </DialogTitle>
+            </DialogHeader>
+            <div className="py-2">
+              <label className="text-xs text-muted-foreground mb-1.5 block">Nuevo nombre</label>
+              <input
+                type="text"
+                value={newDocName}
+                onChange={(e) => setNewDocName(e.target.value)}
+                placeholder={renameDoc.currentName}
+                className="w-full px-3 py-2.5 text-sm rounded-lg border-2 bg-white focus:border-blue-400 outline-none"
+                autoFocus
+              />
+            </div>
+            <DialogFooter className="flex-row gap-2">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setRenameDoc({ open: false, docId: null, currentName: '' })}
+                className="flex-1 bg-transparent"
+              >
+                Cancelar
+              </Button>
+              <Button
+                size="sm"
+                onClick={handleRename}
+                disabled={renaming || !newDocName.trim()}
+                className="flex-1 bg-blue-600 hover:bg-blue-700"
+              >
+                {renaming ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Guardar'}
+              </Button>
+            </DialogFooter>
           </DialogContent>
         </Dialog>
       </div>

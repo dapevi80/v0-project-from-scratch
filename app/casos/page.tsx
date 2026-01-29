@@ -29,12 +29,20 @@ import {
   Gavel,
   FileCheck,
   FolderOpen,
-  Loader2
+  Loader2,
+  Plus,
+  Lock,
+  ShieldCheck,
+  Calculator
 } from 'lucide-react'
 import { 
   obtenerMisCasos, 
   obtenerEstadisticasCasos,
   archivarCaso,
+  verificarAccesoCasos,
+  verificarLimitesUsuario
+} from './actions'
+import {
   categoriaLabels,
   categoriaColors,
   formatCurrency,
@@ -42,7 +50,7 @@ import {
   calcularDiasPrescripcion,
   calcularPorcentajeOferta,
   type Caso
-} from './actions'
+} from './helpers'
 import { AyudaUrgenteButton } from '@/components/ayuda-urgente-button'
 
 // Iconos por categoria
@@ -71,9 +79,24 @@ export default function CasosPage() {
   const [busqueda, setBusqueda] = useState('')
   const [categoriaActiva, setCategoriaActiva] = useState('todos')
   const [archivando, setArchivando] = useState<string | null>(null)
+  const [acceso, setAcceso] = useState<{ tieneAcceso: boolean; razon?: string; mensaje?: string; esAbogado?: boolean } | null>(null)
+  const [limites, setLimites] = useState<{ puedeCrearCaso: boolean; casosActivos: number; maxCasos: number } | null>(null)
 
   const cargarDatos = useCallback(async () => {
     setLoading(true)
+    
+    // Primero verificar acceso
+    const accesoRes = await verificarAccesoCasos()
+    setAcceso(accesoRes)
+    
+    if (!accesoRes.tieneAcceso) {
+      setLoading(false)
+      return
+    }
+    
+    // Verificar limites
+    const limitesRes = await verificarLimitesUsuario()
+    if (limitesRes.data) setLimites(limitesRes.data)
     
     const [casosRes, statsRes] = await Promise.all([
       obtenerMisCasos({ 
@@ -129,13 +152,62 @@ export default function CasosPage() {
     { key: 'archivado', label: 'Archivados', icon: Archive }
   ]
 
+  // Vista cuando no tiene acceso (usuarios guest)
+  if (acceso && !acceso.tieneAcceso) {
+    return (
+      <div className="min-h-screen bg-background">
+        <header className="border-b bg-card sticky top-0 z-50">
+          <div className="container max-w-4xl mx-auto px-3 sm:px-4 py-3 flex items-center justify-between">
+            <div className="flex items-center gap-2 sm:gap-3">
+              <Link href="/boveda" className="p-1.5 hover:bg-muted rounded-lg transition-colors">
+                <ArrowLeft className="w-5 h-5" />
+              </Link>
+              <div className="flex items-center gap-2">
+                <Briefcase className="w-5 h-5 text-primary" />
+                <span className="font-semibold text-sm sm:text-base">Mis Casos</span>
+              </div>
+            </div>
+            <AyudaUrgenteButton />
+          </div>
+        </header>
+        <div className="container max-w-md mx-auto px-4 py-12">
+          <Card className="text-center border-amber-200 bg-amber-50/50">
+            <CardContent className="py-12">
+              <div className="w-16 h-16 rounded-full bg-amber-100 flex items-center justify-center mx-auto mb-4">
+                <Lock className="w-8 h-8 text-amber-600" />
+              </div>
+              <h2 className="text-xl font-bold mb-2">Acceso Restringido</h2>
+              <p className="text-muted-foreground mb-6">
+                {acceso.mensaje || 'Para acceder a tus casos necesitas verificar tu cuenta.'}
+              </p>
+              <div className="space-y-3">
+                <Button asChild className="w-full">
+                  <Link href="/boveda">
+                    <ShieldCheck className="w-4 h-4 mr-2" />
+                    Verificar mi cuenta
+                  </Link>
+                </Button>
+                <Button asChild variant="outline" className="w-full bg-transparent">
+                  <Link href="/calculadora">
+                    <Calculator className="w-4 h-4 mr-2" />
+                    Calcular mi liquidacion
+                  </Link>
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      </div>
+    )
+  }
+
   return (
     <div className="min-h-screen bg-background">
       {/* Header */}
       <header className="border-b bg-card sticky top-0 z-50">
         <div className="container max-w-4xl mx-auto px-3 sm:px-4 py-3 flex items-center justify-between">
           <div className="flex items-center gap-2 sm:gap-3">
-            <Link href="/dashboard" className="p-1.5 hover:bg-muted rounded-lg transition-colors">
+            <Link href="/boveda" className="p-1.5 hover:bg-muted rounded-lg transition-colors">
               <ArrowLeft className="w-5 h-5" />
             </Link>
             <div className="flex items-center gap-2">
@@ -143,7 +215,18 @@ export default function CasosPage() {
               <span className="font-semibold text-sm sm:text-base">Mis Casos</span>
             </div>
           </div>
-          <AyudaUrgenteButton />
+          <div className="flex items-center gap-2">
+            {/* Boton Crear Caso Nuevo */}
+            {limites?.puedeCrearCaso && (
+              <Button asChild size="sm" className="gap-1.5">
+                <Link href="/calculadora">
+                  <Plus className="w-4 h-4" />
+                  <span className="hidden sm:inline">Nuevo Caso</span>
+                </Link>
+              </Button>
+            )}
+            <AyudaUrgenteButton />
+          </div>
         </div>
       </header>
 

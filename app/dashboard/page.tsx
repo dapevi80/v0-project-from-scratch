@@ -1,9 +1,9 @@
 'use client'
 
-import { useSearchParams, useRouter } from "next/navigation"
-
+import { useRouter } from "next/navigation"
 import { useEffect, useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
+import { useAuth } from '@/lib/auth/auth-provider'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -14,102 +14,63 @@ import { AyudaUrgenteButton } from '@/components/ayuda-urgente-button'
 import { Lock } from 'lucide-react'
 import { CryptoWallet } from '@/components/wallet/crypto-wallet'
 import { VerificacionCelebration } from '@/components/verificacion-celebration'
-import type { User } from '@supabase/supabase-js'
+import { DowngradeAlert } from '@/components/downgrade-alert'
+import { UpgradeAlert } from '@/components/upgrade-alert'
+import { DashboardSkeleton } from '@/components/ui/dashboard-skeleton'
 
 export default function DashboardPage() {
   const router = useRouter()
-  const [user, setUser] = useState<User | null>(null)
-  const [profile, setProfile] = useState<{ role?: string; full_name?: string; codigo_usuario?: string; is_verified?: boolean } | null>(null)
+  const { user, profile, loading, isGuest, role, refreshProfile } = useAuth()
   const [casosActivos, setCasosActivos] = useState(0)
-  const [loading, setLoading] = useState(true)
   const [showVerifiedEffect, setShowVerifiedEffect] = useState(false)
+  const [casosLoaded, setCasosLoaded] = useState(false)
 
+  // Redirigir segun rol
   useEffect(() => {
-    let retries = 0
-    const maxRetries = 2
+    if (loading || !profile) return
     
-    async function loadUser() {
-      try {
-        const supabase = createClient()
-        const { data: { user: currentUser }, error: authError } = await supabase.auth.getUser()
-        
-        if (authError) {
-          // Si hay error de auth y aun tenemos reintentos, reintentar
-          if (retries < maxRetries && authError.message?.includes('fetch')) {
-            retries++
-            await new Promise(r => setTimeout(r, 1000 * retries))
-            return loadUser()
-          }
-          // Si no hay sesion o fallo, continuar como invitado
-          setLoading(false)
-          return
-        }
-        
-        if (currentUser) {
-          setUser(currentUser)
-          
-          const { data: profileData } = await supabase
-            .from('profiles')
-            .select('*')
-            .eq('id', currentUser.id)
-            .single()
-          
-          if (profileData) {
-            setProfile(profileData)
-            
-            // Redirigir segun el rol
-            const userRole = profileData.role
-            
-            // Abogados (verificados o no) van al dashboard de abogado
-            if (userRole === 'guestlawyer' || userRole === 'lawyer') {
-              router.replace('/abogado/dashboard')
-              return
-            }
-            
-            // Admin y superadmin van a panel de admin
-            if (userRole === 'admin' || userRole === 'superadmin') {
-              router.replace('/admin')
-              return
-            }
-            
-            // Verificar si es usuario verificado que aún no ha visto la celebración
-            const isNewlyVerified = profileData.is_verified && 
-                                    profileData.role === 'worker' && 
-                                    !profileData.celebration_shown
-            
-            if (isNewlyVerified) {
-              // Mostrar celebración y marcarla como vista
-              setShowVerifiedEffect(true)
-              
-              // Actualizar en BD para no mostrar de nuevo
-              await supabase
-                .from('profiles')
-                .update({ celebration_shown: true })
-                .eq('id', currentUser.id)
-            }
-          }
-          
-          const { count } = await supabase
-            .from('calculos_liquidacion')
-            .select('*', { count: 'exact', head: true })
-            .eq('user_id', currentUser.id)
-          
-          if (count && count > 0) {
-            setCasosActivos(count)
-          }
-        }
-      } catch {
-        // Error de conexión - continuar como invitado
-      } finally {
-        setLoading(false)
-      }
+    const userRole = profile.role
+    
+    // Abogados van al dashboard de abogado
+    if (userRole === 'guestlawyer' || userRole === 'lawyer') {
+      router.replace('/abogado/dashboard')
+      return
     }
+    
+    // Admin y superadmin van a panel de admin
+    if (userRole === 'admin' || userRole === 'superadmin') {
+      router.replace('/admin')
+      return
+    }
+    
+    // Verificar celebracion pendiente
+    if (profile.verification_status === 'verified' && profile.role === 'worker' && !profile.celebration_shown) {
+      setShowVerifiedEffect(true)
+      // Actualizar sin bloquear
+      const supabase = createClient()
+      supabase.from('profiles').update({ celebration_shown: true }).eq('id', profile.id)
+    }
+  }, [loading, profile, router])
 
-    loadUser()
-  }, [])
+  // Cargar casos activos (solo una vez)
+  useEffect(() => {
+    if (!user || casosLoaded) return
+    
+    const supabase = createClient()
+    supabase
+      .from('calculos_liquidacion')
+      .select('*', { count: 'exact', head: true })
+      .eq('user_id', user.id)
+      .then(({ count }) => {
+        if (count) setCasosActivos(count)
+        setCasosLoaded(true)
+      })
+  }, [user, casosLoaded])
 
-  const isGuest = !user
-  const role = user?.user_metadata?.role || profile?.role || 'guest'
+  // Mostrar skeleton mientras carga
+  if (loading) {
+    return <DashboardSkeleton />
+  }
 
   // Herramientas gratuitas disponibles para todos
   const freeTools = [
@@ -213,6 +174,16 @@ export default function DashboardPage() {
       {/* Main content */}
       <main className="container mx-auto px-3 sm:px-4 py-4 sm:py-8">
         <div className="space-y-6 sm:space-y-8">
+          {/* Alerta de upgrade si aplica (mostrar celebracion de upgrade reciente) */}
+          {profile?.verification_status === 'verified' && !profile?.celebration_shown && profile?.upgrade_at && (
+            <UpgradeAlert userId={user?.id} />
+          )}
+
+          {/* Alerta de downgrade si aplica */}
+          {profile?.verification_status === 'documents_missing' && (
+            <DowngradeAlert userId={user?.id} />
+          )}
+
           {/* Perfil de usuario */}
           <UserProfileCard
             userId={user?.id}
@@ -221,7 +192,8 @@ export default function DashboardPage() {
             codigoUsuario={profile?.codigo_usuario}
             fullName={profile?.full_name}
             role={role}
-            isVerified={profile?.is_verified || role === 'worker' || role === 'lawyer'}
+            isVerified={profile?.verification_status === 'verified' || role === 'worker' || role === 'lawyer'}
+            verificationStatus={profile?.verification_status || 'none'}
             casosActivos={casosActivos}
           />
 

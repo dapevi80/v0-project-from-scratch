@@ -13,6 +13,7 @@ import { TEST_USERS } from '@/lib/types'
 import { Eye, EyeOff, Mail, Lock, User, ArrowRight, CheckCircle2, Shield, Scale, Loader2, Home, Calculator, AlertTriangle } from 'lucide-react'
 import { registrarUsuarioGuest, loginUsuario } from './actions'
 import { AyudaUrgenteFlow } from '@/components/ayuda-urgente-flow'
+import { createClient } from '@/lib/supabase/client'
 
 // Key para guardar credenciales guest en localStorage
 const GUEST_CREDENTIALS_KEY = 'mc_guest_credentials'
@@ -40,6 +41,13 @@ export default function AccesoPage() {
     if (searchParams.get('reason') === 'inactivity') {
       setShowInactivityAlert(true)
       // Limpiar el parametro de la URL sin recargar
+      window.history.replaceState({}, '', '/acceso')
+    }
+    // Abrir tab de registro si viene con parametro tab=registro
+    const tab = searchParams.get('tab')
+    if (tab === 'registro') {
+      setActiveTab('registro')
+      // Limpiar parametro de URL
       window.history.replaceState({}, '', '/acceso')
     }
   }, [searchParams])
@@ -74,13 +82,16 @@ export default function AccesoPage() {
 
   // Verificar si ya hay sesion activa (solo redirige si hay sesion, NO auto-login)
   useEffect(() => {
+    let isMounted = true
+    
     const checkSession = async () => {
       try {
-        const { createClient } = await import('@/lib/supabase/client')
         const supabase = createClient()
         
         // Verificar si ya hay sesion activa
         const { data: { session } } = await supabase.auth.getSession()
+        
+        if (!isMounted) return
         
         if (session) {
           window.location.href = '/dashboard'
@@ -101,14 +112,18 @@ export default function AccesoPage() {
           }
         }
       } catch (err) {
-        console.error('Session check error:', err)
+        // Ignorar errores de abort cuando el componente se desmonta
+        if (err instanceof Error && err.name === 'AbortError') return
+        if (isMounted) console.error('Session check error:', err)
       } finally {
-        setCheckingSession(false)
+        if (isMounted) setCheckingSession(false)
       }
     }
     
     checkSession()
-  }, [router])
+    
+    return () => { isMounted = false }
+  }, [])
 
   // Funcion para acceso rapido con cuenta guardada
   const handleQuickLogin = async () => {
@@ -118,7 +133,6 @@ export default function AccesoPage() {
     setError(null)
     
     try {
-      const { createClient } = await import('@/lib/supabase/client')
       const supabase = createClient()
       
       const { error } = await supabase.auth.signInWithPassword({

@@ -6,21 +6,9 @@ import { useRouter } from 'next/navigation'
 import { Card, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
-import { 
-  Users, 
-  Briefcase, 
-  Scale, 
-  ChevronRight,
-  FileText,
-  Settings,
-  Building2,
-  UserCheck,
-  LogOut,
-  Shield,
-  FolderOpen,
-  TrendingUp
-} from 'lucide-react'
+import { LogOut, Terminal } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
+import { MatrixRain } from '@/components/ui/matrix-rain'
 import { useInactivityLogout } from '@/hooks/use-inactivity-logout'
 import { type UserRole } from '@/lib/types'
 
@@ -47,7 +35,6 @@ export default function AdminDashboardPage() {
   const [loading, setLoading] = useState(true)
   const [data, setData] = useState<AdminData | null>(null)
   
-  // Auto-logout por inactividad para usuarios verificados
   useInactivityLogout({ 
     userRole: (data?.profile?.role as UserRole) || null,
     enabled: !loading && !!data
@@ -67,7 +54,6 @@ export default function AdminDashboardPage() {
       return
     }
 
-    // Obtener perfil
     const { data: profile } = await supabase
       .from('profiles')
       .select('id, full_name, email, role')
@@ -79,7 +65,6 @@ export default function AdminDashboardPage() {
       return
     }
 
-    // Obtener estadisticas
     const [
       { count: totalUsuarios },
       { count: totalCotizaciones },
@@ -120,19 +105,19 @@ export default function AdminDashboardPage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gradient-to-b from-slate-50 to-white flex items-center justify-center">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary" />
+      <div className="min-h-screen bg-black flex items-center justify-center">
+        <div className="text-green-500 font-mono animate-pulse">Cargando sistema...</div>
       </div>
     )
   }
 
   if (!data) {
     return (
-      <div className="min-h-screen bg-gradient-to-b from-slate-50 to-white flex items-center justify-center">
-        <Card className="max-w-sm">
+      <div className="min-h-screen bg-black flex items-center justify-center">
+        <Card className="max-w-sm bg-black border-red-500">
           <CardContent className="p-6 text-center">
-            <p className="text-slate-600">No tienes permisos de administrador</p>
-            <Button className="mt-4" onClick={() => router.push('/dashboard')}>
+            <p className="text-red-500 font-mono">Acceso denegado</p>
+            <Button className="mt-4 bg-green-600 hover:bg-green-700" onClick={() => router.push('/dashboard')}>
               Volver
             </Button>
           </CardContent>
@@ -141,233 +126,219 @@ export default function AdminDashboardPage() {
     )
   }
 
+  // Herramientas comunes (abogado)
+  const commonTools = [
+    { name: 'Mis Casos', href: '/abogado/casos', emoji: '⚖️', description: 'Gestiona casos asignados' },
+    { name: 'Mis Referidos', href: '/abogado/referidos', emoji: '🔗', description: 'Red de comisiones' },
+    { name: 'Calculadora', href: '/calculadora', emoji: '🧮', description: 'Calcula liquidaciones' },
+    { name: 'Boveda', href: '/boveda', emoji: '🔐', description: 'Documentos seguros' },
+  ]
+
+  // Herramientas admin
+  const adminTools = [
+    { name: 'Leads', href: '/abogado/leads', emoji: '📋', description: 'Cotizaciones nuevas', badge: data.stats.cotizacionesNuevas },
+    { name: 'Verificar Abogados', href: '/admin/solicitudes-abogados', emoji: '🛡️', description: 'Aprobar solicitudes', badge: data.stats.abogadosPendientes },
+    { name: 'Usuarios', href: '/admin/usuarios', emoji: '👥', description: 'Gestionar usuarios' },
+    { name: 'Casos Activos', href: '/admin/casos', emoji: '📂', description: 'Todos los casos' },
+  ]
+
+  // Herramientas EXCLUSIVAS superadmin
+  const superAdminTools = [
+    { name: 'Bug Reports', href: '/admin/bug-reports', emoji: '🐛', description: 'Reportes usuarios' },
+    { name: 'Diagnostico CCL', href: '/admin/ccl-diagnostico', emoji: '🔬', description: 'Test 33 portales' },
+    { name: 'Cobros', href: '/admin/cobros', emoji: '💳', description: 'Suscripciones' },
+    { name: 'Facturacion SAT', href: '/admin/facturacion', emoji: '🧾', description: 'CFDI y facturas' },
+    { name: 'Wallet', href: '/admin/wallet', emoji: '🪙', description: 'Fichas y recargas' },
+    { name: 'Reportes', href: '/admin/reportes', emoji: '📊', description: 'Analytics' },
+    { name: 'Config', href: '/admin/config', emoji: '⚙️', description: 'Sistema' },
+  ]
+
   return (
-    <div className="min-h-screen bg-gradient-to-b from-slate-50 to-white">
+    <div className={`min-h-screen relative ${data.isSuperAdmin ? 'bg-black' : 'bg-gradient-to-b from-slate-50 to-white'}`}>
+      {/* Matrix Rain Background for SuperAdmin */}
+      {data.isSuperAdmin && <MatrixRain />}
+      
       {/* Header */}
-      <header className="bg-white border-b sticky top-0 z-40">
-        <div className="container mx-auto px-4 py-4">
+      <header className={`border-b sticky top-0 z-40 ${data.isSuperAdmin ? 'bg-black/95 border-green-900' : 'bg-white'}`}>
+        <div className="container mx-auto px-3 sm:px-4 py-2 sm:py-4">
           <div className="flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${
-                data.isSuperAdmin 
-                  ? 'bg-gradient-to-br from-red-500 to-red-600' 
-                  : 'bg-gradient-to-br from-purple-500 to-purple-600'
-              }`}>
-                <Shield className="w-5 h-5 text-white" />
-              </div>
+            <div className="flex items-center gap-2 sm:gap-3">
+              {data.isSuperAdmin ? (
+                <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-lg bg-green-950 border border-green-600 flex items-center justify-center">
+                  <Terminal className="w-4 h-4 sm:w-5 sm:h-5 text-green-400" />
+                </div>
+              ) : (
+                <span className="text-2xl sm:text-3xl">🛡️</span>
+              )}
               <div>
-                <h1 className="font-bold text-lg text-slate-800">
-                  {data.isSuperAdmin ? 'Super Admin' : 'Administrador'}
+                <h1 className={`font-bold text-sm sm:text-lg ${data.isSuperAdmin ? 'text-green-400 font-mono' : 'text-slate-800'}`}>
+                  {data.isSuperAdmin ? 'SUPERADMIN' : 'Admin'}
                 </h1>
-                <p className="text-xs text-slate-500">{data.profile.full_name}</p>
+                <p className={`text-[10px] sm:text-xs ${data.isSuperAdmin ? 'text-green-600 font-mono' : 'text-slate-500'} hidden sm:block`}>
+                  {data.profile.full_name}
+                </p>
               </div>
             </div>
             <Button 
               variant="ghost" 
               size="sm" 
               onClick={handleLogout}
-              className="text-slate-600 hover:text-slate-800"
+              className={`px-2 sm:px-3 ${data.isSuperAdmin ? 'text-green-500 hover:text-green-400 hover:bg-green-950' : 'text-slate-600 hover:text-slate-800'}`}
             >
-              <LogOut className="w-4 h-4 mr-2" />
-              Salir
+              <LogOut className="w-4 h-4" />
+              <span className="hidden sm:inline ml-2">Salir</span>
             </Button>
           </div>
         </div>
       </header>
 
-      <main className="container mx-auto px-4 py-6 space-y-6 max-w-2xl">
+      <main className="container mx-auto px-3 sm:px-4 py-4 sm:py-6 space-y-4 sm:space-y-6 max-w-2xl">
         {/* Badge de rol */}
         <div className="flex justify-center">
-          <Badge className={`${
-            data.isSuperAdmin 
-              ? 'bg-red-100 text-red-700' 
-              : 'bg-purple-100 text-purple-700'
-          }`}>
-            {data.isSuperAdmin ? 'Super Administrador' : 'Administrador'}
-          </Badge>
+          {data.isSuperAdmin ? (
+            <Badge className="bg-green-950 text-green-400 border border-green-600 font-mono px-2 sm:px-4 py-1 text-[10px] sm:text-xs">
+              ROOT ACCESS
+            </Badge>
+          ) : (
+            <Badge className="bg-purple-100 text-purple-700">
+              Administrador
+            </Badge>
+          )}
         </div>
 
         {/* Stats Cards */}
-        <div className="grid grid-cols-2 gap-3">
-          <Card className="bg-gradient-to-br from-blue-50 to-white border-blue-100">
-            <CardContent className="p-4">
-              <div className="flex items-center gap-2 mb-1">
-                <Users className="w-4 h-4 text-blue-600" />
-                <span className="text-xs text-slate-500">Usuarios</span>
-              </div>
-              <p className="text-2xl font-bold text-slate-800">{data.stats.totalUsuarios}</p>
+        <div className={`grid grid-cols-2 sm:grid-cols-4 gap-1.5 sm:gap-2 ${data.isSuperAdmin ? 'font-mono' : ''}`}>
+          <Card className={data.isSuperAdmin ? 'bg-black border-green-900' : 'bg-gradient-to-br from-blue-50 to-white border-blue-100'}>
+            <CardContent className="p-2 sm:p-3 text-center">
+              <p className={`text-lg sm:text-2xl font-bold ${data.isSuperAdmin ? 'text-green-400' : 'text-blue-600'}`}>
+                {data.stats.totalUsuarios}
+              </p>
+              <p className={`text-[9px] sm:text-[10px] ${data.isSuperAdmin ? 'text-green-700' : 'text-slate-500'}`}>Usuarios</p>
             </CardContent>
           </Card>
-          
-          <Card className="bg-gradient-to-br from-amber-50 to-white border-amber-100">
-            <CardContent className="p-4">
-              <div className="flex items-center gap-2 mb-1">
-                <FolderOpen className="w-4 h-4 text-amber-600" />
-                <span className="text-xs text-slate-500">Cotizaciones</span>
-              </div>
-              <p className="text-2xl font-bold text-slate-800">{data.stats.totalCotizaciones}</p>
-              {data.stats.cotizacionesNuevas > 0 && (
-                <p className="text-xs text-amber-600">{data.stats.cotizacionesNuevas} nuevas</p>
-              )}
+          <Card className={data.isSuperAdmin ? 'bg-black border-green-900' : 'bg-gradient-to-br from-amber-50 to-white border-amber-100'}>
+            <CardContent className="p-2 sm:p-3 text-center">
+              <p className={`text-lg sm:text-2xl font-bold ${data.isSuperAdmin ? 'text-green-400' : 'text-amber-600'}`}>
+                {data.stats.totalCotizaciones}
+              </p>
+              <p className={`text-[9px] sm:text-[10px] ${data.isSuperAdmin ? 'text-green-700' : 'text-slate-500'}`}>Leads</p>
             </CardContent>
           </Card>
-          
-          <Card className="bg-gradient-to-br from-green-50 to-white border-green-100">
-            <CardContent className="p-4">
-              <div className="flex items-center gap-2 mb-1">
-                <Briefcase className="w-4 h-4 text-green-600" />
-                <span className="text-xs text-slate-500">Casos</span>
-              </div>
-              <p className="text-2xl font-bold text-slate-800">{data.stats.totalCasos}</p>
+          <Card className={data.isSuperAdmin ? 'bg-black border-green-900' : 'bg-gradient-to-br from-green-50 to-white border-green-100'}>
+            <CardContent className="p-2 sm:p-3 text-center">
+              <p className={`text-lg sm:text-2xl font-bold ${data.isSuperAdmin ? 'text-green-400' : 'text-green-600'}`}>
+                {data.stats.totalCasos}
+              </p>
+              <p className={`text-[9px] sm:text-[10px] ${data.isSuperAdmin ? 'text-green-700' : 'text-slate-500'}`}>Casos</p>
             </CardContent>
           </Card>
-          
-          <Card className="bg-gradient-to-br from-purple-50 to-white border-purple-100">
-            <CardContent className="p-4">
-              <div className="flex items-center gap-2 mb-1">
-                <Scale className="w-4 h-4 text-purple-600" />
-                <span className="text-xs text-slate-500">Abogados</span>
-              </div>
-              <p className="text-2xl font-bold text-slate-800">{data.stats.totalAbogados}</p>
-              {data.stats.abogadosPendientes > 0 && (
-                <p className="text-xs text-purple-600">{data.stats.abogadosPendientes} pendientes</p>
-              )}
+          <Card className={data.isSuperAdmin ? 'bg-black border-green-900' : 'bg-gradient-to-br from-purple-50 to-white border-purple-100'}>
+            <CardContent className="p-2 sm:p-3 text-center">
+              <p className={`text-lg sm:text-2xl font-bold ${data.isSuperAdmin ? 'text-green-400' : 'text-purple-600'}`}>
+                {data.stats.totalAbogados}
+              </p>
+              <p className={`text-[9px] sm:text-[10px] ${data.isSuperAdmin ? 'text-green-700' : 'text-slate-500'}`}>Abogados</p>
             </CardContent>
           </Card>
         </div>
 
-        {/* Menu de opciones */}
-        <div className="space-y-3">
-          <h2 className="text-sm font-medium text-slate-500 px-1">Gestion</h2>
-          
-          {/* Leads / Cotizaciones */}
-          <Card className="hover:shadow-md transition-shadow">
-            <CardContent className="p-4">
-              <Link href="/abogado/leads" className="flex items-center gap-4">
-                <div className="w-12 h-12 rounded-lg bg-gradient-to-br from-amber-500 to-orange-600 flex items-center justify-center">
-                  <FolderOpen className="w-6 h-6 text-white" />
-                </div>
-                <div className="flex-1">
-                  <div className="flex items-center gap-2">
-                    <h3 className="font-medium text-slate-800">Leads / Cotizaciones</h3>
-                    {data.stats.cotizacionesNuevas > 0 && (
-                      <Badge className="bg-amber-100 text-amber-700 text-xs">
-                        {data.stats.cotizacionesNuevas}
-                      </Badge>
-                    )}
-                  </div>
-                  <p className="text-xs text-slate-500">Ver y asignar cotizaciones a abogados</p>
-                </div>
-                <ChevronRight className="w-5 h-5 text-slate-400" />
+        {/* Herramientas comunes */}
+        <div>
+          <h2 className={`text-sm font-medium mb-3 px-1 ${data.isSuperAdmin ? 'text-green-600 font-mono' : 'text-slate-500'}`}>
+            {data.isSuperAdmin ? '> TOOLS' : 'Herramientas'}
+          </h2>
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+            {commonTools.map((tool) => (
+              <Link key={tool.name} href={tool.href}>
+                <Card className={`h-full transition-all cursor-pointer ${
+                  data.isSuperAdmin 
+                    ? 'bg-black border-green-900 hover:border-green-500 hover:bg-green-950/30' 
+                    : 'hover:shadow-md hover:border-primary'
+                }`}>
+                  <CardContent className="p-3 flex flex-col items-center text-center gap-1">
+                    <span className="text-2xl">{tool.emoji}</span>
+                    <p className={`font-medium text-xs ${data.isSuperAdmin ? 'text-green-400 font-mono' : 'text-foreground'}`}>
+                      {tool.name}
+                    </p>
+                  </CardContent>
+                </Card>
               </Link>
-            </CardContent>
-          </Card>
-
-          {/* Casos Activos */}
-          <Card className="hover:shadow-md transition-shadow">
-            <CardContent className="p-4">
-              <Link href="/admin/casos" className="flex items-center gap-4">
-                <div className="w-12 h-12 rounded-lg bg-gradient-to-br from-blue-500 to-blue-600 flex items-center justify-center">
-                  <Briefcase className="w-6 h-6 text-white" />
-                </div>
-                <div className="flex-1">
-                  <h3 className="font-medium text-slate-800">Casos Activos</h3>
-                  <p className="text-xs text-slate-500">Gestionar casos en proceso</p>
-                </div>
-                <ChevronRight className="w-5 h-5 text-slate-400" />
-              </Link>
-            </CardContent>
-          </Card>
-
-          {/* Verificar Abogados */}
-          <Card className="hover:shadow-md transition-shadow">
-            <CardContent className="p-4">
-              <Link href="/admin/solicitudes-abogados" className="flex items-center gap-4">
-                <div className="w-12 h-12 rounded-lg bg-gradient-to-br from-purple-500 to-purple-600 flex items-center justify-center">
-                  <Scale className="w-6 h-6 text-white" />
-                </div>
-                <div className="flex-1">
-                  <div className="flex items-center gap-2">
-                    <h3 className="font-medium text-slate-800">Verificar Abogados</h3>
-                    {data.stats.abogadosPendientes > 0 && (
-                      <Badge className="bg-purple-100 text-purple-700 text-xs">
-                        {data.stats.abogadosPendientes}
-                      </Badge>
-                    )}
-                  </div>
-                  <p className="text-xs text-slate-500">Aprobar solicitudes de abogados</p>
-                </div>
-                <ChevronRight className="w-5 h-5 text-slate-400" />
-              </Link>
-            </CardContent>
-          </Card>
-
-          {/* Usuarios */}
-          <Card className="hover:shadow-md transition-shadow">
-            <CardContent className="p-4">
-              <Link href="/admin/usuarios" className="flex items-center gap-4">
-                <div className="w-12 h-12 rounded-lg bg-gradient-to-br from-slate-500 to-slate-600 flex items-center justify-center">
-                  <Users className="w-6 h-6 text-white" />
-                </div>
-                <div className="flex-1">
-                  <h3 className="font-medium text-slate-800">Usuarios</h3>
-                  <p className="text-xs text-slate-500">Gestionar todos los usuarios</p>
-                </div>
-                <ChevronRight className="w-5 h-5 text-slate-400" />
-              </Link>
-            </CardContent>
-          </Card>
-
-          {/* Solo para superadmin */}
-          {data.isSuperAdmin && (
-            <>
-              <h2 className="text-sm font-medium text-slate-500 px-1 mt-6">Super Admin</h2>
-              
-              {/* Configuracion */}
-              <Card className="hover:shadow-md transition-shadow">
-                <CardContent className="p-4">
-                  <Link href="/admin/config" className="flex items-center gap-4">
-                    <div className="w-12 h-12 rounded-lg bg-gradient-to-br from-red-500 to-red-600 flex items-center justify-center">
-                      <Settings className="w-6 h-6 text-white" />
-                    </div>
-                    <div className="flex-1">
-                      <h3 className="font-medium text-slate-800">Configuracion</h3>
-                      <p className="text-xs text-slate-500">Ajustes del sistema</p>
-                    </div>
-                    <ChevronRight className="w-5 h-5 text-slate-400" />
-                  </Link>
-                </CardContent>
-              </Card>
-              
-              {/* Reportes */}
-              <Card className="hover:shadow-md transition-shadow">
-                <CardContent className="p-4">
-                  <Link href="/admin/reportes" className="flex items-center gap-4">
-                    <div className="w-12 h-12 rounded-lg bg-gradient-to-br from-emerald-500 to-emerald-600 flex items-center justify-center">
-                      <TrendingUp className="w-6 h-6 text-white" />
-                    </div>
-                    <div className="flex-1">
-                      <h3 className="font-medium text-slate-800">Reportes</h3>
-                      <p className="text-xs text-slate-500">Estadisticas y metricas</p>
-                    </div>
-                    <ChevronRight className="w-5 h-5 text-slate-400" />
-                  </Link>
-                </CardContent>
-              </Card>
-            </>
-          )}
-        </div>
-      </main>
-
-      {/* Footer */}
-      <footer className="border-t bg-white mt-8">
-        <div className="container mx-auto px-4 py-4 max-w-2xl">
-          <div className="flex items-center justify-center gap-6 text-xs text-slate-400">
-            <span>mecorrieron.mx</span>
-            <span>Panel de {data.isSuperAdmin ? 'Super Admin' : 'Admin'}</span>
+            ))}
           </div>
         </div>
-      </footer>
+
+        {/* Herramientas admin */}
+        <div>
+          <h2 className={`text-sm font-medium mb-3 px-1 ${data.isSuperAdmin ? 'text-green-600 font-mono' : 'text-slate-500'}`}>
+            {data.isSuperAdmin ? '> ADMIN' : 'Administracion'}
+          </h2>
+          <div className="grid grid-cols-2 gap-2">
+            {adminTools.map((tool) => (
+              <Link key={tool.name} href={tool.href}>
+                <Card className={`h-full transition-all cursor-pointer ${
+                  data.isSuperAdmin 
+                    ? 'bg-black border-green-900 hover:border-green-500 hover:bg-green-950/30' 
+                    : 'hover:shadow-md hover:border-primary'
+                }`}>
+                  <CardContent className="p-3 flex flex-col items-center text-center gap-1 relative">
+                    {tool.badge && tool.badge > 0 && (
+                      <Badge className={`absolute -top-1 -right-1 text-[10px] px-1.5 ${
+                        data.isSuperAdmin ? 'bg-green-600 text-black' : 'bg-red-500 text-white'
+                      }`}>
+                        {tool.badge}
+                      </Badge>
+                    )}
+                    <span className="text-2xl">{tool.emoji}</span>
+                    <p className={`font-medium text-xs ${data.isSuperAdmin ? 'text-green-400 font-mono' : 'text-foreground'}`}>
+                      {tool.name}
+                    </p>
+                    <p className={`text-[10px] ${data.isSuperAdmin ? 'text-green-700' : 'text-muted-foreground'}`}>
+                      {tool.description}
+                    </p>
+                  </CardContent>
+                </Card>
+              </Link>
+            ))}
+          </div>
+        </div>
+
+        {/* Herramientas EXCLUSIVAS superadmin */}
+        {data.isSuperAdmin && (
+          <div>
+            <h2 className="text-sm font-medium mb-3 px-1 text-green-500 font-mono flex items-center gap-2">
+              <span className="animate-pulse">{'>'}</span> ROOT_ACCESS
+            </h2>
+            <div className="grid grid-cols-3 gap-2">
+              {superAdminTools.map((tool) => (
+                <Link key={tool.name} href={tool.href}>
+                  <Card className="h-full transition-all cursor-pointer bg-green-950/50 border-green-600 hover:border-green-400 hover:bg-green-900/50 hover:shadow-[0_0_15px_rgba(0,255,0,0.3)]">
+                    <CardContent className="p-3 flex flex-col items-center text-center gap-1">
+                      <span className="text-xl">{tool.emoji}</span>
+                      <p className="font-mono font-medium text-[10px] text-green-300">
+                        {tool.name}
+                      </p>
+                    </CardContent>
+                  </Card>
+                </Link>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* Terminal footer solo para superadmin */}
+        {data.isSuperAdmin && (
+          <div className="mt-8 p-3 bg-black border border-green-900 rounded-lg font-mono text-xs">
+            <p className="text-green-600">
+              <span className="text-green-400">root@mecorrieron</span>
+              <span className="text-white">:</span>
+              <span className="text-blue-400">~</span>
+              <span className="text-white">$ </span>
+              <span className="text-green-300 animate-pulse">_</span>
+            </p>
+            <p className="text-green-700 mt-1">Sistema operativo. {data.stats.totalUsuarios} usuarios activos.</p>
+          </div>
+        )}
+      </main>
     </div>
   )
 }

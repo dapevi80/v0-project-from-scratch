@@ -50,33 +50,42 @@ export async function registrarUsuarioGuest(datos: {
         }
       })
       
-      if (!authError && authData.user) {
-        // Login con el cliente normal para establecer la sesion
-        const { error: signInError } = await supabase.auth.signInWithPassword({
-          email: tempEmail,
-          password: tempPassword
-        })
-        
-        if (!signInError) {
-          revalidatePath('/dashboard')
-          return { 
-            error: null, 
-            data: { 
-              success: true, 
-              codigoUsuario, 
-              redirectTo: '/dashboard',
-              // Devolver credenciales para guardar en localStorage
-              guestCredentials: {
-                email: tempEmail,
-                password: tempPassword,
-                nombre: datos.nombre.trim(),
-                codigoUsuario
-              }
-            } 
+        if (!authError && authData.user) {
+          // Registrar en arbol de referidos si tiene codigo
+          if (datos.codigoReferido) {
+            await adminClient
+              .rpc('registrar_referido', { 
+                p_nuevo_user_id: authData.user.id, 
+                p_codigo_referido: datos.codigoReferido 
+              })
+          }
+          
+          // Login con el cliente normal para establecer la sesion
+          const { error: signInError } = await supabase.auth.signInWithPassword({
+            email: tempEmail,
+            password: tempPassword
+          })
+          
+          if (!signInError) {
+            revalidatePath('/dashboard')
+            return { 
+              error: null, 
+              data: { 
+                success: true, 
+                codigoUsuario, 
+                redirectTo: '/dashboard',
+                // Devolver credenciales para guardar en localStorage
+                guestCredentials: {
+                  email: tempEmail,
+                  password: tempPassword,
+                  nombre: datos.nombre.trim(),
+                  codigoUsuario
+                }
+              } 
+            }
           }
         }
       }
-    }
     
     // Fallback: usar signUp normal (requiere trigger de auto-confirmacion)
     const { data: signUpData, error: signUpError } = await supabase.auth.signUp({
@@ -97,7 +106,16 @@ export async function registrarUsuarioGuest(datos: {
     }
     
     // Si el signup devuelve sesion directamente, excelente
-    if (signUpData.session) {
+    if (signUpData.session && signUpData.user) {
+      // Registrar en arbol de referidos si tiene codigo
+      if (datos.codigoReferido) {
+        await supabase
+          .rpc('registrar_referido', { 
+            p_nuevo_user_id: signUpData.user.id, 
+            p_codigo_referido: datos.codigoReferido 
+          })
+      }
+      
       revalidatePath('/dashboard')
       return { 
         error: null, 

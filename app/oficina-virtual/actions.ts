@@ -621,8 +621,8 @@ export async function getPendingVerifications() {
   const { data, error } = await supabase
     .from('profiles')
     .select('*')
-    .in('role', ['guest', 'worker'])
-    .eq('is_verified', false)
+    .in('role', ['guest', 'worker', 'guestworker'])
+    .neq('verification_status', 'verified')
     .or('caso_creado.eq.true,verification_status.eq.pending')
     .order('created_at', { ascending: false })
   
@@ -631,8 +631,8 @@ export async function getPendingVerifications() {
     const { data: fallbackData, error: fallbackError } = await supabase
       .from('profiles')
       .select('*')
-      .in('role', ['guest', 'worker'])
-      .eq('is_verified', false)
+      .in('role', ['guest', 'worker', 'guestworker'])
+      .neq('verification_status', 'verified')
       .order('created_at', { ascending: false })
     
     if (fallbackError) {
@@ -669,7 +669,19 @@ export async function verifyUserAccount(userId: string, datos: {
   }
   
   if (datos.aprobado) {
+    // Obtener rol actual para registrar el upgrade
+    const { data: currentProfile } = await supabase
+      .from('profiles')
+      .select('role, verification_status')
+      .eq('id', userId)
+      .single()
+    
+    const previousRole = currentProfile?.role || 'guest'
+    const wasDowngraded = currentProfile?.verification_status === 'documents_missing'
+    const upgradeType = wasDowngraded ? 'reactivation' : 'verification_complete'
+    
     // Aprobar verificación y actualizar rol a worker
+    // Registrar upgrade con todos los datos necesarios
     const { error } = await supabase
       .from('profiles')
       .update({
@@ -681,7 +693,18 @@ export async function verifyUserAccount(userId: string, datos: {
         identificacion_verificada_por: user.id,
         identificacion_verificada_at: new Date().toISOString(),
         verification_status: 'verified',
-        is_verified: true
+        celebration_shown: false, // Mostrar celebracion
+        // Datos de upgrade
+        upgrade_reason: wasDowngraded 
+          ? 'Cuenta reactivada despues de re-verificacion de documentos' 
+          : 'Verificacion de identidad completada exitosamente',
+        upgrade_at: new Date().toISOString(),
+        upgraded_by: user.id,
+        upgrade_type: upgradeType,
+        previous_role: previousRole,
+        // Limpiar datos de downgrade
+        downgrade_reason: null,
+        downgrade_at: null
       })
       .eq('id', userId)
     

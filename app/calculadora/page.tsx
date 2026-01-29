@@ -127,6 +127,8 @@ export default function CalculadoraPage() {
   const [historial, setHistorial] = useState<CalcRun[]>([])
   const [showHistorial, setShowHistorial] = useState(false)
   
+
+  
   // Estados para PDF y guardado
   const [descargandoPDF, setDescargandoPDF] = useState(false)
   const [guardandoBoveda, setGuardandoBoveda] = useState(false)
@@ -2688,6 +2690,8 @@ export default function CalculadoraPage() {
           </div>
         </DialogContent>
       </Dialog>
+      
+
     </div>
   )
 }

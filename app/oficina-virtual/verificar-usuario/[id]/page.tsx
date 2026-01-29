@@ -1,8 +1,8 @@
 'use client'
 
-import { useState, useEffect, use } from 'react'
+import { useState, useEffect } from 'react'
 import Link from 'next/link'
-import { useRouter } from 'next/navigation'
+import { useRouter, useParams } from 'next/navigation'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
@@ -34,8 +34,9 @@ interface UserProfile {
   created_at: string
 }
 
-export default function VerificarUsuarioPage({ params }: { params: Promise<{ id: string }> }) {
-  const { id } = use(params)
+export default function VerificarUsuarioPage() {
+  const params = useParams()
+  const id = params.id as string
   const router = useRouter()
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)

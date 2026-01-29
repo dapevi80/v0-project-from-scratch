@@ -1,6 +1,7 @@
 'use server'
 
 import { createClient } from '@/lib/supabase/server'
+import { puedeCrearCalculo } from '@/lib/lawyer-verification-rules'
 
 interface GuardarCalculoParams {
   pdfLiquidacionBlob: string // Base64 encoded
@@ -36,6 +37,28 @@ export async function guardarCalculoEnBoveda(params: GuardarCalculoParams) {
         success: false, 
         error: 'Debes iniciar sesión para guardar en tu bóveda',
         requiresAuth: true 
+      }
+    }
+    
+    // Obtener rol del usuario y contar calculos actuales
+    const [{ data: profile }, { count: calculosActuales }] = await Promise.all([
+      supabase.from('profiles').select('role').eq('id', user.id).single(),
+      supabase.from('calculos_liquidacion').select('*', { count: 'exact', head: true }).eq('user_id', user.id)
+    ])
+    
+    const rol = profile?.role || 'guest'
+    
+    // Verificar limite de calculos segun el rol
+    const verificacionLimite = puedeCrearCalculo(rol, calculosActuales || 0)
+    
+    if (!verificacionLimite.permitido) {
+      return {
+        success: false,
+        error: verificacionLimite.razon,
+        limitReached: true,
+        needsUpgrade: verificacionLimite.limitesAlcanzados,
+        currentCount: calculosActuales,
+        role: rol
       }
     }
     
@@ -204,14 +227,15 @@ export async function crearCasoDesdeCalculo(params: CrearCasoParams) {
     }
     
     // Verificar si ya existe un caso abierto con esta empresa
-    const { data: existingCase } = await supabase
+    const { data: existingCases } = await supabase
       .from('casos')
       .select('id, folio, status')
       .eq('worker_id', user.id)
       .eq('empresa_nombre', params.datosCalculo.nombreEmpresa)
       .in('status', ['draft', 'open', 'assigned', 'in_progress'])
-      .single()
+      .limit(1)
     
+    const existingCase = existingCases?.[0]
     if (existingCase) {
       return {
         success: false,

@@ -4,21 +4,293 @@ import { createClient } from '@/lib/supabase/server'
 import { revalidatePath } from 'next/cache'
 import { Buffer } from 'buffer'
 
-// Tipos para la bóveda
+// Jerarquia de roles para downgrade
+const ROLE_HIERARCHY_DOWN = {
+  superadmin: 'admin',
+  admin: 'lawyer', 
+  lawyer: 'guestlawyer',
+  worker: 'guestworker',
+  guestworker: 'guest',
+  guestlawyer: 'guest',
+  guest: 'guest'
+} as const
+
+// Jerarquia de roles para upgrade
+const ROLE_HIERARCHY_UP = {
+  guest: 'guestworker',
+  guestworker: 'worker',
+  guestlawyer: 'lawyer',
+  worker: 'worker', // Worker es el maximo para trabajadores
+  lawyer: 'admin',
+  admin: 'superadmin',
+  superadmin: 'superadmin'
+} as const
+
+// Tipos de upgrade disponibles
+export type UpgradeType = 
+  | 'verification_complete'    // Verificacion de identidad completada
+  | 'lawyer_approved'          // Abogado aprobado
+  | 'admin_promotion'          // Promocion a admin
+  | 'superadmin_promotion'     // Promocion a superadmin
+  | 'reactivation'             // Reactivacion de cuenta degradada
+
+// Registrar un upgrade de cuenta
+export async function registrarUpgrade(
+  userId: string, 
+  nuevoRol: string, 
+  tipoUpgrade: UpgradeType,
+  razon: string
+) {
+  const supabase = await createClient()
+  
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return { error: 'No autenticado', success: false }
+  
+  // Obtener rol actual del usuario
+  const { data: profile } = await supabase
+    .from('profiles')
+    .select('role, verification_status')
+    .eq('id', userId)
+    .single()
+  
+  if (!profile) return { error: 'Usuario no encontrado', success: false }
+  
+  const rolAnterior = profile.role
+  
+  // Actualizar perfil con upgrade
+  const { error } = await supabase
+    .from('profiles')
+    .update({
+      role: nuevoRol,
+      verification_status: 'verified',
+      upgrade_reason: razon,
+      upgrade_at: new Date().toISOString(),
+      upgraded_by: user.id,
+      upgrade_type: tipoUpgrade,
+      previous_role: rolAnterior,
+      celebration_shown: false, // Mostrar celebracion
+      // Limpiar datos de downgrade si existian
+      downgrade_reason: null,
+      downgrade_at: null
+    })
+    .eq('id', userId)
+  
+  if (error) return { error: error.message, success: false }
+  
+  revalidatePath('/dashboard')
+  revalidatePath('/perfil')
+  revalidatePath('/boveda')
+  
+  return { 
+    success: true, 
+    previousRole: rolAnterior,
+    newRole: nuevoRol,
+    upgradeType: tipoUpgrade
+  }
+}
+
+// Obtener historial de cambios de rol
+export async function obtenerHistorialRol(userId?: string) {
+  const supabase = await createClient()
+  
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return { error: 'No autenticado', data: null }
+  
+  const targetUserId = userId || user.id
+  
+  const { data: profile } = await supabase
+    .from('profiles')
+    .select(`
+      role,
+      verification_status,
+      previous_role,
+      upgrade_reason,
+      upgrade_at,
+      upgraded_by,
+      upgrade_type,
+      downgrade_reason,
+      downgrade_at,
+      celebration_shown
+    `)
+    .eq('id', targetUserId)
+    .single()
+  
+  if (!profile) return { error: 'Perfil no encontrado', data: null }
+  
+  return {
+    error: null,
+    data: {
+      currentRole: profile.role,
+      verificationStatus: profile.verification_status,
+      previousRole: profile.previous_role,
+      // Info de ultimo upgrade
+      lastUpgrade: profile.upgrade_at ? {
+        reason: profile.upgrade_reason,
+        at: profile.upgrade_at,
+        by: profile.upgraded_by,
+        type: profile.upgrade_type
+      } : null,
+      // Info de ultimo downgrade
+      lastDowngrade: profile.downgrade_at ? {
+        reason: profile.downgrade_reason,
+        at: profile.downgrade_at
+      } : null,
+      celebrationPending: !profile.celebration_shown && profile.verification_status === 'verified'
+    }
+  }
+}
+
+// Verificar y hacer downgrade si faltan archivos de verificacion
+export async function verificarArchivosVerificacion() {
+  const supabase = await createClient()
+  
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return { needsDowngrade: false, error: 'No autenticado' }
+  
+  const { data: profile } = await supabase
+    .from('profiles')
+    .select('role, verification_status, ine_frente_path, ine_reverso_path')
+    .eq('id', user.id)
+    .single()
+  
+  if (!profile) return { needsDowngrade: false, error: 'Perfil no encontrado' }
+  
+  // Solo verificar usuarios que estan verificados o en proceso
+  if (profile.role === 'guest' || profile.verification_status === 'none') {
+    return { needsDowngrade: false }
+  }
+  
+  // Verificar si los archivos INE existen
+  const archivosRequeridos = []
+  if (profile.ine_frente_path) archivosRequeridos.push(profile.ine_frente_path)
+  if (profile.ine_reverso_path) archivosRequeridos.push(profile.ine_reverso_path)
+  
+  let archivosFaltantes = []
+  
+  for (const path of archivosRequeridos) {
+    const pathParts = path.split('/')
+    const folderPath = pathParts.slice(0, -1).join('/')
+    const fileName = pathParts[pathParts.length - 1]
+    
+    const { data: files } = await supabase.storage
+      .from('boveda')
+      .list(folderPath, { search: fileName })
+    
+    if (!files || files.length === 0) {
+      archivosFaltantes.push(path)
+    }
+  }
+  
+  // Si faltan archivos, hacer downgrade
+  if (archivosFaltantes.length > 0) {
+    const currentRole = profile.role as keyof typeof ROLE_HIERARCHY_DOWN
+    const newRole = ROLE_HIERARCHY_DOWN[currentRole] || 'guest'
+    
+    // Actualizar perfil con downgrade
+    await supabase
+      .from('profiles')
+      .update({
+        role: newRole,
+        verification_status: 'documents_missing',
+        downgrade_reason: 'Archivos de verificacion eliminados o no encontrados',
+        downgrade_at: new Date().toISOString(),
+        previous_role: profile.role,
+        celebration_shown: false // Resetear para mostrar celebracion al re-verificar
+      })
+      .eq('id', user.id)
+    
+    revalidatePath('/dashboard')
+    revalidatePath('/perfil')
+    revalidatePath('/boveda')
+    
+    return { 
+      needsDowngrade: true, 
+      previousRole: profile.role,
+      newRole,
+      archivosFaltantes,
+      message: 'Tu cuenta ha sido degradada porque faltan documentos de verificacion'
+    }
+  }
+  
+  return { needsDowngrade: false }
+}
+
+// Funcion para detectar si un usuario necesita re-verificacion
+export async function obtenerEstadoVerificacion() {
+  const supabase = await createClient()
+  
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return { error: 'No autenticado', data: null }
+  
+  const { data: profile } = await supabase
+    .from('profiles')
+    .select('role, verification_status, downgrade_reason, downgrade_at, previous_role, full_name')
+    .eq('id', user.id)
+    .single()
+  
+  if (!profile) return { error: 'Perfil no encontrado', data: null }
+  
+  return {
+    error: null,
+    data: {
+      role: profile.role,
+      verificationStatus: profile.verification_status,
+      wasDowngraded: profile.verification_status === 'documents_missing',
+      downgradeReason: profile.downgrade_reason,
+      downgradeAt: profile.downgrade_at,
+      previousRole: profile.previous_role,
+      fullName: profile.full_name
+    }
+  }
+}
+
+// Tipos para la boveda - Categorias expandidas para evidencias laborales
 export type CategoriaDocumento = 
+  // Documentos principales
   | 'calculo_liquidacion'
   | 'propuesta_empresa'
-  | 'evidencia_foto'
-  | 'evidencia_video'
-  | 'evidencia_audio'
-  | 'grabacion_audio'
   | 'contrato_laboral'
   | 'hoja_renuncia'
+  | 'hojas_firmadas'
+  | 'recibo_nomina'
+  | 'recibo_dinero'
+  // Evidencias multimedia
+  | 'evidencia_foto'
+  | 'evidencia_video'
+  | 'video_despido'
+  | 'evidencia_audio'
+  | 'grabacion_audio'
+  | 'grabacion_llamada'
+  // Identificaciones
   | 'ine_frente'
   | 'ine_reverso'
   | 'pasaporte'
+  | 'cedula_profesional'
+  | 'credencial_elector'
+  // Proceso legal
+  | 'solicitud_conciliacion'
+  | 'notificacion'
+  | 'acuse'
+  | 'expediente'
+  // Audiencia y conciliacion
+  | 'foto_lugar'
+  | 'acta_audiencia'
+  | 'acta_conciliacion'
+  | 'constancia_no_conciliacion'
+  // Resolucion
+  | 'convenio'
+  | 'sentencia'
+  // Domicilio
   | 'comprobante_domicilio'
+  // Testigos
+  | 'testigos'
+  // Documentos escaneados
+  | 'documento_escaneado'
+  // Otro
   | 'otro'
+
+// Categorias que requieren verificacion
+const CATEGORIAS_VERIFICACION = ['ine_frente', 'ine_reverso', 'pasaporte', 'cedula_profesional', 'credencial_elector']
 
 export interface DocumentoBoveda {
   id: string
@@ -230,6 +502,22 @@ export async function subirDocumento(params: {
       return { success: false, error: docError.message }
     }
     
+    // Si es un documento de identificacion, actualizar estado del perfil a "pending" (por verificar)
+    if (CATEGORIAS_VERIFICACION.includes(params.categoria)) {
+      const { error: profileError } = await supabase
+        .from('profiles')
+        .update({ 
+          verification_status: 'pending',
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', user.id)
+      
+      if (profileError) {
+        console.error('Error actualizando estado de verificacion:', profileError)
+        // No retornamos error porque el documento ya se subio correctamente
+      }
+    }
+    
     revalidatePath('/boveda')
     return { success: true, documento: docData as DocumentoBoveda }
     
@@ -326,7 +614,7 @@ export async function guardarGrabacionAudio(params: {
     }
     
     revalidatePath('/boveda')
-    return { success: true, documento: docData as DocumentoBoveda }
+    return { success: true }
     
   } catch (error) {
     console.error('Error en guardarGrabacionAudio:', error)
@@ -369,6 +657,41 @@ export async function eliminarDocumento(documentoId: string) {
   return { success: true }
 }
 
+// Renombrar documento
+export async function renombrarDocumento(documentoId: string, nuevoNombre: string) {
+  const supabase = await createClient()
+  
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) {
+    return { success: false, error: 'No autenticado', requiresAuth: true }
+  }
+  
+  // Verificar que el documento pertenece al usuario
+  const { data: doc, error: fetchError } = await supabase
+    .from('documentos_boveda')
+    .select('id')
+    .eq('id', documentoId)
+    .eq('user_id', user.id)
+    .single()
+  
+  if (fetchError || !doc) {
+    return { success: false, error: 'Documento no encontrado' }
+  }
+  
+  // Actualizar nombre
+  const { error: updateError } = await supabase
+    .from('documentos_boveda')
+    .update({ nombre: nuevoNombre.trim() })
+    .eq('id', documentoId)
+  
+  if (updateError) {
+    return { success: false, error: updateError.message }
+  }
+  
+  revalidatePath('/boveda')
+  return { success: true }
+}
+
 // Obtener URL firmada para visualizar documento
 export async function obtenerUrlDocumento(documentoId: string) {
   const supabase = await createClient()
@@ -389,6 +712,30 @@ export async function obtenerUrlDocumento(documentoId: string) {
     return { success: false, error: 'Documento no encontrado' }
   }
   
+  // Verificar si el archivo existe en storage antes de crear URL firmada
+  const pathParts = doc.archivo_path.split('/')
+  const folderPath = pathParts.slice(0, -1).join('/')
+  const fileName = pathParts[pathParts.length - 1]
+  
+  const { data: files } = await supabase.storage
+    .from('boveda')
+    .list(folderPath, { search: fileName })
+  
+  if (!files || files.length === 0) {
+    // El archivo no existe en storage, marcar el documento como eliminado
+    await supabase
+      .from('documentos_boveda')
+      .update({ estado: 'archivo_perdido' })
+      .eq('id', documentoId)
+    
+    // Verificar si es un archivo de verificacion INE y hacer downgrade si aplica
+    if (doc.archivo_path.includes('ine_frente') || doc.archivo_path.includes('ine_reverso')) {
+      await verificarArchivosVerificacion()
+    }
+    
+    return { success: false, error: 'El archivo ya no existe en storage', notFound: true }
+  }
+  
   const { data: urlData, error: urlError } = await supabase.storage
     .from('boveda')
     .createSignedUrl(doc.archivo_path, 60 * 60) // 1 hora
@@ -398,6 +745,37 @@ export async function obtenerUrlDocumento(documentoId: string) {
   }
   
   return { success: true, url: urlData.signedUrl }
+}
+
+// Obtener texto OCR de un documento (para analisis con IA)
+export async function obtenerTextoOCRDocumento(documentoId: string) {
+  const supabase = await createClient()
+  
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) {
+    return { success: false, error: 'No autenticado', requiresAuth: true }
+  }
+  
+  const { data: doc, error: fetchError } = await supabase
+    .from('documentos_boveda')
+    .select('nombre, metadata')
+    .eq('id', documentoId)
+    .eq('user_id', user.id)
+    .single()
+  
+  if (fetchError || !doc) {
+    return { success: false, error: 'Documento no encontrado' }
+  }
+  
+  // Obtener texto OCR de metadata
+  const metadata = doc.metadata as Record<string, unknown> | null
+  const textoOCR = metadata?.textoEditado as string || metadata?.resumenIA as string || null
+  
+  return { 
+    success: true, 
+    texto: textoOCR,
+    nombre: doc.nombre
+  }
 }
 
 // Obtener URL firmada por path directo (útil para cálculos)
@@ -412,6 +790,19 @@ export async function obtenerUrlPorPath(archivoPath: string) {
   // Verificar que el path pertenezca al usuario
   if (!archivoPath.startsWith(user.id)) {
     return { success: false, error: 'Acceso denegado' }
+  }
+  
+  // Primero verificar si el archivo existe en storage
+  const pathParts = archivoPath.split('/')
+  const folderPath = pathParts.slice(0, -1).join('/')
+  const fileName = pathParts[pathParts.length - 1]
+  
+  const { data: files, error: listError } = await supabase.storage
+    .from('boveda')
+    .list(folderPath, { search: fileName })
+  
+  if (listError || !files || files.length === 0) {
+    return { success: false, error: 'Archivo no encontrado en storage', notFound: true }
   }
   
   const { data: urlData, error: urlError } = await supabase.storage
@@ -467,4 +858,361 @@ export async function obtenerEstadisticas() {
     success: true, 
     estadisticas
   }
+}
+
+// Interfaz para datos de INE extraídos por OCR
+export interface DatosINEExtraidos {
+  curp?: string
+  claveElector?: string
+  numeroINE?: string
+  nombre?: string
+  apellidoPaterno?: string
+  apellidoMaterno?: string
+  nombreCompleto?: string
+  fechaNacimiento?: string
+  sexo?: 'H' | 'M'
+  estadoNacimiento?: string
+  domicilio?: {
+    calle?: string
+    numeroExterior?: string
+    numeroInterior?: string
+    colonia?: string
+    codigoPostal?: string
+    municipio?: string
+    estado?: string
+    domicilioCompleto?: string
+  }
+  vigencia?: string
+  seccion?: string
+  confianza: number
+}
+
+// Actualizar perfil del usuario con datos extraídos de la INE
+export async function actualizarPerfilConINE(datosINE: DatosINEExtraidos) {
+  const supabase = await createClient()
+  
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) {
+    return { success: false, error: 'No autenticado', requiresAuth: true }
+  }
+  
+  // Preparar datos para actualizar
+  const updateData: Record<string, string | null | boolean> = {}
+  
+  // Datos de identificación
+  if (datosINE.curp) {
+    updateData.curp = datosINE.curp.toUpperCase()
+  }
+  
+  if (datosINE.claveElector) {
+    updateData.numero_identificacion = datosINE.claveElector
+    updateData.tipo_identificacion = 'ine'
+  }
+  
+  // Nombre completo (solo si no tiene uno ya)
+  if (datosINE.nombreCompleto) {
+    // Verificar si ya tiene nombre
+    const { data: profile } = await supabase
+      .from('profiles')
+      .select('full_name')
+      .eq('id', user.id)
+      .single()
+    
+    if (!profile?.full_name) {
+      updateData.full_name = datosINE.nombreCompleto
+    }
+  }
+  
+  // Fecha de nacimiento
+  if (datosINE.fechaNacimiento) {
+    updateData.fecha_nacimiento = datosINE.fechaNacimiento
+  }
+  
+  // Sexo
+  if (datosINE.sexo) {
+    updateData.sexo = datosINE.sexo
+  }
+  
+  // Estado de nacimiento
+  if (datosINE.estadoNacimiento) {
+    updateData.estado_nacimiento = datosINE.estadoNacimiento
+  }
+  
+  // Domicilio (si está presente en la INE)
+  if (datosINE.domicilio) {
+    if (datosINE.domicilio.calle) {
+      updateData.calle = datosINE.domicilio.calle
+    }
+    if (datosINE.domicilio.numeroExterior) {
+      updateData.numero_exterior = datosINE.domicilio.numeroExterior
+    }
+    if (datosINE.domicilio.numeroInterior) {
+      updateData.numero_interior = datosINE.domicilio.numeroInterior
+    }
+    if (datosINE.domicilio.colonia) {
+      updateData.colonia = datosINE.domicilio.colonia
+    }
+    if (datosINE.domicilio.codigoPostal) {
+      updateData.codigo_postal = datosINE.domicilio.codigoPostal
+    }
+    if (datosINE.domicilio.municipio) {
+      updateData.ciudad = datosINE.domicilio.municipio // Usamos ciudad para municipio
+    }
+    if (datosINE.domicilio.estado) {
+      updateData.estado = datosINE.domicilio.estado
+    }
+  }
+  
+  // Si no hay nada que actualizar
+  if (Object.keys(updateData).length === 0) {
+    return { success: true, message: 'No hay datos nuevos para actualizar' }
+  }
+  
+  // Actualizar perfil
+  const { error: updateError } = await supabase
+    .from('profiles')
+    .update(updateData)
+    .eq('id', user.id)
+  
+  if (updateError) {
+    console.error('Error actualizando perfil:', updateError)
+    return { success: false, error: updateError.message }
+  }
+  
+  revalidatePath('/perfil')
+  revalidatePath('/boveda')
+  
+  return { 
+    success: true, 
+    message: 'Perfil actualizado con datos de la INE',
+    datosActualizados: Object.keys(updateData)
+  }
+}
+
+// Obtener datos del perfil para validar con INE
+export async function obtenerDatosPerfilParaValidacion() {
+  const supabase = await createClient()
+  
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) {
+    return { success: false, error: 'No autenticado', requiresAuth: true }
+  }
+  
+  const { data: profile, error } = await supabase
+    .from('profiles')
+    .select(`
+      full_name,
+      curp,
+      fecha_nacimiento,
+      sexo,
+      calle,
+      numero_exterior,
+      numero_interior,
+      colonia,
+      codigo_postal,
+      ciudad,
+      estado
+    `)
+    .eq('id', user.id)
+    .single()
+  
+  if (error) {
+    return { success: false, error: error.message }
+  }
+  
+  return { 
+    success: true, 
+    perfil: profile 
+  }
+}
+
+// Actualizar caso con dirección del trabajador (para formularios CCL)
+export async function actualizarCasoConDireccionTrabajador(
+  casoId: string, 
+  direccion: {
+    calle?: string
+    numeroExterior?: string
+    numeroInterior?: string
+    colonia?: string
+    codigoPostal?: string
+    municipio?: string
+    estado?: string
+  }
+) {
+  const supabase = await createClient()
+  
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) {
+    return { success: false, error: 'No autenticado', requiresAuth: true }
+  }
+  
+  // Construir dirección completa
+  const direccionCompleta = [
+    direccion.calle,
+    direccion.numeroExterior ? `#${direccion.numeroExterior}` : null,
+    direccion.numeroInterior ? `Int. ${direccion.numeroInterior}` : null,
+    direccion.colonia ? `Col. ${direccion.colonia}` : null,
+    direccion.codigoPostal ? `C.P. ${direccion.codigoPostal}` : null,
+    direccion.municipio,
+    direccion.estado
+  ].filter(Boolean).join(', ')
+  
+  // Actualizar el caso con la dirección del trabajador
+  const { error } = await supabase
+    .from('calculos_liquidacion')
+    .update({
+      direccion_trabajador: direccionCompleta,
+      calle_trabajador: direccion.calle,
+      numero_ext_trabajador: direccion.numeroExterior,
+      numero_int_trabajador: direccion.numeroInterior,
+      colonia_trabajador: direccion.colonia,
+      cp_trabajador: direccion.codigoPostal,
+      municipio_trabajador: direccion.municipio,
+      estado_trabajador: direccion.estado
+    })
+    .eq('id', casoId)
+    .eq('user_id', user.id)
+  
+  if (error) {
+    console.error('Error actualizando caso:', error)
+    return { success: false, error: error.message }
+  }
+  
+  revalidatePath('/casos')
+  
+  return { success: true, message: 'Dirección del trabajador actualizada en el caso' }
+}
+
+// Tipo para documentos CCL oficiales
+export interface DocumentoCCLOficial {
+  id: string
+  folio: string
+  estado: string
+  tipo: 'solicitud' | 'acuse' | 'constancia'
+  fecha_solicitud: string
+  documento_oficial_url?: string
+  documento_oficial_path?: string
+  nombre_trabajador?: string
+  status: string
+  created_at: string
+}
+
+// Obtener documentos CCL oficiales del usuario (para bóveda)
+export async function obtenerDocumentosCCL(): Promise<{
+  success: boolean
+  documentos?: DocumentoCCLOficial[]
+  error?: string
+}> {
+  const supabase = await createClient()
+  
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) {
+    return { success: false, error: 'No autenticado' }
+  }
+  
+  // Obtener perfil para saber si es abogado o trabajador
+  const { data: profile } = await supabase
+    .from('profiles')
+    .select('role')
+    .eq('id', user.id)
+    .single()
+  
+  // Buscar solicitudes donde el usuario sea el abogado o el trabajador
+  const { data: solicitudes, error } = await supabase
+    .from('solicitudes_ccl')
+    .select(`
+      id,
+      folio,
+      estado,
+      status,
+      documento_oficial_url,
+      documento_oficial_path,
+      created_at,
+      calculos_liquidacion (
+        nombre_trabajador
+      )
+    `)
+    .or(`abogado_id.eq.${user.id},trabajador_id.eq.${user.id}`)
+    .not('documento_oficial_url', 'is', null)
+    .order('created_at', { ascending: false })
+  
+  if (error) {
+    console.error('Error obteniendo documentos CCL:', error)
+    return { success: false, error: error.message }
+  }
+  
+  // Transformar a formato de DocumentoCCLOficial
+  const documentos: DocumentoCCLOficial[] = (solicitudes || []).map(sol => ({
+    id: sol.id,
+    folio: sol.folio || `CCL-${sol.estado?.slice(0,3).toUpperCase()}-${sol.id.slice(0,8)}`,
+    estado: sol.estado || 'Desconocido',
+    tipo: sol.status === 'exitoso' ? 'solicitud' : 'acuse',
+    fecha_solicitud: sol.created_at,
+    documento_oficial_url: sol.documento_oficial_url,
+    documento_oficial_path: sol.documento_oficial_path,
+    nombre_trabajador: (sol.calculos_liquidacion as { nombre_trabajador?: string })?.nombre_trabajador,
+    status: sol.status,
+    created_at: sol.created_at
+  }))
+  
+  return { success: true, documentos }
+}
+
+// Obtener URL firmada para documento CCL oficial
+export async function obtenerUrlDocumentoCCL(solicitudId: string): Promise<{
+  success: boolean
+  url?: string
+  error?: string
+}> {
+  const supabase = await createClient()
+  
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) {
+    return { success: false, error: 'No autenticado' }
+  }
+  
+  // Verificar que el usuario tenga acceso a esta solicitud
+  const { data: solicitud, error } = await supabase
+    .from('solicitudes_ccl')
+    .select('documento_oficial_url, documento_oficial_path, abogado_id, trabajador_id')
+    .eq('id', solicitudId)
+    .single()
+  
+  if (error || !solicitud) {
+    return { success: false, error: 'Solicitud no encontrada' }
+  }
+  
+  // Verificar permisos
+  if (solicitud.abogado_id !== user.id && solicitud.trabajador_id !== user.id) {
+    return { success: false, error: 'No tienes acceso a este documento' }
+  }
+  
+  // Si ya tiene URL pública, devolverla
+  if (solicitud.documento_oficial_url && !solicitud.documento_oficial_path) {
+    return { success: true, url: solicitud.documento_oficial_url }
+  }
+  
+  // Si tiene path en storage, crear URL firmada
+  if (solicitud.documento_oficial_path) {
+    const { data: urlData, error: urlError } = await supabase.storage
+      .from('documentos-ccl')
+      .createSignedUrl(solicitud.documento_oficial_path, 60 * 60) // 1 hora
+    
+    if (urlError) {
+      // Fallback a URL pública si existe
+      if (solicitud.documento_oficial_url) {
+        return { success: true, url: solicitud.documento_oficial_url }
+      }
+      return { success: false, error: urlError.message }
+    }
+    
+    return { success: true, url: urlData.signedUrl }
+  }
+  
+  // Fallback
+  if (solicitud.documento_oficial_url) {
+    return { success: true, url: solicitud.documento_oficial_url }
+  }
+  
+  return { success: false, error: 'Documento no disponible' }
 }

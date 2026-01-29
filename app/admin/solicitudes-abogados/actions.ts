@@ -78,7 +78,6 @@ export async function aprobarSolicitudAbogado(solicitudId: string) {
       full_name: solicitud.nombre_completo,
       phone: solicitud.telefono,
       role: 'lawyer',
-      is_verified: true,
       verification_status: 'verified',
       created_at: new Date().toISOString()
     })

@@ -2,136 +2,125 @@
 
 import { createClient } from '@/lib/supabase/server'
 import { revalidatePath } from 'next/cache'
+import type { CalculoLiquidacion, Caso } from './helpers'
+import { LIMITES_CUENTA, puedeCrearCaso, puedeCrearCalculo } from '@/lib/lawyer-verification-rules'
 
-// Status labels en español
-export const statusLabels: Record<string, string> = {
-  draft: 'Borrador',
-  pending_review: 'En Revision',
-  open: 'Abierto',
-  assigned: 'Asignado',
-  in_conciliation: 'En Conciliacion',
-  in_trial: 'En Juicio',
-  resolved: 'Resuelto',
-  closed: 'Cerrado'
+// Limites de casos y calculos por rol (sincronizado con lawyer-verification-rules.ts)
+const ROLE_LIMITS = {
+  guest: { maxCasos: 1, maxCalculos: 3, canCreateCaso: true },
+  guestworker: { maxCasos: 2, maxCalculos: 5, canCreateCaso: true },
+  guestlawyer: { maxCasos: 1, maxCalculos: 3, canCreateCaso: true },  // 1 caso, 3 calculos
+  worker: { maxCasos: 10, maxCalculos: 50, canCreateCaso: true },
+  lawyer: { maxCasos: Infinity, maxCalculos: Infinity, canCreateCaso: true },
+  admin: { maxCasos: Infinity, maxCalculos: Infinity, canCreateCaso: true },
+  superadmin: { maxCasos: Infinity, maxCalculos: Infinity, canCreateCaso: true }
 }
 
-export const statusColors: Record<string, string> = {
-  draft: 'bg-gray-100 text-gray-700',
-  pending_review: 'bg-yellow-100 text-yellow-700',
-  open: 'bg-blue-100 text-blue-700',
-  assigned: 'bg-purple-100 text-purple-700',
-  in_conciliation: 'bg-orange-100 text-orange-700',
-  in_trial: 'bg-red-100 text-red-700',
-  resolved: 'bg-green-100 text-green-700',
-  closed: 'bg-gray-200 text-gray-600'
+// Verificar limites de casos y calculos para un usuario
+export async function verificarLimitesUsuario() {
+  const supabase = await createClient()
+  
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return { error: 'No autenticado', data: null }
+  
+  const { data: profile } = await supabase
+    .from('profiles')
+    .select('role')
+    .eq('id', user.id)
+    .single()
+  
+  const role = (profile?.role || 'guest') as keyof typeof ROLE_LIMITS
+  const limits = ROLE_LIMITS[role] || ROLE_LIMITS.guest
+  
+  // Contar casos activos del usuario
+  const { count: casosActivos } = await supabase
+    .from('casos')
+    .select('*', { count: 'exact', head: true })
+    .eq('worker_id', user.id)
+    .eq('archivado', false)
+  
+  // Contar calculos del usuario
+  const { count: calculosActivos } = await supabase
+    .from('calculos_liquidacion')
+    .select('*', { count: 'exact', head: true })
+    .eq('user_id', user.id)
+  
+  const puedeCrearCaso = limits.canCreateCaso && (casosActivos || 0) < limits.maxCasos
+  const puedeCrearCalculo = (calculosActivos || 0) < limits.maxCalculos
+  
+  return {
+    error: null,
+    data: {
+      role,
+      casosActivos: casosActivos || 0,
+      calculosActivos: calculosActivos || 0,
+      maxCasos: limits.maxCasos,
+      maxCalculos: limits.maxCalculos,
+      canCreateCaso: limits.canCreateCaso,
+      puedeCrearCaso,
+      puedeCrearCalculo,
+      necesitaVerificacion: role.startsWith('guest')
+    }
+  }
 }
 
-export const prioridadLabels: Record<string, string> = {
-  baja: 'Baja',
-  normal: 'Normal',
-  alta: 'Alta',
-  urgente: 'Urgente'
-}
-
-export const prioridadColors: Record<string, string> = {
-  baja: 'bg-slate-100 text-slate-600',
-  normal: 'bg-blue-100 text-blue-600',
-  alta: 'bg-orange-100 text-orange-600',
-  urgente: 'bg-red-100 text-red-600'
-}
-
-export interface CalculoLiquidacion {
-  id: string
-  user_id: string
-  salario_diario: number
-  salario_mensual: number | null
-  fecha_ingreso: string
-  fecha_salida: string | null
-  total_conciliacion: number | null
-  neto_conciliacion: number | null
-  total_juicio: number | null
-  neto_juicio: number | null
-  antiguedad_anios: number | null
-  antiguedad_meses: number | null
-  antiguedad_dias: number | null
-  desglose_conciliacion: Record<string, unknown> | null
-  desglose_juicio: Record<string, unknown> | null
-  // Campos de empresa y despido
-  empresa_nombre: string | null
-  empresa_rfc: string | null
-  direccion_trabajo: string | null
-  ciudad: string | null
-  estado: string | null
-  puesto: string | null
-  tipo_jornada: string | null
-  tipo_contrato: string | null
-  motivo_separacion: string | null
-  fecha_despido: string | null
-  hechos_despido: string | null
-  datos_completos: boolean
-  listo_para_caso: boolean
-  created_at: string
-}
-
-// Categorias de casos
-export const categoriaLabels: Record<string, string> = {
-  nuevo: 'Nuevos Casos',
-  por_preaprobar: 'Por Preaprobar',
-  asignado: 'Asignados',
-  conciliacion: 'En Conciliacion',
-  juicio: 'En Juicio',
-  concluido: 'Concluidos',
-  referido: 'Mis Referidos',
-  archivado: 'Archivados'
-}
-
-export const categoriaColors: Record<string, string> = {
-  nuevo: 'bg-blue-100 text-blue-700 border-blue-200',
-  por_preaprobar: 'bg-yellow-100 text-yellow-700 border-yellow-200',
-  asignado: 'bg-purple-100 text-purple-700 border-purple-200',
-  conciliacion: 'bg-orange-100 text-orange-700 border-orange-200',
-  juicio: 'bg-red-100 text-red-700 border-red-200',
-  concluido: 'bg-green-100 text-green-700 border-green-200',
-  referido: 'bg-cyan-100 text-cyan-700 border-cyan-200',
-  archivado: 'bg-gray-100 text-gray-500 border-gray-200'
-}
-
-export interface Caso {
-  id: string
-  folio: string
-  worker_id: string
-  lawyer_id: string | null
-  calculo_id: string | null
-  status: string
-  categoria: string
-  empresa_nombre: string
-  empresa_rfc: string | null
-  ciudad: string | null
-  estado: string | null
-  monto_estimado: number | null
-  monto_final: number | null
-  oferta_empresa: number | null
-  oferta_empresa_fecha: string | null
-  porcentaje_honorarios: number
-  fecha_proxima_audiencia: string | null
-  fecha_limite_conciliacion: string | null
-  notas_abogado: string | null
-  prioridad: string
-  tipo_caso: 'despido' | 'rescision'
-  dias_prescripcion: number
-  fecha_limite_prescripcion: string | null
-  archivado: boolean
-  archivado_at: string | null
-  es_referido: boolean
-  referido_por: string | null
-  metadata: Record<string, unknown> | null
-  created_at: string
-  updated_at: string
-  // Relaciones
-  calculo?: CalculoLiquidacion | null
-  abogado?: { id: string; full_name: string; email: string } | null
-  unread_messages?: number
-  next_event?: { id: string; title: string; starts_at: string; event_type: string } | null
+// Verificar acceso a la seccion de casos
+export async function verificarAccesoCasos() {
+  const supabase = await createClient()
+  
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return { error: 'No autenticado', tieneAcceso: false, razon: 'no_auth' }
+  
+  const { data: profile } = await supabase
+    .from('profiles')
+    .select('role, verification_status')
+    .eq('id', user.id)
+    .single()
+  
+  const role = profile?.role || 'guest'
+  
+  // Usuarios guest no tienen acceso a casos
+  if (role === 'guest' || role === 'guestworker') {
+    return { 
+      error: null, 
+      tieneAcceso: false, 
+      razon: 'guest_no_access',
+      mensaje: 'Para acceder a tus casos necesitas verificar tu cuenta como trabajador.'
+    }
+  }
+  
+  // Usuarios guestlawyer tienen acceso limitado (1 caso, 3 calculos)
+  if (role === 'guestlawyer') {
+    // Contar casos actuales
+    const { count: casosActuales } = await supabase
+      .from('casos')
+      .select('*', { count: 'exact', head: true })
+      .eq('worker_id', user.id)
+      .eq('archivado', false)
+    
+    const limiteAlcanzado = (casosActuales || 0) >= 1
+    
+    return { 
+      error: null, 
+      tieneAcceso: true, 
+      razon: limiteAlcanzado ? 'limit_reached' : 'guestlawyer_limited',
+      mensaje: limiteAlcanzado 
+        ? 'Has alcanzado el limite de 1 caso como abogado en verificacion. Verifica tu cuenta para crear mas casos.'
+        : 'Como abogado en verificacion puedes crear hasta 1 caso y 3 calculos.',
+      casosActuales: casosActuales || 0,
+      limitesCasos: 1,
+      limitesCalculos: 3,
+      puedeCrearMas: !limiteAlcanzado
+    }
+  }
+  
+  // Worker verificado, lawyer, admin, superadmin tienen acceso
+  return { 
+    error: null, 
+    tieneAcceso: true, 
+    role,
+    esAbogado: ['lawyer', 'admin', 'superadmin'].includes(role)
+  }
 }
 
 // Obtener calculos completos del usuario que pueden convertirse en casos
@@ -483,51 +472,6 @@ export async function obtenerEventos(casoId: string) {
   }
   
   return { error: null, data }
-}
-
-// Formatear moneda
-export function formatCurrency(amount: number | null | undefined): string {
-  if (amount === null || amount === undefined) return '$0.00'
-  return new Intl.NumberFormat('es-MX', {
-    style: 'currency',
-    currency: 'MXN'
-  }).format(amount)
-}
-
-// Formatear fecha
-export function formatDate(date: string | null | undefined): string {
-  if (!date) return '-'
-  return new Date(date).toLocaleDateString('es-MX', {
-    day: 'numeric',
-    month: 'short',
-    year: 'numeric'
-  })
-}
-
-// Calcular dias restantes
-export function calcularDiasRestantes(fecha: string | null): number | null {
-  if (!fecha) return null
-  const hoy = new Date()
-  const fechaObj = new Date(fecha)
-  const diff = fechaObj.getTime() - hoy.getTime()
-  return Math.ceil(diff / (1000 * 60 * 60 * 24))
-}
-
-// Calcular dias de prescripcion
-export function calcularDiasPrescripcion(fechaLimite: string | null): number | null {
-  if (!fechaLimite) return null
-  const hoy = new Date()
-  hoy.setHours(0, 0, 0, 0)
-  const limite = new Date(fechaLimite)
-  limite.setHours(0, 0, 0, 0)
-  const diff = limite.getTime() - hoy.getTime()
-  return Math.ceil(diff / (1000 * 60 * 60 * 24))
-}
-
-// Calcular porcentaje de oferta vs estimado
-export function calcularPorcentajeOferta(oferta: number | null, estimado: number | null): number | null {
-  if (!oferta || !estimado || estimado === 0) return null
-  return Math.round((oferta / estimado) * 100)
 }
 
 // Crear caso (sin calculo vinculado)
@@ -943,6 +887,103 @@ export async function obtenerEstadisticasGlobales() {
 }
 
 // Obtener lista de abogados (para filtros)
+export async function obtenerAbogados() {
+  const supabase = await createClient()
+  
+  const { data, error } = await supabase
+    .from('profiles')
+    .select('id, full_name, email')
+    .eq('role', 'lawyer')
+    .order('full_name')
+  
+  if (error) {
+    return { error: error.message, data: null }
+  }
+  
+  return { error: null, data }
+}
+
+// Iniciar proceso de conciliacion para un caso (genera PDF guia y lo guarda en boveda)
+export async function iniciarConciliacionCaso(casoId: string) {
+  const supabase = await createClient()
+
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return { error: 'No autenticado', data: null }
+
+  // Obtener el caso con datos del calculo
+  const { data: caso, error: casoError } = await supabase
+    .from('casos')
+    .select(`
+      *,
+      calculo:calculos_liquidacion(*)
+    `)
+    .eq('id', casoId)
+    .eq('worker_id', user.id)
+    .single()
+
+  if (casoError || !caso) {
+    return { error: 'Caso no encontrado', data: null }
+  }
+
+  // Obtener datos del trabajador
+  const { data: trabajador } = await supabase
+    .from('profiles')
+    .select('*')
+    .eq('id', user.id)
+    .single()
+
+  // Generar nombre del documento
+  const fechaGeneracion = new Date().toISOString().split('T')[0]
+  const nombreDocumento = `Guia_Conciliacion_${caso.folio}_${fechaGeneracion}.pdf`
+
+  // Guardar referencia en la boveda del usuario
+  const { data: documento, error: docError } = await supabase
+    .from('documentos_boveda')
+    .insert({
+      user_id: user.id,
+      nombre: nombreDocumento,
+      categoria: 'guia_conciliacion',
+      mime_type: 'application/pdf',
+      caso_id: casoId,
+      metadata: {
+        tipo: 'guia_ccl',
+        caso_folio: caso.folio,
+        empresa: caso.empresa_nombre,
+        fecha_generacion: fechaGeneracion
+      }
+    })
+    .select()
+    .single()
+
+  if (docError) {
+    console.error('Error guardando documento:', docError)
+  }
+
+  // Actualizar el caso para indicar que se inicio conciliacion
+  await supabase
+    .from('casos')
+    .update({
+      categoria: 'conciliacion',
+      status: 'in_conciliation',
+      conciliacion_iniciada_at: new Date().toISOString()
+    })
+    .eq('id', casoId)
+
+  revalidatePath(`/caso/${casoId}`)
+  revalidatePath('/casos')
+  revalidatePath('/boveda')
+
+  return {
+    error: null,
+    data: {
+      caso,
+      trabajador,
+      documentoId: documento?.id,
+      pdfUrl: `/api/ccl/guia-caso-pdf?casoId=${casoId}`
+    }
+  }
+}
+
 // Crear caso desde verificacion de usuario guest con fechas de prescripcion automaticas
 export async function crearCasoDesdeVerificacion(userId: string, calculoId: string) {
   const supabase = await createClient()
@@ -975,7 +1016,7 @@ export async function crearCasoDesdeVerificacion(userId: string, calculoId: stri
     .eq('worker_id', userId)
     .in('status', ['open', 'assigned', 'in_progress', 'pending_review'])
     .limit(1)
-    .single()
+    .maybeSingle()
   
   if (casoExistente) {
     return { error: null, casoId: casoExistente.id, yaExistia: true }
@@ -1064,18 +1105,76 @@ export async function crearCasoDesdeVerificacion(userId: string, calculoId: stri
   return { error: null, casoId: nuevoCaso.id, folio }
 }
 
-export async function obtenerAbogados() {
+// Actualizar ubicacion del lugar de trabajo en un caso
+export async function actualizarUbicacionCaso(
+  casoId: string | null,
+  locationData: {
+    lat: number
+    lng: number
+    address?: string
+    streetViewUrl: string
+    streetViewImageUrl?: string  // URL de imagen estatica de Street View
+    mapsUrl: string
+    timestamp: string
+    heading?: number   // Direccion de la camara (0-360)
+    pitch?: number     // Inclinacion de la camara (-90 a 90)
+  }
+) {
   const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
   
-  const { data, error } = await supabase
-    .from('profiles')
-    .select('id, full_name, email')
-    .eq('role', 'lawyer')
-    .order('full_name')
-  
-  if (error) {
-    return { error: error.message, data: null }
+  if (!user) {
+    return { error: 'No autenticado' }
   }
   
-  return { error: null, data }
+  // Si no hay casoId, buscar el caso activo del usuario
+  let targetCasoId = casoId
+  
+  if (!targetCasoId) {
+    const { data: casoActivo } = await supabase
+      .from('casos')
+      .select('id')
+      .eq('worker_id', user.id)
+      .in('status', ['open', 'assigned', 'in_progress', 'pending_review'])
+      .order('created_at', { ascending: false })
+      .limit(1)
+      .maybeSingle()
+    
+    targetCasoId = casoActivo?.id || null
+  }
+  
+  if (!targetCasoId) {
+    // Si no hay caso activo, guardar como documento en la boveda
+    // para usarlo cuando se cree un caso
+    return { error: null, guardadoEnPerfil: true, sinCaso: true }
+  }
+  
+  // Actualizar el caso con la ubicacion - usar campos que existen en la tabla
+  // Guardar todos los datos de ubicacion incluyendo la imagen de Street View configurada
+  const { error } = await supabase
+    .from('casos')
+    .update({
+      employer_address: locationData.address || `${locationData.lat}, ${locationData.lng}`,
+      ubicacion_coordenadas: `${locationData.lat},${locationData.lng}`,
+      ubicacion_lat: locationData.lat,
+      ubicacion_lng: locationData.lng,
+      ubicacion_street_view_url: locationData.streetViewUrl,
+      ubicacion_street_view_image: locationData.streetViewImageUrl,
+      ubicacion_maps_url: locationData.mapsUrl,
+      ubicacion_heading: locationData.heading,
+      ubicacion_pitch: locationData.pitch,
+      ubicacion_timestamp: locationData.timestamp,
+      updated_at: new Date().toISOString()
+    })
+    .eq('id', targetCasoId)
+    .eq('worker_id', user.id)
+  
+  if (error) {
+    return { error: error.message }
+  }
+  
+  revalidatePath('/casos')
+  revalidatePath('/boveda')
+  
+  return { error: null, casoId: targetCasoId }
 }

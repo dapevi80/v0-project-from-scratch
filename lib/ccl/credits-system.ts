@@ -1,6 +1,5 @@
 // Sistema de Creditos para AutoCCL
 // Maneja planes, creditos y facturacion
-
 import { createClient } from '@/lib/supabase/server'
 
 export interface PlanCCL {
@@ -122,7 +121,7 @@ export async function tieneCreditos(abogadoId: string, despachoId?: string): Pro
   return disponibles > 0
 }
 
-// Descontar un credito
+// Descontar un credito - SOLO LLAMAR DESPUES DE EXITO CONFIRMADO
 export async function descontarCredito(abogadoId: string, despachoId?: string): Promise<boolean> {
   const supabase = await createClient()
   
@@ -147,6 +146,120 @@ export async function descontarCredito(abogadoId: string, despachoId?: string): 
   }
   
   return true
+}
+
+// Reembolsar credito en caso de error despues de debito
+export async function reembolsarCredito(abogadoId: string, despachoId?: string, motivo?: string): Promise<boolean> {
+  const supabase = await createClient()
+  
+  const creditos = await obtenerCreditos(abogadoId, despachoId)
+  
+  // Registrar reembolso en historial
+  await supabase
+    .from('reembolsos_creditos')
+    .insert({
+      abogado_id: abogadoId,
+      despacho_id: despachoId || null,
+      motivo: motivo || 'Error en proceso automatico CCL',
+      fecha: new Date().toISOString()
+    })
+  
+  // Devolver como credito extra (mas facil de rastrear)
+  const { error } = await supabase
+    .from('creditos_ccl')
+    .update({ creditos_extra: creditos.creditos_extra + 1 })
+    .eq('id', creditos.id)
+  
+  return !error
+}
+
+// Reservar credito antes de iniciar proceso (sin debitar)
+export async function reservarCredito(abogadoId: string, solicitudId: string, despachoId?: string): Promise<{ 
+  success: boolean
+  reservaId?: string 
+  error?: string 
+}> {
+  const supabase = await createClient()
+  
+  const creditos = await obtenerCreditos(abogadoId, despachoId)
+  const disponibles = creditos.creditos_mensuales - creditos.creditos_usados + creditos.creditos_extra
+  
+  if (disponibles <= 0) {
+    return { success: false, error: 'No hay creditos disponibles' }
+  }
+  
+  // Crear reserva temporal (expira en 30 min)
+  const { data: reserva, error } = await supabase
+    .from('reservas_creditos')
+    .insert({
+      abogado_id: abogadoId,
+      despacho_id: despachoId || null,
+      solicitud_id: solicitudId,
+      status: 'pendiente',
+      expira_at: new Date(Date.now() + 30 * 60 * 1000).toISOString()
+    })
+    .select()
+    .single()
+  
+  if (error) {
+    return { success: false, error: error.message }
+  }
+  
+  return { success: true, reservaId: reserva.id }
+}
+
+// Confirmar reserva y debitar credito (solo si exitoso)
+export async function confirmarReservaCredito(reservaId: string): Promise<boolean> {
+  const supabase = await createClient()
+  
+  // Obtener reserva
+  const { data: reserva } = await supabase
+    .from('reservas_creditos')
+    .select('*')
+    .eq('id', reservaId)
+    .eq('status', 'pendiente')
+    .single()
+  
+  if (!reserva) {
+    return false
+  }
+  
+  // Verificar que no expiro
+  if (new Date(reserva.expira_at) < new Date()) {
+    await supabase
+      .from('reservas_creditos')
+      .update({ status: 'expirado' })
+      .eq('id', reservaId)
+    return false
+  }
+  
+  // Debitar credito
+  const debitado = await descontarCredito(reserva.abogado_id, reserva.despacho_id)
+  
+  if (debitado) {
+    // Marcar reserva como completada
+    await supabase
+      .from('reservas_creditos')
+      .update({ status: 'completado' })
+      .eq('id', reservaId)
+  }
+  
+  return debitado
+}
+
+// Cancelar reserva (no debitar - proceso fallo)
+export async function cancelarReservaCredito(reservaId: string, motivo: string): Promise<boolean> {
+  const supabase = await createClient()
+  
+  const { error } = await supabase
+    .from('reservas_creditos')
+    .update({ 
+      status: 'cancelado',
+      motivo_cancelacion: motivo
+    })
+    .eq('id', reservaId)
+  
+  return !error
 }
 
 // Cambiar plan

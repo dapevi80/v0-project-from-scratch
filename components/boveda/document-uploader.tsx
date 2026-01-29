@@ -1,11 +1,9 @@
 'use client'
 
-import { useEffect } from "react"
-
 import React from "react"
-import { useState, useRef, useCallback } from 'react'
+
+import { useEffect, useState, useRef, useCallback } from 'react'
 import { Button } from '@/components/ui/button'
-import { Badge } from '@/components/ui/badge'
 import { 
   Upload, 
   ImageIcon, 
@@ -13,28 +11,75 @@ import {
   FileText, 
   Music2,
   CreditCard,
-  MapPin,
   X,
   Loader2,
   CheckCircle,
   Camera,
-  ChevronDown,
   File,
-  AlertCircle
+  AlertCircle,
+  PenLine,
+  Home,
+  FileCheck,
+  MapPin,
+  Phone,
+  DollarSign,
+  FileSignature,
+  Building2,
+  Scale,
+  Gavel,
+  FileX,
+  FileCheck2,
+  Receipt,
+  ChevronLeft,
+  ChevronRight,
+  Users
 } from 'lucide-react'
 import { subirDocumento, type CategoriaDocumento } from '@/app/boveda/actions'
+import { LocationPicker, type LocationData } from './location-picker'
 
-// Categorías simplificadas con iconos
-const CATEGORIAS = [
-  { value: 'evidencia_foto', label: 'Fotos', icon: ImageIcon, accept: 'image/*' },
-  { value: 'evidencia_video', label: 'Videos', icon: Video, accept: 'video/*' },
-  { value: 'evidencia_audio', label: 'Audios', icon: Music2, accept: 'audio/*' },
-  { value: 'contrato_laboral', label: 'Contrato', icon: FileText, accept: 'image/*,application/pdf' },
-  { value: 'ine_frente', label: 'INE Frente', icon: CreditCard, accept: 'image/*,application/pdf' },
-  { value: 'ine_reverso', label: 'INE Reverso', icon: CreditCard, accept: 'image/*,application/pdf' },
-  { value: 'pasaporte', label: 'Pasaporte', icon: CreditCard, accept: 'image/*,application/pdf' },
-  { value: 'comprobante_domicilio', label: 'Domicilio', icon: MapPin, accept: 'image/*,application/pdf' },
-  { value: 'otro', label: 'Otro', icon: File, accept: '*' },
+// Categorias expandidas organizadas por grupo
+const CATEGORIAS_SUGERIDAS = [
+  // Documentos principales
+  { value: 'contrato_laboral', label: 'Contrato laboral', shortLabel: 'Contrato', icon: PenLine, color: 'bg-blue-100 text-blue-600' },
+  { value: 'hojas_firmadas', label: 'Hojas en blanco firmadas', shortLabel: 'Firmadas', icon: FileSignature, color: 'bg-amber-100 text-amber-600' },
+  { value: 'recibo_nomina', label: 'Recibo de nomina', shortLabel: 'Nomina', icon: Receipt, color: 'bg-green-100 text-green-600' },
+  { value: 'recibo_dinero', label: 'Recibo de pago', shortLabel: 'Recibo', icon: DollarSign, color: 'bg-emerald-100 text-emerald-600' },
+  
+  // Evidencias multimedia
+  { value: 'evidencia_foto', label: 'Fotos de evidencia', shortLabel: 'Fotos', icon: ImageIcon, color: 'bg-purple-100 text-purple-600' },
+  { value: 'evidencia_video', label: 'Video de evidencia', shortLabel: 'Video', icon: Video, color: 'bg-pink-100 text-pink-600' },
+  { value: 'video_despido', label: 'Video del despido', shortLabel: 'Despido', icon: Video, color: 'bg-red-100 text-red-600' },
+  { value: 'evidencia_audio', label: 'Grabacion de audio', shortLabel: 'Audio', icon: Music2, color: 'bg-orange-100 text-orange-600' },
+  { value: 'grabacion_llamada', label: 'Grabacion de llamada', shortLabel: 'Llamada', icon: Phone, color: 'bg-cyan-100 text-cyan-600' },
+  
+  // Identificaciones
+  { value: 'ine_frente', label: 'INE / Credencial', shortLabel: 'INE', icon: CreditCard, color: 'bg-slate-100 text-slate-600' },
+  { value: 'pasaporte', label: 'Pasaporte', shortLabel: 'Pasaporte', icon: FileCheck, color: 'bg-indigo-100 text-indigo-600' },
+  
+  // Proceso legal
+  { value: 'solicitud_conciliacion', label: 'Solicitud de conciliacion', shortLabel: 'Solicitud', icon: FileText, color: 'bg-sky-100 text-sky-600' },
+  { value: 'notificacion', label: 'Notificacion oficial', shortLabel: 'Notificacion', icon: FileText, color: 'bg-violet-100 text-violet-600' },
+  { value: 'acuse', label: 'Acuse de recibo', shortLabel: 'Acuse', icon: FileCheck2, color: 'bg-teal-100 text-teal-600' },
+  { value: 'expediente', label: 'Expediente del caso', shortLabel: 'Expediente', icon: FileText, color: 'bg-gray-100 text-gray-600' },
+  
+  // Audiencia y conciliacion
+  { value: 'foto_lugar', label: 'Foto del lugar de trabajo', shortLabel: 'Lugar', icon: Building2, color: 'bg-stone-100 text-stone-600' },
+  { value: 'acta_audiencia', label: 'Acta de audiencia', shortLabel: 'Audiencia', icon: Scale, color: 'bg-amber-100 text-amber-700' },
+  { value: 'acta_conciliacion', label: 'Acta de conciliacion', shortLabel: 'Conciliacion', icon: FileCheck2, color: 'bg-green-100 text-green-700' },
+  { value: 'constancia_no_conciliacion', label: 'Constancia de no conciliacion', shortLabel: 'No concilio', icon: FileX, color: 'bg-red-100 text-red-700' },
+  
+  // Resolucion
+  { value: 'convenio', label: 'Convenio', shortLabel: 'Convenio', icon: FileSignature, color: 'bg-emerald-100 text-emerald-700' },
+  { value: 'sentencia', label: 'Sentencia', shortLabel: 'Sentencia', icon: Gavel, color: 'bg-purple-100 text-purple-700' },
+  
+  // Domicilio
+  { value: 'comprobante_domicilio', label: 'Comprobante de domicilio', shortLabel: 'Domicilio', icon: Home, color: 'bg-rose-100 text-rose-600' },
+  
+  // Testigos
+  { value: 'testigos', label: 'Datos de testigos', shortLabel: 'Testigos', icon: Users, color: 'bg-blue-100 text-blue-700' },
+  
+  // Otro
+  { value: 'otro', label: 'Otro documento', shortLabel: 'Otro', icon: File, color: 'bg-gray-100 text-gray-500' },
 ] as const
 
 interface FileToUpload {
@@ -52,23 +97,39 @@ interface DocumentUploaderProps {
 }
 
 export function DocumentUploader({ onUploaded, onClose, defaultCategoria }: DocumentUploaderProps) {
-  const [categoria, setCategoria] = useState<CategoriaDocumento>(defaultCategoria || 'evidencia_foto')
+  const [categoria, setCategoria] = useState<CategoriaDocumento>(defaultCategoria || 'otro')
   const [files, setFiles] = useState<FileToUpload[]>([])
   const [uploading, setUploading] = useState(false)
   const [dragActive, setDragActive] = useState(false)
-  const [showTips, setShowTips] = useState(false)
+  const [showLocationPicker, setShowLocationPicker] = useState(false)
   
   const fileInputRef = useRef<HTMLInputElement>(null)
   const cameraInputRef = useRef<HTMLInputElement>(null)
+  const carouselRef = useRef<HTMLDivElement>(null)
   
-  // Actualizar categoría cuando cambie la prop
   useEffect(() => {
     if (defaultCategoria) {
       setCategoria(defaultCategoria)
     }
   }, [defaultCategoria])
-  
-  const categoriaConfig = CATEGORIAS.find(c => c.value === categoria)
+
+  // Scroll del carrusel
+  const scrollCarousel = (direction: 'left' | 'right') => {
+    if (carouselRef.current) {
+      const scrollAmount = 200
+      carouselRef.current.scrollBy({
+        left: direction === 'left' ? -scrollAmount : scrollAmount,
+        behavior: 'smooth'
+      })
+    }
+  }
+
+  // Ubicacion guardada - se guarda directamente en el caso desde LocationPicker
+  const handleSaveLocation = async (_locationData: LocationData) => {
+    // La ubicacion ya se guardo en el caso, solo cerramos
+    setShowLocationPicker(false)
+    onUploaded?.()
+  }
 
   const handleFileSelect = useCallback((selectedFiles: FileList | null) => {
     if (!selectedFiles) return
@@ -168,24 +229,6 @@ export function DocumentUploader({ onUploaded, onClose, defaultCategoria }: Docu
             newFiles[i] = { ...newFiles[i], status: 'success', progress: 100 }
             return newFiles
           })
-          
-          // Guardar flag si es documento de identificación (para verificación de cuenta)
-          if (['ine_frente', 'ine_reverso', 'identificacion', 'pasaporte'].includes(categoria)) {
-            const uploaded = JSON.parse(localStorage.getItem('boveda_docs_uploaded') || '{}')
-            if (categoria === 'ine_frente') {
-              uploaded.ine_frente = true
-              uploaded.ine = true // también el flag general
-            } else if (categoria === 'ine_reverso') {
-              uploaded.ine_reverso = true
-              uploaded.ine = true // también el flag general
-            } else if (categoria === 'pasaporte') {
-              uploaded.pasaporte = true
-            } else if (categoria === 'identificacion') {
-              uploaded.identificacion = true
-              uploaded.ine = true
-            }
-            localStorage.setItem('boveda_docs_uploaded', JSON.stringify(uploaded))
-          }
         } else {
           throw new Error(result.error || 'Error al subir')
         }
@@ -204,14 +247,7 @@ export function DocumentUploader({ onUploaded, onClose, defaultCategoria }: Docu
     }
     
     setUploading(false)
-    
-    if (files.every(f => f.status === 'success')) {
-      setTimeout(() => {
-        setFiles([])
-        onUploaded?.()
-      }, 1000)
-    }
-  }, [files, categoria, onUploaded])
+  }, [files, categoria])
 
   const formatFileSize = (bytes: number) => {
     if (bytes < 1024) return `${bytes} B`
@@ -219,238 +255,224 @@ export function DocumentUploader({ onUploaded, onClose, defaultCategoria }: Docu
     return `${(bytes / (1024 * 1024)).toFixed(1)} MB`
   }
 
+  const categoriaActual = CATEGORIAS_SUGERIDAS.find(c => c.value === categoria)
+
+  // Mostrar LocationPicker si esta activo
+  if (showLocationPicker) {
+    return (
+      <LocationPicker 
+        onSave={handleSaveLocation}
+        onClose={() => setShowLocationPicker(false)}
+      />
+    )
+  }
+
   return (
-    <div className="bg-background rounded-xl shadow-lg border max-h-[90vh] overflow-hidden flex flex-col">
-      {/* Header fijo con botón cerrar */}
-      <div className="flex items-center justify-between p-4 border-b bg-background sticky top-0 z-10">
-        <h3 className="font-semibold text-lg">Subir Documento</h3>
-        <Button 
-          variant="ghost" 
-          size="icon" 
-          onClick={onClose}
-          className="h-8 w-8 rounded-full hover:bg-destructive/10"
-        >
-          <X className="w-5 h-5" />
+    <div 
+      className="bg-background rounded-xl shadow-lg border max-h-[85vh] overflow-hidden flex flex-col w-full max-w-sm"
+      onDragEnter={handleDrag}
+      onDragLeave={handleDrag}
+      onDragOver={handleDrag}
+      onDrop={handleDrop}
+    >
+      {/* Header */}
+      <div className="flex items-center justify-between p-3 border-b">
+        <div className="flex items-center gap-2">
+          {categoriaActual && (
+            <div className={`w-6 h-6 rounded-full flex items-center justify-center ${categoriaActual.color}`}>
+              <categoriaActual.icon className="w-3 h-3" />
+            </div>
+          )}
+          <span className="font-medium text-sm">{categoriaActual?.label || 'Subir'}</span>
+        </div>
+        <Button variant="ghost" size="icon" onClick={onClose} className="h-7 w-7">
+          <X className="w-4 h-4" />
         </Button>
       </div>
       
-      {/* Contenido scrolleable */}
-      <div className="flex-1 overflow-y-auto p-4 space-y-4">
-        {/* Selector de categoría como chips */}
-        <div className="flex flex-wrap gap-2">
-          {CATEGORIAS.map(cat => {
-            const Icon = cat.icon
-            const isSelected = categoria === cat.value
-            return (
-              <button
-                key={cat.value}
-                onClick={() => setCategoria(cat.value as CategoriaDocumento)}
-                className={`
-                  flex items-center gap-1.5 px-3 py-1.5 rounded-full text-sm transition-all
-                  ${isSelected 
-                    ? 'bg-primary text-primary-foreground' 
-                    : 'bg-muted hover:bg-muted/80 text-muted-foreground'
-                  }
-                `}
-              >
-                <Icon className="w-3.5 h-3.5" />
-                {cat.label}
-              </button>
-            )
-          })}
-        </div>
-
-        {/* Acciones rápidas */}
-        <div className="grid grid-cols-2 gap-3">
-          <button
-            onClick={() => cameraInputRef.current?.click()}
-            className="flex flex-col items-center justify-center gap-2 p-4 rounded-xl bg-green-50 border-2 border-green-200 hover:bg-green-100 transition-colors"
+      {/* Inputs ocultos */}
+      <input
+        ref={cameraInputRef}
+        type="file"
+        accept="image/*,video/*"
+        capture="environment"
+        onChange={(e) => handleFileSelect(e.target.files)}
+        className="hidden"
+      />
+      <input
+        ref={fileInputRef}
+        type="file"
+        multiple
+        accept="*/*"
+        onChange={(e) => handleFileSelect(e.target.files)}
+        className="hidden"
+      />
+      
+      {/* Carrusel de sugerencias */}
+      <div className="border-b py-2">
+        {/* Titulo */}
+        <p className="text-[10px] text-muted-foreground text-center mb-2">Reune tus pruebas</p>
+        
+        {/* Carrusel con flechas */}
+        <div className="relative">
+          <button 
+            onClick={() => scrollCarousel('left')}
+            className="absolute left-0 top-1/2 -translate-y-1/2 z-10 w-5 h-5 bg-background/90 rounded-full shadow-sm flex items-center justify-center hover:bg-muted"
           >
-            <div className="w-12 h-12 rounded-full bg-green-100 flex items-center justify-center">
-              <Camera className="w-6 h-6 text-green-600" />
-            </div>
-            <span className="text-sm font-medium text-green-700">Tomar Foto</span>
+            <ChevronLeft className="w-3 h-3" />
           </button>
-          <input
-            ref={cameraInputRef}
-            type="file"
-            accept="image/*"
-            capture="environment"
-            onChange={(e) => handleFileSelect(e.target.files)}
-            className="hidden"
-          />
           
-          <button
-            onClick={() => fileInputRef.current?.click()}
-            className="flex flex-col items-center justify-center gap-2 p-4 rounded-xl bg-primary/5 border-2 border-primary/20 hover:bg-primary/10 transition-colors"
+          <div 
+            ref={carouselRef}
+            className="flex gap-1 px-6 overflow-x-auto scrollbar-hide scroll-smooth"
+            style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}
           >
-            <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center">
-              <Upload className="w-6 h-6 text-primary" />
-            </div>
-            <span className="text-sm font-medium">Elegir Archivo</span>
+            {CATEGORIAS_SUGERIDAS.map(cat => {
+              const Icon = cat.icon
+              const isSelected = categoria === cat.value
+              return (
+                <button
+                  key={cat.value}
+                  onClick={() => setCategoria(cat.value as CategoriaDocumento)}
+                  className={`flex flex-col items-center gap-0.5 p-1.5 rounded-lg transition-all shrink-0 w-11
+                    ${isSelected ? `${cat.color} ring-1 ring-current` : 'hover:bg-muted/50'}`}
+                >
+                  <div className={`w-6 h-6 rounded-full flex items-center justify-center ${isSelected ? 'bg-white/50' : cat.color}`}>
+                    <Icon className="w-3 h-3" />
+                  </div>
+                  <span className="text-[8px] leading-tight text-center truncate w-full">{cat.shortLabel}</span>
+                </button>
+              )
+            })}
+          </div>
+          
+          <button 
+            onClick={() => scrollCarousel('right')}
+            className="absolute right-0 top-1/2 -translate-y-1/2 z-10 w-5 h-5 bg-background/90 rounded-full shadow-sm flex items-center justify-center hover:bg-muted"
+          >
+            <ChevronRight className="w-3 h-3" />
           </button>
         </div>
         
-        {/* Zona de drop minimalista */}
-        <div
-          className={`
-            border-2 border-dashed rounded-xl p-6 text-center cursor-pointer transition-all
-            ${dragActive 
-              ? 'border-primary bg-primary/5 scale-[1.02]' 
-              : 'border-muted-foreground/20 hover:border-primary/40'
-            }
-          `}
-          onDragEnter={handleDrag}
-          onDragLeave={handleDrag}
-          onDragOver={handleDrag}
-          onDrop={handleDrop}
-          onClick={() => fileInputRef.current?.click()}
-        >
-          <input
-            ref={fileInputRef}
-            type="file"
-            multiple
-            accept={categoriaConfig?.accept}
-            onChange={(e) => handleFileSelect(e.target.files)}
-            className="hidden"
-          />
-          <p className="text-sm text-muted-foreground">
-            Arrastra archivos aquí
-          </p>
-          <p className="text-xs text-muted-foreground/60 mt-1">Max 50 MB</p>
-        </div>
+        {/* Categoria seleccionada - titulo completo */}
+        {categoriaActual && (
+          <p className="text-xs font-medium text-center mt-2 text-foreground">{categoriaActual.label}</p>
+        )}
+      </div>
+      
+      {/* Contenido */}
+      <div className={`flex-1 overflow-y-auto p-3 ${dragActive ? 'bg-primary/5' : ''}`}>
         
-        {/* Lista de archivos */}
-        {files.length > 0 && (
-          <div className="space-y-2">
-            {files.map((fileObj, index) => (
-              <div 
-                key={index}
-                className="flex items-center gap-3 p-3 rounded-lg bg-muted/30 border"
+        {/* Zona de drop/seleccion */}
+        {files.length === 0 ? (
+          <div 
+            className={`border-2 border-dashed rounded-xl p-5 text-center transition-all
+              ${dragActive ? 'border-primary bg-primary/5' : 'border-muted-foreground/20'}`}
+          >
+            {/* Acciones */}
+            <div className="flex justify-center gap-3 mb-2">
+              <button
+                onClick={() => cameraInputRef.current?.click()}
+                className="w-10 h-10 rounded-full bg-green-100 flex items-center justify-center hover:bg-green-200 transition-colors"
+                title="Tomar foto"
               >
+                <Camera className="w-4 h-4 text-green-600" />
+              </button>
+              <button
+                onClick={() => fileInputRef.current?.click()}
+                className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center hover:bg-primary/20 transition-colors"
+                title="Elegir archivo"
+              >
+                <Upload className="w-4 h-4 text-primary" />
+              </button>
+              <button
+                onClick={() => setShowLocationPicker(true)}
+                className="w-10 h-10 rounded-full bg-orange-100 flex items-center justify-center hover:bg-orange-200 transition-colors"
+                title="Ubicacion trabajo"
+              >
+                <MapPin className="w-4 h-4 text-orange-600" />
+              </button>
+            </div>
+            <p className="text-[10px] text-muted-foreground">
+              {dragActive ? 'Suelta aqui' : 'Foto | Archivo | Ubicacion'}
+            </p>
+          </div>
+        ) : (
+          /* Lista de archivos */
+          <div className="space-y-1.5">
+            {files.map((fileObj, index) => (
+              <div key={index} className="flex items-center gap-2 p-2 rounded-lg bg-muted/30 border">
                 {fileObj.preview ? (
-                  <img 
-                    src={fileObj.preview || "/placeholder.svg"} 
-                    alt=""
-                    className="w-12 h-12 rounded-lg object-cover"
-                  />
+                  <img src={fileObj.preview || "/placeholder.svg"} alt="" className="w-8 h-8 rounded object-cover" />
                 ) : (
-                  <div className="w-12 h-12 rounded-lg bg-muted flex items-center justify-center">
-                    <File className="w-5 h-5 text-muted-foreground" />
+                  <div className="w-8 h-8 rounded bg-muted flex items-center justify-center">
+                    {fileObj.file.type.startsWith('video/') ? <Video className="w-3.5 h-3.5 text-muted-foreground" /> :
+                     fileObj.file.type.startsWith('audio/') ? <Music2 className="w-3.5 h-3.5 text-muted-foreground" /> :
+                     fileObj.file.type === 'application/pdf' ? <FileText className="w-3.5 h-3.5 text-red-500" /> :
+                     <File className="w-3.5 h-3.5 text-muted-foreground" />}
                   </div>
                 )}
-                
                 <div className="flex-1 min-w-0">
-                  <p className="text-sm font-medium truncate">{fileObj.file.name}</p>
-                  <p className="text-xs text-muted-foreground">{formatFileSize(fileObj.file.size)}</p>
+                  <p className="text-[10px] font-medium truncate">{fileObj.file.name}</p>
+                  <p className="text-[9px] text-muted-foreground">{formatFileSize(fileObj.file.size)}</p>
                 </div>
-                
                 {fileObj.status === 'pending' && (
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    className="h-8 w-8 shrink-0"
-                    onClick={() => removeFile(index)}
-                  >
-                    <X className="w-4 h-4" />
-                  </Button>
+                  <button onClick={() => removeFile(index)} className="p-0.5 hover:bg-muted rounded">
+                    <X className="w-3 h-3" />
+                  </button>
                 )}
-                {fileObj.status === 'uploading' && (
-                  <Loader2 className="w-5 h-5 animate-spin text-primary shrink-0" />
-                )}
-                {fileObj.status === 'success' && (
-                  <CheckCircle className="w-5 h-5 text-green-500 shrink-0" />
-                )}
-                {fileObj.status === 'error' && (
-                  <AlertCircle className="w-5 h-5 text-destructive shrink-0" />
-                )}
+                {fileObj.status === 'uploading' && <Loader2 className="w-3.5 h-3.5 animate-spin text-primary" />}
+                {fileObj.status === 'success' && <CheckCircle className="w-3.5 h-3.5 text-green-500" />}
+                {fileObj.status === 'error' && <AlertCircle className="w-3.5 h-3.5 text-destructive" />}
               </div>
             ))}
-          </div>
-        )}
-
-        {/* Tips colapsables */}
-        <button
-          onClick={() => setShowTips(!showTips)}
-          className="flex items-center justify-between w-full p-3 rounded-lg bg-muted/30 text-sm"
-        >
-          <span className="text-muted-foreground">Documentos sugeridos</span>
-          <ChevronDown className={`w-4 h-4 transition-transform ${showTips ? 'rotate-180' : ''}`} />
-        </button>
-        
-        {showTips && (
-          <div className="space-y-2 text-xs">
-            <div className="flex flex-wrap gap-1">
-              <Badge variant="outline" className="bg-background">Contrato</Badge>
-              <Badge variant="outline" className="bg-background">INE</Badge>
-              <Badge variant="outline" className="bg-background">Recibos</Badge>
-              <Badge variant="outline" className="bg-background">WhatsApp</Badge>
-            </div>
-            <div className="flex flex-wrap gap-1">
-              <Badge variant="outline" className="bg-primary/5 border-primary/20">Solicitud Conciliación</Badge>
-              <Badge variant="outline" className="bg-primary/5 border-primary/20">Notificación</Badge>
-              <Badge variant="outline" className="bg-amber-50 border-amber-200">Actas Audiencia</Badge>
-            </div>
-            <div className="flex flex-wrap gap-1">
-              <Badge variant="outline" className="bg-green-50 border-green-200">Convenio</Badge>
-              <Badge variant="outline" className="bg-green-50 border-green-200">Acta Pago</Badge>
-              <Badge variant="outline" className="bg-red-50 border-red-200">No Conciliación</Badge>
-            </div>
+            
+            <button
+              onClick={() => fileInputRef.current?.click()}
+              className="w-full p-1.5 border border-dashed rounded-lg text-[10px] text-muted-foreground hover:bg-muted/30"
+            >
+              + Agregar mas
+            </button>
           </div>
         )}
       </div>
       
-      {/* Footer fijo con botón de subir */}
+      {/* Footer */}
       {files.length > 0 && (
-        <div className="p-4 border-t bg-background sticky bottom-0">
-          <Button
-            onClick={uploadFiles}
-            disabled={uploading || files.every(f => f.status === 'success')}
-            className="w-full h-12 text-base gap-2"
-          >
-            {uploading ? (
-              <>
-                <Loader2 className="w-5 h-5 animate-spin" />
-                Subiendo...
-              </>
-            ) : files.every(f => f.status === 'success') ? (
-              <>
-                <CheckCircle className="w-5 h-5" />
-                Completado
-              </>
-            ) : (
-              <>
-                <Upload className="w-5 h-5" />
-                Subir {files.length} {files.length === 1 ? 'archivo' : 'archivos'}
-              </>
-            )}
-          </Button>
+        <div className="p-3 border-t">
+          {files.every(f => f.status === 'success') ? (
+            <Button
+              onClick={() => {
+                setFiles([])
+                onUploaded?.()
+                onClose?.()
+              }}
+              className="w-full h-9 text-xs gap-2 bg-green-600 hover:bg-green-700"
+            >
+              <CheckCircle className="w-3.5 h-3.5" />
+              Guardar y cerrar
+            </Button>
+          ) : (
+            <Button
+              onClick={uploadFiles}
+              disabled={uploading}
+              className="w-full h-9 text-xs gap-2"
+            >
+              {uploading ? (
+                <>
+                  <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                  Subiendo...
+                </>
+              ) : (
+                <>
+                  <Upload className="w-3.5 h-3.5" />
+                  Subir {files.length}
+                </>
+              )}
+            </Button>
+          )}
         </div>
       )}
     </div>
-  )
-}
-
-// Componente simplificado para botón rápido
-export function QuickUploadButton({ 
-  categoria, 
-  onUploaded 
-}: { 
-  categoria: CategoriaDocumento
-  onUploaded?: () => void 
-}) {
-  const config = CATEGORIAS.find(c => c.value === categoria)
-  const IconComponent = config?.icon || ImageIcon
-  
-  return (
-    <button className="flex items-center gap-3 p-3 rounded-xl border hover:bg-muted/50 transition-colors w-full">
-      <div className="w-10 h-10 rounded-full bg-muted flex items-center justify-center shrink-0">
-        <IconComponent className="w-5 h-5 text-muted-foreground" />
-      </div>
-      <div className="text-left flex-1 min-w-0">
-        <p className="font-medium text-sm">{config?.label || 'Documento'}</p>
-        <p className="text-xs text-muted-foreground">Toca para subir</p>
-      </div>
-    </button>
   )
 }
