@@ -36,7 +36,7 @@ const DISCLOSURES = [
     id: 'mecorrieron',
     field: 'autoriza_mecorrieron',
     title: 'Autorizacion a MeCorrieron.mx',
-    description: 'Autorizo a MeCorrieron.mx a gestionar mi caso de conciliacion laboral, incluyendo el acceso a mis datos personales (CURP, nombre, datos laborales) para la preparacion de mi solicitud ante el Centro de Conciliacion Laboral.',
+    description: 'Autorizo a MeCorrieron.mx y su agente inteligente a gestionar mi caso de conciliacion laboral de forma automatizada, incluyendo el acceso a mis datos personales (CURP, nombre, datos laborales) para la preparacion y envio de mi solicitud ante el Centro de Conciliacion Laboral. Esto incluye la generacion automatica de un folio unico de referencia.',
     required: true,
     icon: Scale
   },
@@ -44,23 +44,23 @@ const DISCLOSURES = [
     id: 'abogado',
     field: 'autoriza_abogado',
     title: 'Autorizacion al Abogado Asignado',
-    description: 'Autorizo al abogado asignado por MeCorrieron.mx a representarme en el proceso de conciliacion laboral, actuar en mi nombre y recibir notificaciones relacionadas con mi caso.',
+    description: 'Autorizo al abogado asignado por MeCorrieron.mx a representarme en el proceso de conciliacion laboral, actuar en mi nombre, acceder a mi cuenta SINACOL generada automaticamente, y recibir notificaciones relacionadas con mi caso.',
     required: true,
     icon: User
   },
   {
     id: 'sinacol',
     field: 'autoriza_sinacol',
-    title: 'Autorizacion para Registro en SINACOL',
-    description: 'Autorizo a MeCorrieron.mx y al abogado asignado a crear y gestionar mi solicitud de conciliacion laboral en el portal oficial SINACOL (Sistema Nacional de Conciliacion Laboral), utilizando mi CURP y datos personales.',
+    title: 'Autorizacion para Registro Automatizado en SINACOL',
+    description: 'Autorizo a MeCorrieron.mx a utilizar su agente inteligente para crear automaticamente mi usuario y contrasena en el portal oficial SINACOL, generar mi solicitud de conciliacion con los datos de mi caso, y obtener el folio oficial. Entiendo que esto elimina errores de llenado manual y agiliza significativamente el proceso.',
     required: true,
     icon: FileText
   },
   {
     id: 'notificaciones',
     field: 'autoriza_notificaciones',
-    title: 'Autorizacion para Notificaciones',
-    description: 'Autorizo recibir notificaciones por correo electronico, SMS y WhatsApp sobre el estado de mi caso, citas de conciliacion, y documentos relacionados.',
+    title: 'Autorizacion para Notificaciones Automaticas',
+    description: 'Autorizo recibir notificaciones automaticas por correo electronico, SMS y WhatsApp sobre el estado de mi caso, citas de conciliacion, documentos generados por el agente inteligente, y actualizaciones del portal SINACOL.',
     required: false,
     icon: ExternalLink
   }
@@ -146,11 +146,18 @@ export function SinacolAuthorization({
       <CardHeader className="pb-3">
         <CardTitle className="flex items-center gap-2 text-amber-700 dark:text-amber-300 text-base">
           <Shield className="h-5 w-5" />
-          Autorizacion Legal SINACOL
+          Autorizacion Legal para Gestion Automatizada SINACOL
         </CardTitle>
-        <CardDescription>
-          Para gestionar tu caso ante el Centro de Conciliacion Laboral, necesitamos tu autorizacion expresa 
-          conforme a la Ley Federal del Trabajo y la Ley Federal de Proteccion de Datos Personales.
+        <CardDescription className="space-y-2">
+          <p>
+            Para gestionar tu caso ante el Centro de Conciliacion Laboral, necesitamos tu autorizacion expresa 
+            conforme a la Ley Federal del Trabajo y la Ley Federal de Proteccion de Datos Personales.
+          </p>
+          <p className="text-blue-600 dark:text-blue-400 font-medium">
+            Al autorizar, nuestro agente inteligente generara automaticamente tu folio unico, creara tu 
+            usuario y contrasena en SINACOL, y gestionara todo el proceso para ahorrarte tiempo y evitar 
+            errores de llenado manual.
+          </p>
         </CardDescription>
       </CardHeader>
       
@@ -257,11 +264,23 @@ export function SinacolAuthorization({
         {/* Aviso legal */}
         <Alert>
           <AlertTriangle className="h-4 w-4" />
-          <AlertDescription className="text-xs">
-            <strong>Aviso Legal:</strong> Al firmar esta autorizacion, usted otorga consentimiento expreso 
-            para que MeCorrieron.mx y el abogado asignado actuen en su representacion ante el Centro de 
-            Conciliacion Laboral de {estado}. Esta autorizacion se registra con firma electronica 
-            conforme a la legislacion mexicana vigente.
+          <AlertDescription className="text-xs space-y-2">
+            <p>
+              <strong>Aviso Legal:</strong> Al firmar esta autorizacion, usted otorga consentimiento expreso 
+              para que MeCorrieron.mx, su agente inteligente de automatizacion, y el abogado asignado actuen 
+              en su representacion ante el Centro de Conciliacion Laboral de {estado}.
+            </p>
+            <p>
+              <strong>Proceso Automatizado:</strong> El sistema generara automaticamente: (1) Un folio unico 
+              de referencia interna, (2) Su usuario y contrasena en el portal SINACOL oficial, (3) Su solicitud 
+              de conciliacion prellenada con sus datos. El folio oficial de SINACOL se obtiene al completar 
+              el proceso en el portal gubernamental.
+            </p>
+            <p>
+              Esta autorizacion se registra con firma electronica conforme a la legislacion mexicana vigente. 
+              Despues del pre-registro automatizado, se requiere ratificacion presencial con identificacion 
+              oficial dentro de 5 dias habiles.
+            </p>
           </AlertDescription>
         </Alert>
 

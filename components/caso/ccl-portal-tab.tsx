@@ -9,6 +9,7 @@ import {
   CheckCircle, AlertTriangle, Clock, FileText, Bell, Loader2, Shield
 } from 'lucide-react'
 import { SinacolAuthorization } from './sinacol-authorization'
+import { SinacolAutomationInfo } from './sinacol-automation-info'
 
 interface CCLAccount {
   id: string
@@ -360,17 +361,90 @@ export function CCLPortalTab({ casoId, caso, worker, onRefresh }: CCLPortalTabPr
         </CardContent>
       </Card>
 
-      {/* Instrucciones */}
+      {/* Informacion del Agente Inteligente */}
+      <SinacolAutomationInfo 
+        isAuthorized={hasAuthorization}
+        hasAccount={accounts.length > 0}
+        folioGenerado={mainAccount?.folio_solicitud}
+        currentStep={
+          !hasAuthorization ? 0 :
+          hasAuthorization && accounts.length === 0 ? 1 :
+          accounts.length > 0 && !mainAccount?.folio_solicitud ? 2 :
+          3
+        }
+      />
+
+      {/* Descripcion detallada del proceso */}
       <Card>
         <CardHeader>
-          <CardTitle className="text-base">Como funciona el Portal CCL</CardTitle>
+          <CardTitle className="text-base flex items-center gap-2">
+            <FileText className="h-4 w-4" />
+            Descripcion del Proceso Automatizado
+          </CardTitle>
         </CardHeader>
-        <CardContent className="text-sm text-muted-foreground space-y-2">
-          <p>1. Al crear la cuenta, se registra automaticamente en el portal oficial del Centro de Conciliacion Laboral</p>
-          <p>2. El sistema activa el buzon electronico para recibir notificaciones oficiales</p>
-          <p>3. El abogado puede entrar al portal con las credenciales para descargar el PDF de la solicitud</p>
-          <p>4. Las notificaciones de citatorios y actas de audiencia llegaran al buzon y se sincronizaran aqui</p>
-          <p>5. El folio generado es el numero oficial del CCL para dar seguimiento al caso</p>
+        <CardContent className="text-sm space-y-4">
+          <div className="p-4 bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-950/30 dark:to-indigo-950/30 rounded-lg border border-blue-100 dark:border-blue-800">
+            <h4 className="font-semibold text-blue-800 dark:text-blue-300 mb-2">
+              Automatizacion con Agente Inteligente
+            </h4>
+            <p className="text-muted-foreground leading-relaxed mb-3">
+              Cuando el trabajador <strong>autoriza explicitamente</strong> el manejo de su caso, 
+              nuestro sistema activa un <strong>agente inteligente</strong> que se encarga de:
+            </p>
+            <ul className="space-y-2 text-muted-foreground">
+              <li className="flex items-start gap-2">
+                <CheckCircle className="h-4 w-4 text-green-600 mt-0.5 flex-shrink-0" />
+                <span><strong>Generar automaticamente un folio unico</strong> basado en las credenciales y datos proporcionados por el sistema de MeCorrieron, asegurando trazabilidad completa del caso.</span>
+              </li>
+              <li className="flex items-start gap-2">
+                <CheckCircle className="h-4 w-4 text-green-600 mt-0.5 flex-shrink-0" />
+                <span><strong>Crear automaticamente un usuario con contrasena</strong> en el portal oficial SINACOL del gobierno mexicano, eliminando la necesidad de que el trabajador llene formularios manualmente.</span>
+              </li>
+              <li className="flex items-start gap-2">
+                <CheckCircle className="h-4 w-4 text-green-600 mt-0.5 flex-shrink-0" />
+                <span><strong>Preparar y enviar la solicitud de conciliacion</strong> con todos los datos laborales, prestaciones reclamadas y datos de la empresa demandada, reduciendo errores de captura.</span>
+              </li>
+              <li className="flex items-start gap-2">
+                <CheckCircle className="h-4 w-4 text-green-600 mt-0.5 flex-shrink-0" />
+                <span><strong>Gestionar el caso de forma continua</strong>, monitoreando notificaciones del CCL, sincronizando actualizaciones y alertando sobre citas de audiencia.</span>
+              </li>
+            </ul>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+            <div className="p-3 bg-green-50 dark:bg-green-950/30 rounded-lg border border-green-200 dark:border-green-800">
+              <h5 className="font-medium text-green-800 dark:text-green-300 text-sm mb-1">
+                Beneficios para el Trabajador
+              </h5>
+              <ul className="text-xs text-muted-foreground space-y-1">
+                <li>Ahorro de hasta 90% del tiempo de llenado</li>
+                <li>Eliminacion de errores en datos personales</li>
+                <li>Acceso inmediato al portal SINACOL</li>
+                <li>Seguimiento automatico del caso</li>
+              </ul>
+            </div>
+            <div className="p-3 bg-blue-50 dark:bg-blue-950/30 rounded-lg border border-blue-200 dark:border-blue-800">
+              <h5 className="font-medium text-blue-800 dark:text-blue-300 text-sm mb-1">
+                Tecnologia Utilizada
+              </h5>
+              <ul className="text-xs text-muted-foreground space-y-1">
+                <li>Agente de IA para llenado automatico</li>
+                <li>Validacion de CURP con RENAPO</li>
+                <li>Firma electronica avanzada</li>
+                <li>Integracion directa con SINACOL</li>
+              </ul>
+            </div>
+          </div>
+
+          <div className="p-3 bg-amber-50 dark:bg-amber-950/30 rounded-lg border border-amber-200 dark:border-amber-800">
+            <p className="text-xs text-amber-700 dark:text-amber-300">
+              <strong>Nota Legal:</strong> La automatizacion cumple con la Ley Federal del Trabajo, 
+              la Ley Federal de Proteccion de Datos Personales y los lineamientos del Sistema Nacional 
+              de Conciliacion Laboral. El trabajador conserva el control total y puede revocar la 
+              autorizacion en cualquier momento. Despues del registro automatizado, se requiere 
+              ratificacion presencial en el CCL dentro de 5 dias habiles.
+            </p>
+          </div>
         </CardContent>
       </Card>
     </div>
