@@ -105,12 +105,19 @@ export default function AbogadoDashboardPage() {
     { name: 'Guia LFT', href: '/guia-lft', emoji: '📖', description: 'Ley Federal del Trabajo', available: true }
   ]
 
+  const isAdmin = role === 'admin' || role === 'superadmin'
+  
   const lawyerTools = [
     { name: 'Mis Casos', href: '/abogado/casos', emoji: '⚖️', description: 'Gestiona y toma casos', available: true, highlight: true },
     { name: 'Mis Referidos', href: '/abogado/referidos', emoji: '🔗', description: 'Tu red de comisiones', available: true },
     { name: 'AutoCCL', href: '/oficina-virtual/ccl', emoji: '📝', description: 'Genera solicitudes CCL', available: isVerified, badge: isGuestLawyer ? 'Verificate' : undefined },
     { name: 'Marketplace', href: '/oficina-virtual/casos', emoji: '🛒', description: 'Casos disponibles', available: isVerified, badge: isGuestLawyer ? 'Verificate' : undefined },
-    { name: 'Leads', href: '/oficina-virtual/leads', emoji: '👥', description: 'Clientes potenciales', available: isVerified, badge: isGuestLawyer ? 'Verificate' : undefined }
+    { name: 'Leads', href: '/oficina-virtual/leads', emoji: '👥', description: 'Clientes potenciales', available: isVerified, badge: isGuestLawyer ? 'Verificate' : undefined },
+    // Admin tools (visible solo para admin/superadmin)
+    ...(isAdmin ? [
+      { name: 'Todos los Leads', href: '/abogado/leads', emoji: '📋', description: 'Cotizaciones (Admin)', available: true, highlight: true },
+      { name: 'Casos Activos', href: '/admin/casos', emoji: '📂', description: 'Todos los casos (Admin)', available: true }
+    ] : [])
   ]
 
   return (
@@ -133,12 +140,23 @@ export default function AbogadoDashboardPage() {
       </header>
 
       <main className="container px-4 py-6 space-y-6 max-w-5xl">
-        {/* Perfil */}
-        <Card>
+        {/* Perfil con Avatar de Abogado */}
+        <Card className="overflow-hidden">
           <CardContent className="p-4 sm:p-6">
             <div className="flex items-center gap-4">
-              <div className="w-16 h-16 rounded-full bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center text-white text-xl font-bold">
-                {displayName.charAt(0).toUpperCase()}
+              {/* Avatar de abogado profesional */}
+              <div className={`relative w-16 h-16 sm:w-20 sm:h-20 rounded-full overflow-hidden ${
+                isVerified 
+                  ? 'ring-2 ring-blue-500 ring-offset-2' 
+                  : 'ring-2 ring-gray-300 ring-offset-2'
+              }`}>
+                <Image
+                  src={lawyerProfile?.photo_url || '/avatars/lawyer-default.jpg'}
+                  alt={displayName}
+                  fill
+                  className="object-cover"
+                  priority
+                />
               </div>
               <div className="flex-1 min-w-0">
                 <h1 className="text-lg sm:text-xl font-bold truncate">{displayName}</h1>
@@ -306,8 +324,27 @@ export default function AbogadoDashboardPage() {
           </div>
         )}
 
-        {/* Wallet */}
-        <CryptoWallet />
+        {/* Wallet con VCard Profesional */}
+        <CryptoWallet 
+          userId={user?.id}
+          isVerified={isVerified}
+          userRole={role}
+          profile={profile ? {
+            id: profile.id,
+            full_name: profile.full_name,
+            email: profile.email,
+            phone: profile.phone,
+            role: profile.role
+          } : undefined}
+          lawyerProfile={lawyerProfile ? {
+            cedula_profesional: lawyerProfile.cedula_profesional,
+            firma_digital: false,
+            firm_name: undefined,
+            photo_url: lawyerProfile.photo_url,
+            status: lawyerProfile.verification_status,
+            universidad: undefined
+          } : null}
+        />
       </main>
 
       {/* Asistente de bienvenida con IA */}

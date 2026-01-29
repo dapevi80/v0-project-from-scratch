@@ -164,7 +164,7 @@ export function UserProfileCard({
                     role === 'admin' ? 'Admin' : 
                     role === 'superadmin' ? 'SuperAdmin' : role
 
-  // Determinar avatar segun modo publico/privado
+  // Determinar avatar segun modo publico/privado y rol
   const getAvatarSrc = () => {
     // Si el perfil es privado, mostrar avatar anonimo con antifaz
     if (!isPublic) return '/avatars/anonymous-user.jpg'
@@ -172,6 +172,10 @@ export function UserProfileCard({
     if (avatarUrl) return avatarUrl
     // Avatar por defecto segun rol
     if (role === 'superadmin') return '/avatars/superadmin-avatar.jpg'
+    // Avatar de abogado profesional para roles de abogado
+    if (role === 'lawyer' || role === 'admin' || role === 'guestlawyer') {
+      return '/avatars/lawyer-default.jpg'
+    }
     return '/avatars/default-user-avatar.jpg'
   }
 
@@ -181,6 +185,7 @@ export function UserProfileCard({
       case 'superadmin': return 'ring-2 ring-green-400 ring-offset-2 ring-offset-slate-900'
       case 'admin': return 'ring-2 ring-amber-400 ring-offset-2 ring-offset-slate-900'
       case 'lawyer': return 'ring-2 ring-blue-400 ring-offset-2 ring-offset-slate-900'
+      case 'guestlawyer': return 'ring-2 ring-blue-300 ring-offset-2 ring-offset-slate-900' // Abogado guest - azul claro
       case 'worker': return 'ring-2 ring-emerald-400 ring-offset-2 ring-offset-slate-900'
       default: return 'ring-2 ring-slate-500 ring-offset-2 ring-offset-slate-900'
     }

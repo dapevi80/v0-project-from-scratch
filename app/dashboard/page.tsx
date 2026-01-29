@@ -407,10 +407,26 @@ export default function DashboardPage() {
             </Card>
           )}
 
-          {/* Crypto Wallet Panel */}
+          {/* Crypto Wallet Panel con VCard para profesionales */}
           <CryptoWallet 
             userId={user?.id}
-            isVerified={isVerifiedWorker}
+            isVerified={isVerifiedWorker || isProfessional}
+            userRole={role}
+            profile={profile ? {
+              id: profile.id,
+              full_name: profile.full_name,
+              email: profile.email || user?.email,
+              phone: profile.phone,
+              role: profile.role
+            } : undefined}
+            lawyerProfile={isProfessional ? {
+              cedula_profesional: undefined,
+              firma_digital: false,
+              firm_name: undefined,
+              photo_url: profile?.avatar_url,
+              status: profile?.verification_status === 'verified' ? 'verified' : 'pending',
+              universidad: undefined
+            } : null}
           />
 
           {/* CTA para worker sin casos */}

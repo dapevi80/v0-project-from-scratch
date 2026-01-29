@@ -30,6 +30,16 @@ interface AdminData {
   isSuperAdmin: boolean
 }
 
+const commonTools = [
+  { name: 'Dashboard', href: '/dashboard', emoji: '🏠', description: 'Panel principal' },
+  { name: 'Settings', href: '/settings', emoji: '⚙️', description: 'Configuraciones' },
+]
+
+const adminTools = [
+  { name: 'Manage Cases', href: '/admin/cases', emoji: '📋', description: 'Administrar casos', badge: 0 },
+  { name: 'View Reports', href: '/admin/reports', emoji: '📊', description: 'Ver reportes' },
+]
+
 export default function AdminDashboardPage() {
   const router = useRouter()
   const [loading, setLoading] = useState(true)
@@ -126,26 +136,16 @@ export default function AdminDashboardPage() {
     )
   }
 
-  // Herramientas comunes (abogado)
-  const commonTools = [
-    { name: 'Mis Casos', href: '/abogado/casos', emoji: '⚖️', description: 'Gestiona casos asignados' },
-    { name: 'Mis Referidos', href: '/abogado/referidos', emoji: '🔗', description: 'Red de comisiones' },
-    { name: 'Calculadora', href: '/calculadora', emoji: '🧮', description: 'Calcula liquidaciones' },
-    { name: 'Boveda', href: '/boveda', emoji: '🔐', description: 'Documentos seguros' },
-  ]
-
-  // Herramientas admin
-  const adminTools = [
-    { name: 'Leads', href: '/abogado/leads', emoji: '📋', description: 'Cotizaciones nuevas', badge: data.stats.cotizacionesNuevas },
+  // Herramientas ROOT ADMIN EXCLUSIVAS (solo verificacion y gestion del sistema)
+  const rootAdminTools = [
     { name: 'Verificar Abogados', href: '/admin/solicitudes-abogados', emoji: '🛡️', description: 'Aprobar solicitudes', badge: data.stats.abogadosPendientes },
     { name: 'Usuarios', href: '/admin/usuarios', emoji: '👥', description: 'Gestionar usuarios' },
-    { name: 'Casos Activos', href: '/admin/casos', emoji: '📂', description: 'Todos los casos' },
+    { name: 'Bug Reports', href: '/admin/bug-reports', emoji: '🐛', description: 'Reportes usuarios' },
+    { name: 'Diagnostico CCL', href: '/admin/ccl-diagnostico', emoji: '🔬', description: '32 Estatales + 1 Federal' },
   ]
 
-  // Herramientas EXCLUSIVAS superadmin
+  // Herramientas EXCLUSIVAS superadmin (sistema y finanzas)
   const superAdminTools = [
-    { name: 'Bug Reports', href: '/admin/bug-reports', emoji: '🐛', description: 'Reportes usuarios' },
-    { name: 'Diagnostico CCL', href: '/admin/ccl-diagnostico', emoji: '🔬', description: 'Test 33 portales' },
     { name: 'Cobros', href: '/admin/cobros', emoji: '💳', description: 'Suscripciones' },
     { name: 'Facturacion SAT', href: '/admin/facturacion', emoji: '🧾', description: 'CFDI y facturas' },
     { name: 'Wallet', href: '/admin/wallet', emoji: '🪙', description: 'Fichas y recargas' },
@@ -243,38 +243,13 @@ export default function AdminDashboardPage() {
           </Card>
         </div>
 
-        {/* Herramientas comunes */}
+        {/* Herramientas ROOT Admin (Verificacion y Gestion) */}
         <div>
           <h2 className={`text-sm font-medium mb-3 px-1 ${data.isSuperAdmin ? 'text-green-600 font-mono' : 'text-slate-500'}`}>
-            {data.isSuperAdmin ? '> TOOLS' : 'Herramientas'}
-          </h2>
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
-            {commonTools.map((tool) => (
-              <Link key={tool.name} href={tool.href}>
-                <Card className={`h-full transition-all cursor-pointer ${
-                  data.isSuperAdmin 
-                    ? 'bg-black border-green-900 hover:border-green-500 hover:bg-green-950/30' 
-                    : 'hover:shadow-md hover:border-primary'
-                }`}>
-                  <CardContent className="p-3 flex flex-col items-center text-center gap-1">
-                    <span className="text-2xl">{tool.emoji}</span>
-                    <p className={`font-medium text-xs ${data.isSuperAdmin ? 'text-green-400 font-mono' : 'text-foreground'}`}>
-                      {tool.name}
-                    </p>
-                  </CardContent>
-                </Card>
-              </Link>
-            ))}
-          </div>
-        </div>
-
-        {/* Herramientas admin */}
-        <div>
-          <h2 className={`text-sm font-medium mb-3 px-1 ${data.isSuperAdmin ? 'text-green-600 font-mono' : 'text-slate-500'}`}>
-            {data.isSuperAdmin ? '> ADMIN' : 'Administracion'}
+            {data.isSuperAdmin ? '> ROOT_ADMIN' : 'Administracion'}
           </h2>
           <div className="grid grid-cols-2 gap-2">
-            {adminTools.map((tool) => (
+            {rootAdminTools.map((tool) => (
               <Link key={tool.name} href={tool.href}>
                 <Card className={`h-full transition-all cursor-pointer ${
                   data.isSuperAdmin 
@@ -303,13 +278,13 @@ export default function AdminDashboardPage() {
           </div>
         </div>
 
-        {/* Herramientas EXCLUSIVAS superadmin */}
+        {/* Herramientas EXCLUSIVAS superadmin (Sistema y Finanzas) */}
         {data.isSuperAdmin && (
           <div>
             <h2 className="text-sm font-medium mb-3 px-1 text-green-500 font-mono flex items-center gap-2">
-              <span className="animate-pulse">{'>'}</span> ROOT_ACCESS
+              <span className="animate-pulse">{'>'}</span> SYSTEM_CONFIG
             </h2>
-            <div className="grid grid-cols-4 gap-2">
+            <div className="grid grid-cols-3 gap-2">
               {superAdminTools.map((tool) => (
                 <Link key={tool.name} href={tool.href}>
                   <Card className={`h-full transition-all cursor-pointer ${
@@ -333,6 +308,26 @@ export default function AdminDashboardPage() {
                 </Link>
               ))}
             </div>
+          </div>
+        )}
+
+        {/* Links rapidos a dashboards de usuario */}
+        {data.isSuperAdmin && (
+          <div className="pt-2 space-y-2">
+            <Link href="/abogado/dashboard">
+              <Card className="bg-green-950/30 border-green-800 hover:border-green-600 transition-all cursor-pointer">
+                <CardContent className="p-3 flex items-center justify-center gap-2">
+                  <span className="text-green-400 font-mono text-xs">{'>'} Dashboard Abogado (Herramientas, Casos, Leads, AutoCCL)</span>
+                </CardContent>
+              </Card>
+            </Link>
+            <Link href="/dashboard">
+              <Card className="bg-green-950/30 border-green-800 hover:border-green-600 transition-all cursor-pointer">
+                <CardContent className="p-3 flex items-center justify-center gap-2">
+                  <span className="text-green-600 font-mono text-xs">{'>'} Dashboard Trabajador (Calculadora, Boveda)</span>
+                </CardContent>
+              </Card>
+            </Link>
           </div>
         )}
 

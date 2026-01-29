@@ -28,6 +28,7 @@ import {
   Info
 } from 'lucide-react'
 import { QRCodeSVG } from 'qrcode.react'
+import { ProVCard, ProVCardMini } from './pro-vcard'
 
 // Types
 interface WalletData {
@@ -40,9 +41,31 @@ interface CryptoWalletProps {
   userId?: string
   isVerified: boolean
   onWalletCreated?: (address: string) => void
+  // For VCard feature
+  userRole?: string
+  profile?: {
+    id: string
+    full_name: string
+    email?: string
+    phone?: string
+    role: string
+  }
+  lawyerProfile?: {
+    cedula_profesional?: string
+    firma_digital?: boolean
+    firma_url?: string
+    firm_name?: string
+    photo_url?: string
+    bio?: string
+    status?: string
+    universidad?: string
+    especialidad?: string
+    direccion_oficina?: string
+    horario_atencion?: string
+  } | null
 }
 
-type WalletView = 'main' | 'receive' | 'send' | 'settings' | 'mnemonic' | 'import'
+type WalletView = 'main' | 'receive' | 'send' | 'settings' | 'mnemonic' | 'import' | 'vcard'
 
 // Tutorial steps for wallet creation
 const SECURITY_STEPS = [
@@ -72,7 +95,9 @@ const SECURITY_STEPS = [
   }
 ]
 
-export function CryptoWallet({ userId, isVerified, onWalletCreated }: CryptoWalletProps) {
+export function CryptoWallet({ userId, isVerified, onWalletCreated, userRole, profile, lawyerProfile }: CryptoWalletProps) {
+  // Check if user is eligible for VCard (lawyer, admin, superadmin with verified status)
+  const isVCardEligible = profile && (userRole === 'lawyer' || userRole === 'admin' || userRole === 'superadmin') && lawyerProfile?.status === 'verified'
   // States
   const [walletData, setWalletData] = useState<WalletData | null>(null)
   const [balance, setBalance] = useState<string>('0.00')
@@ -767,6 +792,17 @@ export function CryptoWallet({ userId, isVerified, onWalletCreated }: CryptoWall
     )
   }
 
+  // VCard view for verified professionals
+  if (currentView === 'vcard' && isVCardEligible && profile) {
+    return (
+      <ProVCard 
+        profile={profile}
+        lawyerProfile={lawyerProfile}
+        onClose={() => setCurrentView('main')}
+      />
+    )
+  }
+
   // Main wallet view (wallet active)
   return (
     <Card className="border-2 border-emerald-200 bg-gradient-to-br from-emerald-50 via-teal-50 to-cyan-50">
@@ -861,6 +897,17 @@ export function CryptoWallet({ userId, isVerified, onWalletCreated }: CryptoWall
             Enviar
           </Button>
         </div>
+
+        {/* VCard Profesional - Solo para abogados/admin/superadmin verificados */}
+        {isVCardEligible && profile && (
+          <div className="pt-2 border-t border-emerald-200">
+            <ProVCardMini 
+              profile={profile}
+              lawyerProfile={lawyerProfile}
+              onExpand={() => setCurrentView('vcard')}
+            />
+          </div>
+        )}
       </CardContent>
     </Card>
   )
