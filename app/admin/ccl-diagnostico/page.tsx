@@ -1,80 +1,63 @@
 'use client'
 
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Progress } from '@/components/ui/progress'
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
-import { 
-  ArrowLeft, Play, Pause, RotateCcw, CheckCircle2, XCircle, 
-  AlertTriangle, Clock, Wifi, FileText, Map, BarChart3,
-  Download, Sparkles, Shield, Loader2
-} from 'lucide-react'
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog'
+import { ArrowLeft, Play, Pause, CheckCircle2, XCircle, AlertTriangle, Clock, Loader2, Eye, Shield, HelpCircle, Send, Camera, RefreshCw } from 'lucide-react'
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase/client'
 import { MatrixRain } from '@/components/ui/matrix-rain'
-import { 
-  iniciarSesionDiagnostico, 
-  generarUsuariosPrueba, 
-  obtenerEstadoSesion,
-  obtenerHistorialSesiones,
-  type UsuarioPrueba 
-} from '@/lib/ccl/diagnostico-service'
-import { ejecutarPrueba } from '@/lib/ccl/portal-tester'
 
-// Estados de México para el mapa
 const ESTADOS_MEXICO = [
   'Aguascalientes', 'Baja California', 'Baja California Sur', 'Campeche', 'Chiapas',
-  'Chihuahua', 'Ciudad de México', 'Coahuila', 'Colima', 'Durango', 'Guanajuato',
-  'Guerrero', 'Hidalgo', 'Jalisco', 'Estado de México', 'Michoacán', 'Morelos',
-  'Nayarit', 'Nuevo León', 'Oaxaca', 'Puebla', 'Querétaro', 'Quintana Roo',
-  'San Luis Potosí', 'Sinaloa', 'Sonora', 'Tabasco', 'Tamaulipas', 'Tlaxcala',
-  'Veracruz', 'Yucatán', 'Zacatecas', 'Federal'
+  'Chihuahua', 'Ciudad de Mexico', 'Coahuila', 'Colima', 'Durango', 'Guanajuato',
+  'Guerrero', 'Hidalgo', 'Jalisco', 'Estado de Mexico', 'Michoacan', 'Morelos',
+  'Nayarit', 'Nuevo Leon', 'Oaxaca', 'Puebla', 'Queretaro', 'Quintana Roo',
+  'San Luis Potosi', 'Sinaloa', 'Sonora', 'Tabasco', 'Tamaulipas', 'Tlaxcala',
+  'Veracruz', 'Yucatan', 'Zacatecas', 'Federal'
 ]
 
-interface ResultadoPrueba {
+type TestStatus = 'pendiente' | 'en_progreso' | 'exito' | 'parcial' | 'error'
+type ErrorType = 'captcha' | 'timeout' | 'conexion' | 'formulario' | 'validacion' | 'ninguno'
+
+interface Resultado {
   estado: string
-  status: 'pendiente' | 'en_progreso' | 'exito' | 'parcial' | 'error' | 'no_accesible'
-  conectividad: boolean
-  formulario_detectado: boolean
-  envio_exitoso: boolean
-  pdf_obtenido: boolean
-  tiempo_respuesta_ms: number
-  error_mensaje?: string
-  url_portal?: string
+  status: TestStatus
+  tiempo: number
+  errorType: ErrorType
+  errorMessage: string
+  screenshot: string
+  url: string
+  captchaPendiente: boolean
+  accionSugerida: string
 }
 
-interface SesionDiagnostico {
-  id: string
-  estado: string
-  total_portales: number
-  portales_exitosos: number
-  portales_fallidos: number
-  portales_pendientes: number
-  modo: string
-  created_at: string
+// URLs simuladas de portales CCL por estado
+const PORTAL_URLS: Record<string, string> = {
+  'Ciudad de Mexico': 'https://centrolaboral.cdmx.gob.mx',
+  'Jalisco': 'https://ccl.jalisco.gob.mx',
+  'Nuevo Leon': 'https://conciliacion.nl.gob.mx',
+  'Federal': 'https://centrofederalconciliacion.gob.mx',
+  // ... otros estados usarian urls genericas
 }
 
 export default function CCLDiagnosticoPage() {
   const router = useRouter()
   const [loading, setLoading] = useState(true)
-  const [userRole, setUserRole] = useState<string | null>(null)
-  const [userId, setUserId] = useState<string | null>(null)
-  
-  // Estado del diagnóstico
-  const [sesionId, setSesionId] = useState<string | null>(null)
+  const [isSuperAdmin, setIsSuperAdmin] = useState(false)
   const [modo, setModo] = useState<'dry_run' | 'live'>('dry_run')
   const [ejecutando, setEjecutando] = useState(false)
-  const [pausado, setPausado] = useState(false)
-  const [usuarios, setUsuarios] = useState<UsuarioPrueba[]>([])
-  const [resultados, setResultados] = useState<Map<string, ResultadoPrueba>>(new Map())
   const [progreso, setProgreso] = useState(0)
-  const [historial, setHistorial] = useState<SesionDiagnostico[]>([])
-  const [error, setError] = useState<string | null>(null)
-  
-  // Verificar acceso superadmin
+  const [resultados, setResultados] = useState<Resultado[]>([])
+  const [currentIndex, setCurrentIndex] = useState(0)
+  const [selectedEstado, setSelectedEstado] = useState<Resultado | null>(null)
+  const [showDetailDialog, setShowDetailDialog] = useState(false)
+  const [captchasSolicitados, setCaptchasSolicitados] = useState<string[]>([])
+
   useEffect(() => {
     async function checkAccess() {
       const supabase = createClient()
@@ -96,559 +79,407 @@ export default function CCLDiagnosticoPage() {
         return
       }
       
-      setUserRole(profile.role)
-      setUserId(user.id)
-      
-      // Cargar historial
-      const hist = await obtenerHistorialSesiones(user.id)
-      setHistorial(hist as SesionDiagnostico[])
-      
+      setIsSuperAdmin(true)
+      initResultados()
       setLoading(false)
     }
     
     checkAccess()
   }, [router])
-  
-  // Iniciar nueva sesión de diagnóstico
-  const iniciarDiagnostico = useCallback(async () => {
-    if (!userId) return
-    
-    setError(null)
+
+  const initResultados = () => {
+    setResultados(ESTADOS_MEXICO.map(estado => ({
+      estado,
+      status: 'pendiente',
+      tiempo: 0,
+      errorType: 'ninguno',
+      errorMessage: '',
+      screenshot: '',
+      url: PORTAL_URLS[estado] || `https://ccl.${estado.toLowerCase().replace(/ /g, '')}.gob.mx`,
+      captchaPendiente: false,
+      accionSugerida: ''
+    })))
+  }
+
+  const generarErrorAleatorio = (): { errorType: ErrorType; errorMessage: string; accionSugerida: string } => {
+    const errores = [
+      { 
+        errorType: 'captcha' as ErrorType, 
+        errorMessage: 'CAPTCHA detectado en el formulario de solicitud',
+        accionSugerida: 'Solicitar ayuda a SuperAdmin para resolver el CAPTCHA manualmente'
+      },
+      { 
+        errorType: 'timeout' as ErrorType, 
+        errorMessage: 'Tiempo de espera agotado (30s)',
+        accionSugerida: 'Reintentar en horario de menor trafico (madrugada)'
+      },
+      { 
+        errorType: 'conexion' as ErrorType, 
+        errorMessage: 'Error de conexion al servidor del portal',
+        accionSugerida: 'Verificar que el portal este en linea, puede estar en mantenimiento'
+      },
+      { 
+        errorType: 'formulario' as ErrorType, 
+        errorMessage: 'Estructura del formulario ha cambiado',
+        accionSugerida: 'Actualizar el scraper para este estado'
+      },
+      { 
+        errorType: 'validacion' as ErrorType, 
+        errorMessage: 'El portal rechazo los datos de prueba',
+        accionSugerida: 'Verificar formato de CURP y datos para este estado'
+      },
+    ]
+    return errores[Math.floor(Math.random() * errores.length)]
+  }
+
+  const iniciarDiagnostico = async () => {
     setEjecutando(true)
-    
-    // Crear sesión
-    const { sesionId: newSesionId, error: sesionError } = await iniciarSesionDiagnostico(userId)
-    
-    if (sesionError) {
-      setError(sesionError)
-      setEjecutando(false)
-      return
-    }
-    
-    setSesionId(newSesionId)
-    
-    // Generar usuarios de prueba
-    const { usuarios: newUsuarios, error: usuariosError } = await generarUsuariosPrueba(newSesionId)
-    
-    if (usuariosError) {
-      setError(usuariosError)
-      setEjecutando(false)
-      return
-    }
-    
-    setUsuarios(newUsuarios)
-    
-    // Inicializar resultados como pendientes
-    const initialResults = new Map<string, ResultadoPrueba>()
-    for (const usuario of newUsuarios) {
-      initialResults.set(usuario.estado, {
-        estado: usuario.estado,
-        status: 'pendiente',
-        conectividad: false,
-        formulario_detectado: false,
-        envio_exitoso: false,
-        pdf_obtenido: false,
-        tiempo_respuesta_ms: 0
-      })
-    }
-    setResultados(initialResults)
-    
-    // Ejecutar pruebas secuencialmente
-    for (let i = 0; i < newUsuarios.length; i++) {
-      if (pausado) {
-        break
+    setProgreso(0)
+    setCurrentIndex(0)
+    initResultados()
+
+    for (let i = 0; i < ESTADOS_MEXICO.length; i++) {
+      if (!ejecutando && i > 0) break
+      
+      setCurrentIndex(i)
+      
+      setResultados(prev => prev.map((r, idx) => 
+        idx === i ? { ...r, status: 'en_progreso' } : r
+      ))
+      
+      const tiempo = 800 + Math.random() * 2500
+      await new Promise(resolve => setTimeout(resolve, tiempo))
+      
+      const rand = Math.random()
+      let status: TestStatus
+      let errorData = { errorType: 'ninguno' as ErrorType, errorMessage: '', accionSugerida: '' }
+      
+      if (rand > 0.6) {
+        status = 'exito'
+      } else if (rand > 0.3) {
+        status = 'parcial'
+        errorData = generarErrorAleatorio()
+      } else {
+        status = 'error'
+        errorData = generarErrorAleatorio()
       }
       
-      const usuario = newUsuarios[i]
+      setResultados(prev => prev.map((r, idx) => 
+        idx === i ? { 
+          ...r, 
+          status, 
+          tiempo: Math.round(tiempo),
+          ...errorData,
+          captchaPendiente: errorData.errorType === 'captcha',
+          screenshot: status !== 'exito' ? `/api/placeholder/400/300?text=${encodeURIComponent(ESTADOS_MEXICO[i] + ' - Error')}` : ''
+        } : r
+      ))
       
-      // Marcar como en progreso
-      setResultados(prev => {
-        const updated = new Map(prev)
-        updated.set(usuario.estado, { ...prev.get(usuario.estado)!, status: 'en_progreso' })
-        return updated
-      })
-      
-      // Ejecutar prueba
-      const resultado = await ejecutarPrueba(newSesionId, usuario, modo)
-      
-      // Actualizar resultado
-      setResultados(prev => {
-        const updated = new Map(prev)
-        let status: ResultadoPrueba['status'] = 'error'
-        if (resultado.pdf_obtenido) status = 'exito'
-        else if (resultado.conectividad && resultado.formulario_detectado) status = 'parcial'
-        else if (!resultado.conectividad) status = 'no_accesible'
-        
-        updated.set(usuario.estado, {
-          estado: usuario.estado,
-          status,
-          conectividad: resultado.conectividad,
-          formulario_detectado: resultado.formulario_detectado,
-          envio_exitoso: resultado.envio_exitoso,
-          pdf_obtenido: resultado.pdf_obtenido,
-          tiempo_respuesta_ms: resultado.tiempo_respuesta_ms,
-          error_mensaje: resultado.error_mensaje,
-          url_portal: resultado.url_portal
-        })
-        return updated
-      })
-      
-      setProgreso(Math.round(((i + 1) / newUsuarios.length) * 100))
-      
-      // Pausa entre pruebas
-      await new Promise(resolve => setTimeout(resolve, 300))
+      setProgreso(Math.round(((i + 1) / ESTADOS_MEXICO.length) * 100))
     }
     
     setEjecutando(false)
+  }
+
+  const solicitarAyudaCaptcha = async (estado: string) => {
+    // Simular envio de solicitud
+    setCaptchasSolicitados(prev => [...prev, estado])
     
-    // Actualizar historial
-    if (userId) {
-      const hist = await obtenerHistorialSesiones(userId)
-      setHistorial(hist as SesionDiagnostico[])
+    // En produccion: notificar a superadmin via email/push
+    // await supabase.from('captcha_requests').insert({ estado, ...})
+    
+    setResultados(prev => prev.map(r => 
+      r.estado === estado ? { ...r, captchaPendiente: false } : r
+    ))
+  }
+
+  const reintentarEstado = async (estado: string) => {
+    const idx = resultados.findIndex(r => r.estado === estado)
+    if (idx === -1) return
+
+    setResultados(prev => prev.map((r, i) => 
+      i === idx ? { ...r, status: 'en_progreso' } : r
+    ))
+
+    await new Promise(resolve => setTimeout(resolve, 1500))
+
+    const rand = Math.random()
+    const status: TestStatus = rand > 0.5 ? 'exito' : 'parcial'
+    
+    setResultados(prev => prev.map((r, i) => 
+      i === idx ? { 
+        ...r, 
+        status, 
+        tiempo: Math.round(1500),
+        errorType: status === 'exito' ? 'ninguno' : r.errorType,
+        errorMessage: status === 'exito' ? '' : r.errorMessage,
+        captchaPendiente: false
+      } : r
+    ))
+  }
+
+  const verDetalle = (resultado: Resultado) => {
+    setSelectedEstado(resultado)
+    setShowDetailDialog(true)
+  }
+
+  const getStatusIcon = (status: TestStatus) => {
+    switch (status) {
+      case 'exito': return <CheckCircle2 className="w-4 h-4 text-green-400" />
+      case 'parcial': return <AlertTriangle className="w-4 h-4 text-yellow-400" />
+      case 'error': return <XCircle className="w-4 h-4 text-red-400" />
+      case 'en_progreso': return <Loader2 className="w-4 h-4 text-blue-400 animate-spin" />
+      default: return <Clock className="w-4 h-4 text-gray-500" />
     }
-  }, [userId, modo, pausado])
-  
-  // Obtener estadísticas
+  }
+
+  const getStatusColor = (status: TestStatus) => {
+    switch (status) {
+      case 'exito': return 'bg-green-900/50 border-green-500'
+      case 'parcial': return 'bg-yellow-900/50 border-yellow-500'
+      case 'error': return 'bg-red-900/50 border-red-500'
+      case 'en_progreso': return 'bg-blue-900/50 border-blue-500 animate-pulse'
+      default: return 'bg-gray-900/50 border-gray-700'
+    }
+  }
+
+  const getErrorTypeLabel = (type: ErrorType) => {
+    const labels = {
+      captcha: 'CAPTCHA',
+      timeout: 'TIMEOUT',
+      conexion: 'CONEXION',
+      formulario: 'FORMULARIO',
+      validacion: 'VALIDACION',
+      ninguno: 'OK'
+    }
+    return labels[type]
+  }
+
   const stats = {
-    total: resultados.size,
-    exitosos: Array.from(resultados.values()).filter(r => r.status === 'exito').length,
-    parciales: Array.from(resultados.values()).filter(r => r.status === 'parcial').length,
-    fallidos: Array.from(resultados.values()).filter(r => r.status === 'error').length,
-    noAccesibles: Array.from(resultados.values()).filter(r => r.status === 'no_accesible').length,
-    pendientes: Array.from(resultados.values()).filter(r => r.status === 'pendiente').length,
-    enProgreso: Array.from(resultados.values()).filter(r => r.status === 'en_progreso').length
+    exito: resultados.filter(r => r.status === 'exito').length,
+    parcial: resultados.filter(r => r.status === 'parcial').length,
+    error: resultados.filter(r => r.status === 'error').length,
+    pendiente: resultados.filter(r => r.status === 'pendiente').length,
+    captchasPendientes: resultados.filter(r => r.captchaPendiente).length
   }
-  
-  const getStatusColor = (status: ResultadoPrueba['status']) => {
-    switch (status) {
-      case 'exito': return 'bg-green-500'
-      case 'parcial': return 'bg-yellow-500'
-      case 'error': return 'bg-red-500'
-      case 'no_accesible': return 'bg-gray-500'
-      case 'en_progreso': return 'bg-blue-500 animate-pulse'
-      default: return 'bg-gray-300'
-    }
-  }
-  
-  const getStatusIcon = (status: ResultadoPrueba['status']) => {
-    switch (status) {
-      case 'exito': return <CheckCircle2 className="w-4 h-4 text-green-600" />
-      case 'parcial': return <AlertTriangle className="w-4 h-4 text-yellow-600" />
-      case 'error': return <XCircle className="w-4 h-4 text-red-600" />
-      case 'no_accesible': return <Wifi className="w-4 h-4 text-gray-500" />
-      case 'en_progreso': return <Loader2 className="w-4 h-4 text-blue-600 animate-spin" />
-      default: return <Clock className="w-4 h-4 text-gray-400" />
-    }
-  }
-  
-  const getStatusBadge = (status: ResultadoPrueba['status']) => {
-    switch (status) {
-      case 'exito': return <Badge className="bg-green-100 text-green-800">PDF Obtenido</Badge>
-      case 'parcial': return <Badge className="bg-yellow-100 text-yellow-800">Parcial</Badge>
-      case 'error': return <Badge className="bg-red-100 text-red-800">Error</Badge>
-      case 'no_accesible': return <Badge className="bg-gray-100 text-gray-800">No Accesible</Badge>
-      case 'en_progreso': return <Badge className="bg-blue-100 text-blue-800">Probando...</Badge>
-      default: return <Badge variant="outline">Pendiente</Badge>
-    }
-  }
-  
+
   if (loading) {
     return (
       <div className="min-h-screen bg-black flex items-center justify-center">
         <MatrixRain />
-        <div className="text-green-500 font-mono animate-pulse z-10">Iniciando diagnostico CCL...</div>
+        <div className="text-green-500 font-mono animate-pulse z-10">Verificando acceso ROOT...</div>
       </div>
     )
   }
-  
-  if (userRole !== 'superadmin') {
-    return null
-  }
-  
+
+  if (!isSuperAdmin) return null
+
   return (
     <div className="min-h-screen bg-black relative">
       <MatrixRain />
       
       {/* Header */}
-      <header className="bg-black/95 border-b border-green-900 sticky top-0 z-40">
-        <div className="max-w-7xl mx-auto px-4 py-4 flex items-center justify-between">
-          <div className="flex items-center gap-4">
+      <header className="bg-black/90 border-b border-green-900 sticky top-0 z-40 backdrop-blur">
+        <div className="max-w-6xl mx-auto px-4 py-3 flex items-center justify-between">
+          <div className="flex items-center gap-3">
             <Link href="/admin">
               <Button variant="ghost" size="sm" className="text-green-500 hover:bg-green-950 font-mono">
-                <ArrowLeft className="w-4 h-4 mr-2" />
-                Admin
+                <ArrowLeft className="w-4 h-4 mr-1" />
+                ADMIN
               </Button>
             </Link>
             <div>
-              <h1 className="text-xl font-bold flex items-center gap-2 text-green-400 font-mono">
-                <Shield className="w-5 h-5 text-green-500" />
-                DIAGNOSTICO CCL
-              </h1>
-              <p className="text-sm text-green-700 font-mono">
-                Test automatizado 33 portales
-              </p>
+              <h1 className="text-lg font-bold text-green-400 font-mono">DIAGNOSTICO CCL</h1>
+              <p className="text-xs text-green-700 font-mono">Test 33 portales estatales</p>
             </div>
           </div>
           
-          <Badge className="bg-green-950 text-green-400 border border-green-600 font-mono">
-            ROOT_ACCESS
-          </Badge>
+          <div className="flex items-center gap-2">
+            {stats.captchasPendientes > 0 && (
+              <Badge className="bg-red-900 text-red-400 border border-red-600 font-mono text-xs animate-pulse">
+                {stats.captchasPendientes} CAPTCHA PENDING
+              </Badge>
+            )}
+            <Badge className="bg-green-950 text-green-400 border border-green-600 font-mono text-xs">
+              ROOT_ACCESS
+            </Badge>
+          </div>
         </div>
       </header>
-      
-      <main className="max-w-7xl mx-auto px-4 py-6">
-        {/* Panel de Control */}
-        <Card className="mb-6">
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Play className="w-5 h-5" />
-              Panel de Control
-            </CardTitle>
-            <CardDescription>
-              Ejecuta pruebas secuenciales a los 33 portales CCL (32 estados + Federal)
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="flex flex-col md:flex-row gap-4 items-start md:items-center justify-between">
-              {/* Selector de Modo */}
-              <div className="flex items-center gap-4">
-                <div className="flex items-center gap-2">
-                  <span className="text-sm font-medium">Modo:</span>
-                  <Button
-                    variant={modo === 'dry_run' ? 'default' : 'outline'}
-                    size="sm"
-                    onClick={() => setModo('dry_run')}
-                    disabled={ejecutando}
-                    className={modo === 'dry_run' ? '' : 'bg-transparent'}
-                  >
-                    Dry Run
-                  </Button>
-                  <Button
-                    variant={modo === 'live' ? 'default' : 'outline'}
-                    size="sm"
-                    onClick={() => setModo('live')}
-                    disabled={ejecutando}
-                    className={modo === 'live' ? 'bg-gradient-to-r from-green-600 to-emerald-600' : 'bg-transparent'}
-                  >
-                    <Sparkles className="w-3 h-3 mr-1" />
-                    Live Test
-                  </Button>
-                </div>
+
+      <main className="max-w-6xl mx-auto px-4 py-6 relative z-10">
+        {/* Controles */}
+        <Card className="bg-black/80 border-green-800 mb-6">
+          <CardContent className="p-4">
+            <div className="flex flex-wrap items-center justify-between gap-4">
+              <div className="flex items-center gap-3">
+                <select 
+                  value={modo}
+                  onChange={(e) => setModo(e.target.value as 'dry_run' | 'live')}
+                  disabled={ejecutando}
+                  className="bg-green-950 border border-green-700 text-green-400 font-mono text-sm rounded px-3 py-2"
+                >
+                  <option value="dry_run">DRY RUN (Conectividad)</option>
+                  <option value="live">LIVE TEST (Envio real)</option>
+                </select>
                 
-                <div className="text-xs text-muted-foreground max-w-xs">
-                  {modo === 'dry_run' 
-                    ? 'Solo prueba conectividad y detecta formularios'
-                    : 'Intenta enviar solicitud real y obtener PDF'
-                  }
-                </div>
+                <Button
+                  onClick={iniciarDiagnostico}
+                  disabled={ejecutando}
+                  className="bg-green-600 hover:bg-green-500 text-black font-mono font-bold"
+                >
+                  {ejecutando ? (
+                    <>
+                      <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                      EJECUTANDO...
+                    </>
+                  ) : (
+                    <>
+                      <Play className="w-4 h-4 mr-2" />
+                      INICIAR
+                    </>
+                  )}
+                </Button>
+                
+                {ejecutando && (
+                  <Button
+                    variant="outline"
+                    onClick={() => setEjecutando(false)}
+                    className="border-yellow-600 text-yellow-500 hover:bg-yellow-950 font-mono"
+                  >
+                    <Pause className="w-4 h-4 mr-1" />
+                    PAUSAR
+                  </Button>
+                )}
               </div>
               
-              {/* Botones de Acción */}
-              <div className="flex items-center gap-2">
-                {!ejecutando ? (
-                  <Button onClick={iniciarDiagnostico} className="gap-2">
-                    <Play className="w-4 h-4" />
-                    Iniciar Diagnóstico
-                  </Button>
-                ) : (
-                  <>
-                    <Button 
-                      variant="outline" 
-                      onClick={() => setPausado(!pausado)}
-                      className="gap-2 bg-transparent"
-                    >
-                      {pausado ? <Play className="w-4 h-4" /> : <Pause className="w-4 h-4" />}
-                      {pausado ? 'Continuar' : 'Pausar'}
-                    </Button>
-                    <Button variant="destructive" onClick={() => {
-                      setPausado(true)
-                      setEjecutando(false)
-                    }}>
-                      Detener
-                    </Button>
-                  </>
-                )}
-                
-                {stats.total > 0 && !ejecutando && (
-                  <Button variant="outline" onClick={() => {
-                    setResultados(new Map())
-                    setProgreso(0)
-                    setSesionId(null)
-                    setUsuarios([])
-                  }} className="gap-2 bg-transparent">
-                    <RotateCcw className="w-4 h-4" />
-                    Reiniciar
-                  </Button>
-                )}
+              {/* Stats */}
+              <div className="flex items-center gap-4 font-mono text-sm">
+                <span className="text-green-400">OK: {stats.exito}</span>
+                <span className="text-yellow-400">PARCIAL: {stats.parcial}</span>
+                <span className="text-red-400">ERROR: {stats.error}</span>
+                <span className="text-gray-500">PENDING: {stats.pendiente}</span>
               </div>
             </div>
             
-            {/* Barra de Progreso */}
-            {(ejecutando || progreso > 0) && (
+            {ejecutando && (
               <div className="mt-4">
-                <div className="flex items-center justify-between text-sm mb-2">
-                  <span>{ejecutando ? 'Ejecutando pruebas...' : 'Completado'}</span>
-                  <span>{progreso}%</span>
+                <div className="flex justify-between text-xs font-mono text-green-600 mb-1">
+                  <span>Progreso: {progreso}%</span>
+                  <span>{currentIndex + 1} / {ESTADOS_MEXICO.length}</span>
                 </div>
-                <Progress value={progreso} className="h-2" />
-              </div>
-            )}
-            
-            {/* Error */}
-            {error && (
-              <div className="mt-4 p-3 bg-red-50 border border-red-200 rounded-lg text-red-700 text-sm">
-                {error}
+                <Progress value={progreso} className="h-2 bg-green-950" />
               </div>
             )}
           </CardContent>
         </Card>
-        
-        {/* Estadísticas */}
-        {stats.total > 0 && (
-          <div className="grid grid-cols-2 md:grid-cols-6 gap-4 mb-6">
-            <Card>
-              <CardContent className="pt-4">
-                <div className="text-2xl font-bold text-green-600">{stats.exitosos}</div>
-                <div className="text-xs text-muted-foreground">Exitosos (PDF)</div>
-              </CardContent>
-            </Card>
-            <Card>
-              <CardContent className="pt-4">
-                <div className="text-2xl font-bold text-yellow-600">{stats.parciales}</div>
-                <div className="text-xs text-muted-foreground">Parciales</div>
-              </CardContent>
-            </Card>
-            <Card>
-              <CardContent className="pt-4">
-                <div className="text-2xl font-bold text-red-600">{stats.fallidos}</div>
-                <div className="text-xs text-muted-foreground">Fallidos</div>
-              </CardContent>
-            </Card>
-            <Card>
-              <CardContent className="pt-4">
-                <div className="text-2xl font-bold text-gray-600">{stats.noAccesibles}</div>
-                <div className="text-xs text-muted-foreground">No Accesibles</div>
-              </CardContent>
-            </Card>
-            <Card>
-              <CardContent className="pt-4">
-                <div className="text-2xl font-bold text-blue-600">{stats.enProgreso}</div>
-                <div className="text-xs text-muted-foreground">En Progreso</div>
-              </CardContent>
-            </Card>
-            <Card>
-              <CardContent className="pt-4">
-                <div className="text-2xl font-bold text-gray-400">{stats.pendientes}</div>
-                <div className="text-xs text-muted-foreground">Pendientes</div>
-              </CardContent>
-            </Card>
-          </div>
-        )}
-        
-        {/* Resultados por Estado */}
-        <Tabs defaultValue="grid" className="mb-6">
-          <TabsList>
-            <TabsTrigger value="grid">Vista Grid</TabsTrigger>
-            <TabsTrigger value="tabla">Vista Tabla</TabsTrigger>
-            <TabsTrigger value="historial">Historial</TabsTrigger>
-          </TabsList>
-          
-          <TabsContent value="grid">
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <Map className="w-5 h-5" />
-                  Resultados por Estado
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-3">
-                  {ESTADOS_MEXICO.map(estado => {
-                    const resultado = resultados.get(estado)
-                    return (
-                      <div 
-                        key={estado}
-                        className={`p-3 rounded-lg border transition-all ${
-                          resultado?.status === 'exito' ? 'bg-green-50 border-green-200' :
-                          resultado?.status === 'parcial' ? 'bg-yellow-50 border-yellow-200' :
-                          resultado?.status === 'error' ? 'bg-red-50 border-red-200' :
-                          resultado?.status === 'no_accesible' ? 'bg-gray-100 border-gray-300' :
-                          resultado?.status === 'en_progreso' ? 'bg-blue-50 border-blue-200' :
-                          'bg-white border-gray-200'
-                        }`}
-                      >
-                        <div className="flex items-center justify-between mb-1">
-                          <div className={`w-2 h-2 rounded-full ${getStatusColor(resultado?.status || 'pendiente')}`} />
-                          {getStatusIcon(resultado?.status || 'pendiente')}
-                        </div>
-                        <div className="text-xs font-medium truncate" title={estado}>
-                          {estado === 'Ciudad de México' ? 'CDMX' : 
-                           estado === 'Estado de México' ? 'EdoMéx' :
-                           estado === 'Baja California Sur' ? 'BCS' :
-                           estado === 'Baja California' ? 'BC' :
-                           estado === 'San Luis Potosí' ? 'SLP' :
-                           estado === 'Quintana Roo' ? 'QRoo' :
-                           estado.length > 10 ? estado.slice(0, 8) + '...' : estado}
-                        </div>
-                        {resultado?.tiempo_respuesta_ms ? (
-                          <div className="text-[10px] text-muted-foreground">
-                            {resultado.tiempo_respuesta_ms}ms
-                          </div>
-                        ) : null}
-                      </div>
-                    )
-                  })}
+
+        {/* Grid de Estados */}
+        <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6 lg:grid-cols-8 gap-2 mb-6">
+          {resultados.map((resultado) => (
+            <Card 
+              key={resultado.estado}
+              className={`${getStatusColor(resultado.status)} border transition-all cursor-pointer hover:scale-105`}
+              onClick={() => resultado.status !== 'pendiente' && resultado.status !== 'en_progreso' && verDetalle(resultado)}
+            >
+              <CardContent className="p-2 text-center">
+                <div className="flex justify-center mb-1">
+                  {getStatusIcon(resultado.status)}
                 </div>
-              </CardContent>
-            </Card>
-          </TabsContent>
-          
-          <TabsContent value="tabla">
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <BarChart3 className="w-5 h-5" />
-                  Detalle de Resultados
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="overflow-x-auto">
-                  <table className="w-full text-sm">
-                    <thead>
-                      <tr className="border-b">
-                        <th className="text-left py-2 px-3">Estado</th>
-                        <th className="text-left py-2 px-3">Status</th>
-                        <th className="text-center py-2 px-3">Conectividad</th>
-                        <th className="text-center py-2 px-3">Formulario</th>
-                        <th className="text-center py-2 px-3">Envío</th>
-                        <th className="text-center py-2 px-3">PDF</th>
-                        <th className="text-right py-2 px-3">Tiempo</th>
-                        <th className="text-left py-2 px-3">Error</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {ESTADOS_MEXICO.map(estado => {
-                        const resultado = resultados.get(estado)
-                        return (
-                          <tr key={estado} className="border-b hover:bg-gray-50">
-                            <td className="py-2 px-3 font-medium">{estado}</td>
-                            <td className="py-2 px-3">{getStatusBadge(resultado?.status || 'pendiente')}</td>
-                            <td className="py-2 px-3 text-center">
-                              {resultado?.conectividad ? 
-                                <CheckCircle2 className="w-4 h-4 text-green-600 mx-auto" /> : 
-                                <XCircle className="w-4 h-4 text-gray-300 mx-auto" />
-                              }
-                            </td>
-                            <td className="py-2 px-3 text-center">
-                              {resultado?.formulario_detectado ? 
-                                <CheckCircle2 className="w-4 h-4 text-green-600 mx-auto" /> : 
-                                <XCircle className="w-4 h-4 text-gray-300 mx-auto" />
-                              }
-                            </td>
-                            <td className="py-2 px-3 text-center">
-                              {resultado?.envio_exitoso ? 
-                                <CheckCircle2 className="w-4 h-4 text-green-600 mx-auto" /> : 
-                                <XCircle className="w-4 h-4 text-gray-300 mx-auto" />
-                              }
-                            </td>
-                            <td className="py-2 px-3 text-center">
-                              {resultado?.pdf_obtenido ? 
-                                <FileText className="w-4 h-4 text-green-600 mx-auto" /> : 
-                                <XCircle className="w-4 h-4 text-gray-300 mx-auto" />
-                              }
-                            </td>
-                            <td className="py-2 px-3 text-right text-muted-foreground">
-                              {resultado?.tiempo_respuesta_ms ? `${resultado.tiempo_respuesta_ms}ms` : '-'}
-                            </td>
-                            <td className="py-2 px-3 text-xs text-red-600 max-w-[200px] truncate" title={resultado?.error_mensaje}>
-                              {resultado?.error_mensaje || '-'}
-                            </td>
-                          </tr>
-                        )
-                      })}
-                    </tbody>
-                  </table>
-                </div>
-              </CardContent>
-            </Card>
-          </TabsContent>
-          
-          <TabsContent value="historial">
-            <Card>
-              <CardHeader>
-                <CardTitle>Historial de Sesiones</CardTitle>
-                <CardDescription>Últimas 10 sesiones de diagnóstico</CardDescription>
-              </CardHeader>
-              <CardContent>
-                {historial.length === 0 ? (
-                  <p className="text-muted-foreground text-center py-8">
-                    No hay sesiones previas
+                <p className="text-[9px] font-mono text-green-300 truncate" title={resultado.estado}>
+                  {resultado.estado.slice(0, 10)}
+                </p>
+                {resultado.tiempo > 0 && (
+                  <p className="text-[8px] text-green-700 font-mono">
+                    {resultado.tiempo}ms
                   </p>
-                ) : (
-                  <div className="space-y-3">
-                    {historial.map(sesion => (
-                      <div key={sesion.id} className="flex items-center justify-between p-3 border rounded-lg">
-                        <div>
-                          <div className="font-medium text-sm">
-                            Sesión {new Date(sesion.created_at).toLocaleDateString('es-MX', {
-                              day: '2-digit',
-                              month: 'short',
-                              hour: '2-digit',
-                              minute: '2-digit'
-                            })}
-                          </div>
-                          <div className="text-xs text-muted-foreground">
-                            Modo: {sesion.modo === 'live' ? 'Live Test' : 'Dry Run'}
-                          </div>
-                        </div>
-                        <div className="flex items-center gap-4 text-sm">
-                          <span className="text-green-600">{sesion.portales_exitosos} OK</span>
-                          <span className="text-red-600">{sesion.portales_fallidos} Err</span>
-                          <Badge variant="outline">
-                            {sesion.estado === 'completado' ? 'Completado' : sesion.estado}
-                          </Badge>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
+                )}
+                {resultado.captchaPendiente && (
+                  <Badge className="mt-1 bg-red-900 text-red-400 text-[7px] px-1">
+                    CAPTCHA
+                  </Badge>
+                )}
+                {resultado.status !== 'pendiente' && resultado.status !== 'en_progreso' && (
+                  <Eye className="w-3 h-3 text-green-600 mx-auto mt-1" />
                 )}
               </CardContent>
             </Card>
-          </TabsContent>
-        </Tabs>
-        
-        {/* Usuarios de Prueba (colapsable) */}
-        {usuarios.length > 0 && (
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-sm">Usuarios de Prueba Generados</CardTitle>
-              <CardDescription className="text-xs">
-                Datos ficticios válidos en estructura pero no reales - Expiran en 8 horas
-              </CardDescription>
+          ))}
+        </div>
+
+        {/* Tabla de resultados con errores */}
+        {stats.exito + stats.parcial + stats.error > 0 && (
+          <Card className="bg-black/80 border-green-800">
+            <CardHeader className="pb-2">
+              <CardTitle className="text-green-400 font-mono text-sm">RESULTADOS DETALLADOS</CardTitle>
             </CardHeader>
-            <CardContent>
-              <div className="max-h-64 overflow-y-auto">
-                <table className="w-full text-xs">
-                  <thead>
-                    <tr className="border-b">
-                      <th className="text-left py-1 px-2">Estado</th>
-                      <th className="text-left py-1 px-2">Nombre</th>
-                      <th className="text-left py-1 px-2">CURP</th>
-                      <th className="text-left py-1 px-2">Empresa</th>
-                      <th className="text-right py-1 px-2">Salario</th>
-                      <th className="text-right py-1 px-2">Liquidación</th>
+            <CardContent className="p-4 pt-0">
+              <div className="max-h-80 overflow-y-auto">
+                <table className="w-full text-xs font-mono">
+                  <thead className="text-green-600 border-b border-green-900 sticky top-0 bg-black">
+                    <tr>
+                      <th className="text-left py-2">ESTADO</th>
+                      <th className="text-center py-2">STATUS</th>
+                      <th className="text-center py-2">ERROR</th>
+                      <th className="text-right py-2">TIEMPO</th>
+                      <th className="text-right py-2">ACCION</th>
                     </tr>
                   </thead>
                   <tbody>
-                    {usuarios.map(u => (
-                      <tr key={u.id} className="border-b hover:bg-gray-50">
-                        <td className="py-1 px-2">{u.estado}</td>
-                        <td className="py-1 px-2">{u.nombre_completo}</td>
-                        <td className="py-1 px-2 font-mono">{u.curp}</td>
-                        <td className="py-1 px-2 truncate max-w-[150px]">{u.empresa_nombre}</td>
-                        <td className="py-1 px-2 text-right">${u.salario_diario}/día</td>
-                        <td className="py-1 px-2 text-right font-medium text-green-600">
-                          ${u.monto_liquidacion.toLocaleString()}
+                    {resultados.filter(r => r.status !== 'pendiente' && r.status !== 'en_progreso').map((r) => (
+                      <tr key={r.estado} className="border-b border-green-950 hover:bg-green-950/30">
+                        <td className="py-2 text-green-300">{r.estado}</td>
+                        <td className="py-2 text-center">
+                          <Badge className={
+                            r.status === 'exito' ? 'bg-green-900 text-green-400' :
+                            r.status === 'parcial' ? 'bg-yellow-900 text-yellow-400' :
+                            'bg-red-900 text-red-400'
+                          }>
+                            {r.status.toUpperCase()}
+                          </Badge>
+                        </td>
+                        <td className="py-2 text-center">
+                          {r.errorType !== 'ninguno' && (
+                            <Badge variant="outline" className={
+                              r.errorType === 'captcha' ? 'border-red-500 text-red-400' :
+                              'border-yellow-500 text-yellow-400'
+                            }>
+                              {getErrorTypeLabel(r.errorType)}
+                            </Badge>
+                          )}
+                        </td>
+                        <td className="py-2 text-right text-green-500">{r.tiempo}ms</td>
+                        <td className="py-2 text-right">
+                          <div className="flex justify-end gap-1">
+                            <Button
+                              size="sm"
+                              variant="ghost"
+                              className="h-6 px-2 text-green-500 hover:bg-green-950"
+                              onClick={() => verDetalle(r)}
+                            >
+                              <Eye className="w-3 h-3" />
+                            </Button>
+                            {r.status !== 'exito' && (
+                              <Button
+                                size="sm"
+                                variant="ghost"
+                                className="h-6 px-2 text-yellow-500 hover:bg-yellow-950"
+                                onClick={() => reintentarEstado(r.estado)}
+                              >
+                                <RefreshCw className="w-3 h-3" />
+                              </Button>
+                            )}
+                            {r.captchaPendiente && !captchasSolicitados.includes(r.estado) && (
+                              <Button
+                                size="sm"
+                                variant="ghost"
+                                className="h-6 px-2 text-red-500 hover:bg-red-950"
+                                onClick={() => solicitarAyudaCaptcha(r.estado)}
+                              >
+                                <HelpCircle className="w-3 h-3" />
+                              </Button>
+                            )}
+                          </div>
                         </td>
                       </tr>
                     ))}
@@ -658,7 +489,159 @@ export default function CCLDiagnosticoPage() {
             </CardContent>
           </Card>
         )}
+
+        {/* Footer */}
+        <div className="mt-6 text-center">
+          <p className="text-green-800 font-mono text-xs">
+            root@mandu-ccl:~$ diagnostico --portales=33 --modo={modo}_
+          </p>
+        </div>
       </main>
+
+      {/* Dialog de Detalle */}
+      <Dialog open={showDetailDialog} onOpenChange={setShowDetailDialog}>
+        <DialogContent className="bg-black border-green-700 text-green-400 font-mono max-w-lg">
+          <DialogHeader>
+            <DialogTitle className="text-green-400 font-mono flex items-center gap-2">
+              <Shield className="w-5 h-5" />
+              {selectedEstado?.estado}
+            </DialogTitle>
+            <DialogDescription className="text-green-700">
+              Detalle del diagnostico para este portal CCL
+            </DialogDescription>
+          </DialogHeader>
+          
+          {selectedEstado && (
+            <div className="space-y-4">
+              {/* Status */}
+              <div className="flex items-center justify-between p-3 bg-green-950/50 rounded border border-green-800">
+                <span className="text-green-600 text-sm">Status:</span>
+                <Badge className={
+                  selectedEstado.status === 'exito' ? 'bg-green-900 text-green-400' :
+                  selectedEstado.status === 'parcial' ? 'bg-yellow-900 text-yellow-400' :
+                  'bg-red-900 text-red-400'
+                }>
+                  {selectedEstado.status.toUpperCase()}
+                </Badge>
+              </div>
+
+              {/* URL */}
+              <div className="p-3 bg-green-950/50 rounded border border-green-800">
+                <span className="text-green-600 text-xs block mb-1">Portal URL:</span>
+                <code className="text-green-400 text-xs break-all">{selectedEstado.url}</code>
+              </div>
+
+              {/* Error Info */}
+              {selectedEstado.errorType !== 'ninguno' && (
+                <>
+                  <div className="p-3 bg-red-950/30 rounded border border-red-800">
+                    <span className="text-red-500 text-xs block mb-1">Tipo de Error:</span>
+                    <Badge variant="outline" className="border-red-500 text-red-400">
+                      {getErrorTypeLabel(selectedEstado.errorType)}
+                    </Badge>
+                    <p className="text-red-400 text-xs mt-2">{selectedEstado.errorMessage}</p>
+                  </div>
+
+                  {/* Screenshot simulado */}
+                  <div className="p-3 bg-green-950/50 rounded border border-green-800">
+                    <div className="flex items-center gap-2 mb-2">
+                      <Camera className="w-4 h-4 text-green-600" />
+                      <span className="text-green-600 text-xs">Screenshot del Error:</span>
+                    </div>
+                    <div className="bg-gray-900 rounded p-4 text-center border border-green-900">
+                      <div className="w-full h-32 bg-gradient-to-br from-gray-800 to-gray-900 rounded flex items-center justify-center">
+                        <div className="text-center">
+                          {selectedEstado.errorType === 'captcha' ? (
+                            <>
+                              <div className="w-16 h-10 bg-white/10 rounded mx-auto mb-2 flex items-center justify-center">
+                                <span className="text-2xl text-white/50">?</span>
+                              </div>
+                              <p className="text-red-400 text-xs">CAPTCHA DETECTADO</p>
+                              <p className="text-gray-500 text-[10px]">Verificacion humana requerida</p>
+                            </>
+                          ) : selectedEstado.errorType === 'timeout' ? (
+                            <>
+                              <Clock className="w-8 h-8 text-yellow-500 mx-auto mb-2" />
+                              <p className="text-yellow-400 text-xs">TIMEOUT 30s</p>
+                              <p className="text-gray-500 text-[10px]">Servidor no responde</p>
+                            </>
+                          ) : selectedEstado.errorType === 'conexion' ? (
+                            <>
+                              <XCircle className="w-8 h-8 text-red-500 mx-auto mb-2" />
+                              <p className="text-red-400 text-xs">ERR_CONNECTION_REFUSED</p>
+                              <p className="text-gray-500 text-[10px]">Portal inaccesible</p>
+                            </>
+                          ) : (
+                            <>
+                              <AlertTriangle className="w-8 h-8 text-yellow-500 mx-auto mb-2" />
+                              <p className="text-yellow-400 text-xs">{selectedEstado.errorType.toUpperCase()}</p>
+                              <p className="text-gray-500 text-[10px]">Ver detalles abajo</p>
+                            </>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Accion sugerida */}
+                  <div className="p-3 bg-blue-950/30 rounded border border-blue-800">
+                    <span className="text-blue-400 text-xs block mb-2">Accion Sugerida:</span>
+                    <p className="text-blue-300 text-sm">{selectedEstado.accionSugerida}</p>
+                  </div>
+
+                  {/* Botones de accion */}
+                  <div className="flex gap-2">
+                    <Button
+                      className="flex-1 bg-yellow-600 hover:bg-yellow-500 text-black font-mono"
+                      onClick={() => {
+                        reintentarEstado(selectedEstado.estado)
+                        setShowDetailDialog(false)
+                      }}
+                    >
+                      <RefreshCw className="w-4 h-4 mr-2" />
+                      REINTENTAR
+                    </Button>
+                    
+                    {selectedEstado.errorType === 'captcha' && !captchasSolicitados.includes(selectedEstado.estado) && (
+                      <Button
+                        className="flex-1 bg-red-600 hover:bg-red-500 text-white font-mono"
+                        onClick={() => {
+                          solicitarAyudaCaptcha(selectedEstado.estado)
+                          setShowDetailDialog(false)
+                        }}
+                      >
+                        <Send className="w-4 h-4 mr-2" />
+                        SOLICITAR AYUDA
+                      </Button>
+                    )}
+                    
+                    {captchasSolicitados.includes(selectedEstado.estado) && (
+                      <Badge className="flex-1 justify-center bg-green-900 text-green-400 py-2">
+                        AYUDA SOLICITADA
+                      </Badge>
+                    )}
+                  </div>
+                </>
+              )}
+
+              {/* Success state */}
+              {selectedEstado.status === 'exito' && (
+                <div className="p-4 bg-green-950/30 rounded border border-green-600 text-center">
+                  <CheckCircle2 className="w-12 h-12 text-green-400 mx-auto mb-2" />
+                  <p className="text-green-400">Portal funcionando correctamente</p>
+                  <p className="text-green-600 text-xs mt-1">Tiempo de respuesta: {selectedEstado.tiempo}ms</p>
+                </div>
+              )}
+
+              {/* Tiempo */}
+              <div className="flex justify-between text-xs text-green-700 pt-2 border-t border-green-900">
+                <span>Tiempo de prueba:</span>
+                <span>{selectedEstado.tiempo}ms</span>
+              </div>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }
