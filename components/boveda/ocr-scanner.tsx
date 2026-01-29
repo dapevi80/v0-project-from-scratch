@@ -923,8 +923,8 @@ export function OCRScanner({ onClose, onComplete, initialImages }: OCRScannerPro
               </div>
             </div>
             
-            {/* Botón de Resumen IA - solo si calidad >= 95% */}
-            {ocrQuality >= 95 && (
+                  {/* Botón de Resumen IA - solo si calidad >= 50% */}
+                  {ocrQuality >= 50 && (
               <button
                 onClick={() => setShowAIAssistant(true)}
                 className="w-full p-4 bg-gradient-to-r from-blue-500 to-indigo-600 rounded-xl text-white flex items-center justify-center gap-3 hover:from-blue-600 hover:to-indigo-700 transition-all shadow-lg hover:shadow-xl"
@@ -942,17 +942,17 @@ export function OCRScanner({ onClose, onComplete, initialImages }: OCRScannerPro
             )}
             
             {/* Mensaje de reintentar si calidad baja */}
-            {ocrQuality < 95 && (
-              <div className="p-4 bg-amber-50 rounded-xl border border-amber-200">
-                <div className="flex items-start gap-3">
-                  <div className="w-10 h-10 rounded-full bg-amber-100 flex items-center justify-center shrink-0">
-                    <AlertCircle className="w-5 h-5 text-amber-600" />
-                  </div>
-                  <div className="flex-1">
-                    <p className="text-sm font-medium text-amber-800">Reintentar resumen</p>
-                    <p className="text-xs text-amber-700 mt-1">
-                      Para generar un resumen IA necesitamos calidad de al menos 95%.
-                    </p>
+                  {ocrQuality < 50 && (
+                    <div className="p-4 bg-amber-50 rounded-xl border border-amber-200">
+                      <div className="flex items-start gap-3">
+                        <div className="w-10 h-10 rounded-full bg-amber-100 flex items-center justify-center shrink-0">
+                          <AlertCircle className="w-5 h-5 text-amber-600" />
+                        </div>
+                        <div className="flex-1">
+                          <p className="text-sm font-medium text-amber-800">Reintentar resumen</p>
+                          <p className="text-xs text-amber-700 mt-1">
+                            Para generar un resumen IA necesitamos calidad de al menos 50%.
+                          </p>
                     <Button
                       size="sm"
                       variant="outline"
@@ -1455,8 +1455,8 @@ export function OCRScanner({ onClose, onComplete, initialImages }: OCRScannerPro
                 </p>
               </div>
               
-              {/* Botón de Resumen IA - solo si calidad >= 95% */}
-              {scanQuality >= 95 && (
+                  {/* Botón de Resumen IA - solo si calidad >= 50% */}
+                  {scanQuality >= 50 && (
                 <button
                   onClick={() => setShowAIAssistant(true)}
                   className="w-full p-4 bg-gradient-to-r from-blue-500 to-indigo-600 rounded-xl text-white flex items-center justify-center gap-3 hover:from-blue-600 hover:to-indigo-700 transition-all shadow-lg hover:shadow-xl mb-4"

@@ -357,11 +357,20 @@ export default function BovedaPage() {
             <span className="text-base sm:text-lg font-semibold hidden xs:inline">mecorrieron.mx</span>
           </Link>
           
-          {/* Acciones: ayuda urgente y cerrar sesion */}
-          <div className="flex items-center gap-2">
-            <AyudaUrgenteButton />
-            <LogoutButton />
-          </div>
+        {/* Acciones: volver al dashboard, ayuda urgente y cerrar sesion */}
+        <div className="flex items-center gap-2">
+          <Link href="/dashboard">
+            <Button variant="outline" size="sm" className="gap-2 bg-transparent hidden sm:flex">
+              <ChevronRight className="w-4 h-4 rotate-180" />
+              Dashboard
+            </Button>
+            <Button variant="ghost" size="icon" className="sm:hidden">
+              <ChevronRight className="w-5 h-5 rotate-180" />
+            </Button>
+          </Link>
+          <AyudaUrgenteButton />
+          <LogoutButton />
+        </div>
         </div>
       </header>
       
