@@ -266,127 +266,129 @@ export default function AdminUsuariosPage() {
       
       {/* Header */}
       <header className="bg-black/95 border-b border-green-900 sticky top-0 z-40">
-        <div className="max-w-7xl mx-auto px-4 py-4 flex items-center justify-between">
-          <div className="flex items-center gap-4">
+        <div className="max-w-7xl mx-auto px-3 sm:px-4 py-2 sm:py-4 flex items-center justify-between">
+          <div className="flex items-center gap-2 sm:gap-4">
             <Link href="/admin">
-              <Button variant="ghost" size="sm" className="text-green-500 hover:bg-green-950 font-mono">
-                <ArrowLeft className="w-4 h-4 mr-2" />
-                Admin
+              <Button variant="ghost" size="sm" className="text-green-500 hover:bg-green-950 font-mono px-2 sm:px-3">
+                <ArrowLeft className="w-4 h-4" />
+                <span className="hidden sm:inline ml-2">Admin</span>
               </Button>
             </Link>
             <div>
-              <h1 className="text-xl font-bold text-green-400 font-mono flex items-center gap-2">
-                <Users className="w-5 h-5" />
+              <h1 className="text-sm sm:text-xl font-bold text-green-400 font-mono flex items-center gap-1 sm:gap-2">
+                <Users className="w-4 h-4 sm:w-5 sm:h-5" />
                 USUARIOS
               </h1>
-              <p className="text-green-700 text-sm font-mono">Gestion de usuarios del sistema</p>
+              <p className="text-green-700 text-[10px] sm:text-sm font-mono hidden sm:block">Gestion de usuarios</p>
             </div>
           </div>
-          <Badge className="bg-green-950 text-green-400 border border-green-600 font-mono">
-            ROOT_ACCESS
+          <Badge className="bg-green-950 text-green-400 border border-green-600 font-mono text-[10px] sm:text-xs px-1.5 sm:px-2">
+            ROOT
           </Badge>
         </div>
       </header>
 
       {/* Content */}
-      <main className="max-w-7xl mx-auto px-4 py-6 relative z-10">
+      <main className="max-w-7xl mx-auto px-3 sm:px-4 py-4 sm:py-6 relative z-10">
         {/* Stats */}
-        <div className="grid grid-cols-4 md:grid-cols-7 gap-2 mb-6">
+        <div className="grid grid-cols-4 sm:grid-cols-4 md:grid-cols-7 gap-1.5 sm:gap-2 mb-4 sm:mb-6">
           <Card className="bg-green-950/30 border-green-800">
-            <CardContent className="p-3 text-center">
-              <Users className="w-4 h-4 text-green-500 mx-auto mb-1" />
-              <div className="text-xl font-bold text-green-400 font-mono">{stats.total}</div>
-              <div className="text-[10px] text-green-700">Total</div>
+            <CardContent className="p-2 sm:p-3 text-center">
+              <Users className="w-3 h-3 sm:w-4 sm:h-4 text-green-500 mx-auto mb-0.5 sm:mb-1" />
+              <div className="text-base sm:text-xl font-bold text-green-400 font-mono">{stats.total}</div>
+              <div className="text-[8px] sm:text-[10px] text-green-700">Total</div>
             </CardContent>
           </Card>
           <Card className="bg-green-950/30 border-green-800">
-            <CardContent className="p-3 text-center">
-              <UserCheck className="w-4 h-4 text-emerald-500 mx-auto mb-1" />
-              <div className="text-xl font-bold text-emerald-400 font-mono">{stats.activos}</div>
-              <div className="text-[10px] text-green-700">Activos</div>
+            <CardContent className="p-2 sm:p-3 text-center">
+              <UserCheck className="w-3 h-3 sm:w-4 sm:h-4 text-emerald-500 mx-auto mb-0.5 sm:mb-1" />
+              <div className="text-base sm:text-xl font-bold text-emerald-400 font-mono">{stats.activos}</div>
+              <div className="text-[8px] sm:text-[10px] text-green-700">Activos</div>
             </CardContent>
           </Card>
           <Card className="bg-green-950/30 border-green-800">
-            <CardContent className="p-3 text-center">
-              <UserX className="w-4 h-4 text-yellow-500 mx-auto mb-1" />
-              <div className="text-xl font-bold text-yellow-400 font-mono">{stats.inactivos}</div>
-              <div className="text-[10px] text-green-700">Inactivos</div>
+            <CardContent className="p-2 sm:p-3 text-center">
+              <UserX className="w-3 h-3 sm:w-4 sm:h-4 text-yellow-500 mx-auto mb-0.5 sm:mb-1" />
+              <div className="text-base sm:text-xl font-bold text-yellow-400 font-mono">{stats.inactivos}</div>
+              <div className="text-[8px] sm:text-[10px] text-green-700">Inact.</div>
             </CardContent>
           </Card>
           <Card className="bg-green-950/30 border-green-800">
-            <CardContent className="p-3 text-center">
-              <Ban className="w-4 h-4 text-red-500 mx-auto mb-1" />
-              <div className="text-xl font-bold text-red-400 font-mono">{stats.suspendidos}</div>
-              <div className="text-[10px] text-green-700">Suspendidos</div>
+            <CardContent className="p-2 sm:p-3 text-center">
+              <Ban className="w-3 h-3 sm:w-4 sm:h-4 text-red-500 mx-auto mb-0.5 sm:mb-1" />
+              <div className="text-base sm:text-xl font-bold text-red-400 font-mono">{stats.suspendidos}</div>
+              <div className="text-[8px] sm:text-[10px] text-green-700">Susp.</div>
             </CardContent>
           </Card>
           <Card className="bg-green-950/30 border-green-800 hidden md:block">
-            <CardContent className="p-3 text-center">
-              <Briefcase className="w-4 h-4 text-blue-500 mx-auto mb-1" />
-              <div className="text-xl font-bold text-blue-400 font-mono">{stats.abogados}</div>
-              <div className="text-[10px] text-green-700">Abogados</div>
+            <CardContent className="p-2 sm:p-3 text-center">
+              <Briefcase className="w-3 h-3 sm:w-4 sm:h-4 text-blue-500 mx-auto mb-0.5 sm:mb-1" />
+              <div className="text-base sm:text-xl font-bold text-blue-400 font-mono">{stats.abogados}</div>
+              <div className="text-[8px] sm:text-[10px] text-green-700">Abogados</div>
             </CardContent>
           </Card>
           <Card className="bg-green-950/30 border-green-800 hidden md:block">
-            <CardContent className="p-3 text-center">
-              <Users className="w-4 h-4 text-gray-500 mx-auto mb-1" />
-              <div className="text-xl font-bold text-gray-400 font-mono">{stats.clientes}</div>
-              <div className="text-[10px] text-green-700">Clientes</div>
+            <CardContent className="p-2 sm:p-3 text-center">
+              <Users className="w-3 h-3 sm:w-4 sm:h-4 text-gray-500 mx-auto mb-0.5 sm:mb-1" />
+              <div className="text-base sm:text-xl font-bold text-gray-400 font-mono">{stats.clientes}</div>
+              <div className="text-[8px] sm:text-[10px] text-green-700">Clientes</div>
             </CardContent>
           </Card>
           <Card className="bg-green-950/30 border-green-800 hidden md:block">
-            <CardContent className="p-3 text-center">
-              <Shield className="w-4 h-4 text-purple-500 mx-auto mb-1" />
-              <div className="text-xl font-bold text-purple-400 font-mono">{stats.admins}</div>
-              <div className="text-[10px] text-green-700">Admins</div>
+            <CardContent className="p-2 sm:p-3 text-center">
+              <Shield className="w-3 h-3 sm:w-4 sm:h-4 text-purple-500 mx-auto mb-0.5 sm:mb-1" />
+              <div className="text-base sm:text-xl font-bold text-purple-400 font-mono">{stats.admins}</div>
+              <div className="text-[8px] sm:text-[10px] text-green-700">Admins</div>
             </CardContent>
           </Card>
         </div>
 
         {/* Filtros */}
-        <Card className="bg-green-950/30 border-green-800 mb-4">
-          <CardContent className="p-4">
-            <div className="flex flex-col md:flex-row gap-3">
+        <Card className="bg-green-950/30 border-green-800 mb-3 sm:mb-4">
+          <CardContent className="p-2 sm:p-4">
+            <div className="flex flex-col gap-2 sm:gap-3">
               <div className="flex-1 relative">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-green-600" />
+                <Search className="absolute left-2 sm:left-3 top-1/2 -translate-y-1/2 w-3 h-3 sm:w-4 sm:h-4 text-green-600" />
                 <Input
-                  placeholder="Buscar por nombre, email o telefono..."
+                  placeholder="Buscar..."
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
-                  className="pl-10 bg-black border-green-800 text-green-400 placeholder:text-green-800 font-mono"
+                  className="pl-7 sm:pl-10 bg-black border-green-800 text-green-400 placeholder:text-green-800 font-mono text-xs sm:text-sm h-8 sm:h-10"
                 />
               </div>
-              <Select value={roleFilter} onValueChange={setRoleFilter}>
-                <SelectTrigger className="w-full md:w-40 bg-black border-green-800 text-green-400 font-mono">
-                  <SelectValue placeholder="Rol" />
-                </SelectTrigger>
-                <SelectContent className="bg-black border-green-800">
-                  <SelectItem value="todos" className="text-green-400">Todos los roles</SelectItem>
-                  <SelectItem value="superadmin" className="text-purple-400">Superadmin</SelectItem>
-                  <SelectItem value="admin" className="text-blue-400">Admin</SelectItem>
-                  <SelectItem value="abogado" className="text-green-400">Abogado</SelectItem>
-                  <SelectItem value="user" className="text-gray-400">Cliente</SelectItem>
-                </SelectContent>
-              </Select>
-              <Select value={statusFilter} onValueChange={setStatusFilter}>
-                <SelectTrigger className="w-full md:w-40 bg-black border-green-800 text-green-400 font-mono">
-                  <SelectValue placeholder="Estado" />
-                </SelectTrigger>
-                <SelectContent className="bg-black border-green-800">
-                  <SelectItem value="todos" className="text-green-400">Todos</SelectItem>
-                  <SelectItem value="active" className="text-green-400">Activos</SelectItem>
-                  <SelectItem value="inactive" className="text-yellow-400">Inactivos</SelectItem>
-                  <SelectItem value="suspended" className="text-red-400">Suspendidos</SelectItem>
-                </SelectContent>
-              </Select>
-              <Button 
-                variant="outline" 
-                onClick={loadData}
-                className="border-green-600 text-green-400 hover:bg-green-950 font-mono bg-transparent"
-              >
-                <RefreshCw className="w-4 h-4 mr-2" />
-                Actualizar
-              </Button>
+              <div className="flex gap-1.5 sm:gap-3">
+                <Select value={roleFilter} onValueChange={setRoleFilter}>
+                  <SelectTrigger className="flex-1 sm:w-32 bg-black border-green-800 text-green-400 font-mono text-xs sm:text-sm h-8 sm:h-10">
+                    <SelectValue placeholder="Rol" />
+                  </SelectTrigger>
+                  <SelectContent className="bg-black border-green-800">
+                    <SelectItem value="todos" className="text-green-400 text-xs sm:text-sm">Todos</SelectItem>
+                    <SelectItem value="superadmin" className="text-purple-400 text-xs sm:text-sm">Super</SelectItem>
+                    <SelectItem value="admin" className="text-blue-400 text-xs sm:text-sm">Admin</SelectItem>
+                    <SelectItem value="abogado" className="text-green-400 text-xs sm:text-sm">Abogado</SelectItem>
+                    <SelectItem value="user" className="text-gray-400 text-xs sm:text-sm">Cliente</SelectItem>
+                  </SelectContent>
+                </Select>
+                <Select value={statusFilter} onValueChange={setStatusFilter}>
+                  <SelectTrigger className="flex-1 sm:w-32 bg-black border-green-800 text-green-400 font-mono text-xs sm:text-sm h-8 sm:h-10">
+                    <SelectValue placeholder="Estado" />
+                  </SelectTrigger>
+                  <SelectContent className="bg-black border-green-800">
+                    <SelectItem value="todos" className="text-green-400 text-xs sm:text-sm">Todos</SelectItem>
+                    <SelectItem value="active" className="text-green-400 text-xs sm:text-sm">Activos</SelectItem>
+                    <SelectItem value="inactive" className="text-yellow-400 text-xs sm:text-sm">Inactivos</SelectItem>
+                    <SelectItem value="suspended" className="text-red-400 text-xs sm:text-sm">Suspendidos</SelectItem>
+                  </SelectContent>
+                </Select>
+                <Button 
+                  variant="outline" 
+                  size="sm"
+                  onClick={loadData}
+                  className="border-green-600 text-green-400 hover:bg-green-950 font-mono bg-transparent h-8 sm:h-10 px-2 sm:px-3"
+                >
+                  <RefreshCw className="w-3 h-3 sm:w-4 sm:h-4" />
+                </Button>
+              </div>
             </div>
           </CardContent>
         </Card>
@@ -395,21 +397,21 @@ export default function AdminUsuariosPage() {
         <Card className="bg-green-950/30 border-green-800">
           <CardContent className="p-0">
             <div className="overflow-x-auto">
-              <table className="w-full text-sm">
+              <table className="w-full text-xs sm:text-sm min-w-[320px]">
                 <thead className="bg-green-950/50 border-b border-green-800">
-                  <tr className="text-green-500 font-mono text-xs">
-                    <th className="text-left p-3">Usuario</th>
-                    <th className="text-left p-3 hidden md:table-cell">Email</th>
-                    <th className="text-center p-3">Rol</th>
-                    <th className="text-center p-3">Estado</th>
-                    <th className="text-center p-3 hidden md:table-cell">Registro</th>
-                    <th className="text-center p-3">Acciones</th>
+                  <tr className="text-green-500 font-mono text-[10px] sm:text-xs">
+                    <th className="text-left p-2 sm:p-3">Usuario</th>
+                    <th className="text-left p-2 sm:p-3 hidden md:table-cell">Email</th>
+                    <th className="text-center p-2 sm:p-3">Rol</th>
+                    <th className="text-center p-2 sm:p-3 hidden sm:table-cell">Estado</th>
+                    <th className="text-center p-2 sm:p-3 hidden md:table-cell">Registro</th>
+                    <th className="text-center p-2 sm:p-3">Acc.</th>
                   </tr>
                 </thead>
                 <tbody>
                   {filteredUsuarios.length === 0 ? (
                     <tr>
-                      <td colSpan={6} className="text-center py-8 text-green-700 font-mono">
+                      <td colSpan={6} className="text-center py-6 sm:py-8 text-green-700 font-mono text-xs">
                         No se encontraron usuarios
                       </td>
                     </tr>
@@ -419,48 +421,48 @@ export default function AdminUsuariosPage() {
                         key={usuario.id} 
                         className="border-b border-green-900/50 hover:bg-green-950/30 transition-colors"
                       >
-                        <td className="p-3">
-                          <div className="flex items-center gap-2">
-                            <div className="w-8 h-8 rounded-full bg-green-900 flex items-center justify-center text-green-400 font-mono text-xs">
+                        <td className="p-2 sm:p-3">
+                          <div className="flex items-center gap-1.5 sm:gap-2">
+                            <div className="w-6 h-6 sm:w-8 sm:h-8 rounded-full bg-green-900 flex items-center justify-center text-green-400 font-mono text-[10px] sm:text-xs flex-shrink-0">
                               {usuario.full_name.charAt(0).toUpperCase()}
                             </div>
-                            <div>
-                              <p className="text-green-300 font-medium">{usuario.full_name}</p>
-                              <p className="text-green-700 text-xs md:hidden">{usuario.email}</p>
+                            <div className="min-w-0">
+                              <p className="text-green-300 font-medium text-xs sm:text-sm truncate max-w-[100px] sm:max-w-none">{usuario.full_name}</p>
+                              <p className="text-green-700 text-[10px] md:hidden truncate">{usuario.email}</p>
                             </div>
                           </div>
                         </td>
-                        <td className="p-3 hidden md:table-cell">
-                          <span className="text-green-500 font-mono text-xs">{usuario.email}</span>
+                        <td className="p-2 sm:p-3 hidden md:table-cell">
+                          <span className="text-green-500 font-mono text-[10px] sm:text-xs">{usuario.email}</span>
                         </td>
-                        <td className="p-3 text-center">
+                        <td className="p-2 sm:p-3 text-center">
                           {getRoleBadge(usuario.role)}
                         </td>
-                        <td className="p-3 text-center">
+                        <td className="p-2 sm:p-3 text-center hidden sm:table-cell">
                           {getStatusBadge(usuario.status)}
                         </td>
-                        <td className="p-3 text-center hidden md:table-cell">
-                          <span className="text-green-700 font-mono text-xs">
+                        <td className="p-2 sm:p-3 text-center hidden md:table-cell">
+                          <span className="text-green-700 font-mono text-[10px] sm:text-xs">
                             {new Date(usuario.created_at).toLocaleDateString('es-MX')}
                           </span>
                         </td>
-                        <td className="p-3 text-center">
-                          <div className="flex items-center justify-center gap-1">
+                        <td className="p-2 sm:p-3 text-center">
+                          <div className="flex items-center justify-center gap-0.5 sm:gap-1">
                             <Button
                               size="sm"
                               variant="ghost"
-                              className="text-green-500 hover:bg-green-950 h-8 w-8 p-0"
+                              className="text-green-500 hover:bg-green-950 h-6 w-6 sm:h-8 sm:w-8 p-0"
                               onClick={() => {
                                 setSelectedUser(usuario)
                                 setShowUserDialog(true)
                               }}
                             >
-                              <Eye className="w-4 h-4" />
+                              <Eye className="w-3 h-3 sm:w-4 sm:h-4" />
                             </Button>
                             <Button
                               size="sm"
                               variant="ghost"
-                              className={`h-8 w-8 p-0 ${
+                              className={`h-6 w-6 sm:h-8 sm:w-8 p-0 ${
                                 usuario.status === 'suspended' 
                                   ? 'text-green-500 hover:bg-green-950' 
                                   : 'text-red-500 hover:bg-red-950'
@@ -469,9 +471,9 @@ export default function AdminUsuariosPage() {
                               disabled={usuario.role === 'superadmin'}
                             >
                               {usuario.status === 'suspended' ? (
-                                <CheckCircle2 className="w-4 h-4" />
+                                <CheckCircle2 className="w-3 h-3 sm:w-4 sm:h-4" />
                               ) : (
-                                <Ban className="w-4 h-4" />
+                                <Ban className="w-3 h-3 sm:w-4 sm:h-4" />
                               )}
                             </Button>
                           </div>
@@ -484,44 +486,43 @@ export default function AdminUsuariosPage() {
             </div>
             
             {/* Footer de tabla */}
-            <div className="p-3 border-t border-green-900 flex justify-between items-center">
-              <span className="text-green-700 font-mono text-xs">
-                Mostrando {filteredUsuarios.length} de {usuarios.length} usuarios
+            <div className="p-2 sm:p-3 border-t border-green-900 flex justify-between items-center">
+              <span className="text-green-700 font-mono text-[10px] sm:text-xs">
+                {filteredUsuarios.length}/{usuarios.length} usuarios
               </span>
             </div>
           </CardContent>
         </Card>
 
         {/* Terminal Footer */}
-        <div className="mt-6 p-3 bg-black border border-green-900 rounded font-mono text-xs text-green-700">
-          <span className="text-green-500">root@ccl-admin</span>:<span className="text-blue-400">~/usuarios</span>$ 
-          <span className="animate-pulse ml-1">_</span>
+        <div className="mt-4 sm:mt-6 p-2 sm:p-3 bg-black border border-green-900 rounded font-mono text-[10px] sm:text-xs text-green-700">
+          <span className="text-green-500">root@ccl</span>$ <span className="animate-pulse">_</span>
         </div>
       </main>
 
       {/* Dialog de usuario */}
       <Dialog open={showUserDialog} onOpenChange={setShowUserDialog}>
-        <DialogContent className="bg-black border border-green-800 text-green-400 max-w-md">
+        <DialogContent className="bg-black border border-green-800 text-green-400 max-w-[95vw] sm:max-w-md max-h-[90vh] overflow-y-auto mx-2 sm:mx-auto">
           <DialogHeader>
-            <DialogTitle className="text-green-400 font-mono flex items-center gap-2">
-              <Users className="w-5 h-5" />
-              DETALLE DE USUARIO
+            <DialogTitle className="text-green-400 font-mono flex items-center gap-2 text-sm sm:text-base">
+              <Users className="w-4 h-4 sm:w-5 sm:h-5" />
+              DETALLE
             </DialogTitle>
-            <DialogDescription className="text-green-700 font-mono">
+            <DialogDescription className="text-green-700 font-mono text-xs sm:text-sm">
               ID: {selectedUser?.id.slice(0, 8)}...
             </DialogDescription>
           </DialogHeader>
           
           {selectedUser && (
-            <div className="space-y-4">
+            <div className="space-y-3 sm:space-y-4">
               {/* Avatar y nombre */}
-              <div className="flex items-center gap-4 p-3 bg-green-950/30 rounded border border-green-800">
-                <div className="w-16 h-16 rounded-full bg-green-900 flex items-center justify-center text-green-400 font-mono text-2xl">
+              <div className="flex items-center gap-3 sm:gap-4 p-2 sm:p-3 bg-green-950/30 rounded border border-green-800">
+                <div className="w-12 h-12 sm:w-16 sm:h-16 rounded-full bg-green-900 flex items-center justify-center text-green-400 font-mono text-xl sm:text-2xl flex-shrink-0">
                   {selectedUser.full_name.charAt(0).toUpperCase()}
                 </div>
-                <div>
-                  <h3 className="text-green-300 font-bold text-lg">{selectedUser.full_name}</h3>
-                  <div className="flex items-center gap-2 mt-1">
+                <div className="min-w-0">
+                  <h3 className="text-green-300 font-bold text-sm sm:text-lg truncate">{selectedUser.full_name}</h3>
+                  <div className="flex items-center gap-1 sm:gap-2 mt-1 flex-wrap">
                     {getRoleBadge(selectedUser.role)}
                     {getStatusBadge(selectedUser.status)}
                   </div>

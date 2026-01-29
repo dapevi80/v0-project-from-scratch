@@ -657,62 +657,74 @@ export default function CCLDiagnosticoPage() {
       
       {/* Header */}
       <header className="bg-black/90 border-b border-green-900 sticky top-0 z-40 backdrop-blur">
-        <div className="max-w-6xl mx-auto px-4 py-3 flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <Link href="/admin">
-              <Button variant="ghost" size="sm" className="text-green-500 hover:bg-green-950 font-mono">
-                <ArrowLeft className="w-4 h-4 mr-1" />
-                ADMIN
-              </Button>
-            </Link>
-            <div>
-              <h1 className="text-lg font-bold text-green-400 font-mono">DIAGNOSTICO CCL</h1>
-              <p className="text-xs text-green-700 font-mono">Test 33 portales estatales</p>
+        <div className="max-w-6xl mx-auto px-3 sm:px-4 py-2 sm:py-3">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2 sm:gap-3">
+              <Link href="/admin">
+                <Button variant="ghost" size="sm" className="text-green-500 hover:bg-green-950 font-mono px-2 sm:px-3">
+                  <ArrowLeft className="w-4 h-4" />
+                  <span className="hidden sm:inline ml-1">ADMIN</span>
+                </Button>
+              </Link>
+              <div>
+                <h1 className="text-sm sm:text-lg font-bold text-green-400 font-mono">DIAGNOSTICO CCL</h1>
+                <p className="text-[10px] sm:text-xs text-green-700 font-mono hidden sm:block">Test 33 portales estatales</p>
+              </div>
             </div>
-          </div>
-          
-          <div className="flex items-center gap-2">
-            {stats.captchasPendientes > 0 && (
-              <Badge className="bg-red-900 text-red-400 border border-red-600 font-mono text-xs animate-pulse">
-                {stats.captchasPendientes} CAPTCHA PENDING
+            
+            <div className="flex items-center gap-1 sm:gap-2">
+              {stats.captchasPendientes > 0 && (
+                <Badge className="bg-red-900 text-red-400 border border-red-600 font-mono text-[10px] sm:text-xs animate-pulse px-1 sm:px-2">
+                  {stats.captchasPendientes} CAPTCHA
+                </Badge>
+              )}
+              <Badge className="bg-green-950 text-green-400 border border-green-600 font-mono text-[10px] sm:text-xs px-1 sm:px-2">
+                ROOT
               </Badge>
-            )}
-            <Badge className="bg-green-950 text-green-400 border border-green-600 font-mono text-xs">
-              ROOT_ACCESS
-            </Badge>
+            </div>
           </div>
         </div>
       </header>
 
-      <main className="max-w-6xl mx-auto px-4 py-6 relative z-10">
+      <main className="max-w-6xl mx-auto px-3 sm:px-4 py-4 sm:py-6 relative z-10">
         {/* Controles */}
-        <Card className="bg-black/80 border-green-800 mb-6">
-          <CardContent className="p-4">
-            <div className="flex flex-wrap items-center justify-between gap-4">
-              <div className="flex items-center gap-3">
+        <Card className="bg-black/80 border-green-800 mb-4 sm:mb-6">
+          <CardContent className="p-3 sm:p-4">
+            {/* Stats mobile - arriba */}
+            <div className="flex flex-wrap items-center justify-center gap-2 sm:gap-4 font-mono text-xs sm:text-sm mb-3 sm:hidden">
+              <span className="text-green-400">OK:{stats.exito}</span>
+              <span className="text-yellow-400">PARC:{stats.parcial}</span>
+              <span className="text-red-400">ERR:{stats.error}</span>
+              <span className="text-gray-500">PEND:{stats.pendiente}</span>
+            </div>
+            
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 sm:gap-4">
+              <div className="flex flex-wrap items-center gap-2 sm:gap-3">
                 <select 
                   value={modo}
                   onChange={(e) => setModo(e.target.value as 'dry_run' | 'live')}
                   disabled={ejecutando}
-                  className="bg-green-950 border border-green-700 text-green-400 font-mono text-sm rounded px-3 py-2"
+                  className="bg-green-950 border border-green-700 text-green-400 font-mono text-xs sm:text-sm rounded px-2 sm:px-3 py-1.5 sm:py-2 flex-1 sm:flex-none"
                 >
-                  <option value="dry_run">DRY RUN (Conectividad)</option>
-                  <option value="live">LIVE TEST (Envio real)</option>
+                  <option value="dry_run">DRY RUN</option>
+                  <option value="live">LIVE TEST</option>
                 </select>
                 
                 <Button
                   onClick={iniciarDiagnostico}
                   disabled={ejecutando}
-                  className="bg-green-600 hover:bg-green-500 text-black font-mono font-bold"
+                  size="sm"
+                  className="bg-green-600 hover:bg-green-500 text-black font-mono font-bold text-xs sm:text-sm flex-1 sm:flex-none"
                 >
                   {ejecutando ? (
                     <>
-                      <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                      EJECUTANDO...
+                      <Loader2 className="w-3 h-3 sm:w-4 sm:h-4 mr-1 sm:mr-2 animate-spin" />
+                      <span className="hidden sm:inline">EJECUTANDO...</span>
+                      <span className="sm:hidden">RUN...</span>
                     </>
                   ) : (
                     <>
-                      <Play className="w-4 h-4 mr-2" />
+                      <Play className="w-3 h-3 sm:w-4 sm:h-4 mr-1 sm:mr-2" />
                       INICIAR
                     </>
                   )}
@@ -721,17 +733,18 @@ export default function CCLDiagnosticoPage() {
                 {ejecutando && (
                   <Button
                     variant="outline"
+                    size="sm"
                     onClick={() => setEjecutando(false)}
-                    className="border-yellow-600 text-yellow-500 hover:bg-yellow-950 font-mono"
+                    className="border-yellow-600 text-yellow-500 hover:bg-yellow-950 font-mono text-xs sm:text-sm"
                   >
-                    <Pause className="w-4 h-4 mr-1" />
-                    PAUSAR
+                    <Pause className="w-3 h-3 sm:w-4 sm:h-4" />
+                    <span className="hidden sm:inline ml-1">PAUSAR</span>
                   </Button>
                 )}
               </div>
               
-              {/* Stats */}
-              <div className="flex items-center gap-4 font-mono text-sm">
+              {/* Stats desktop */}
+              <div className="hidden sm:flex items-center gap-4 font-mono text-sm">
                 <span className="text-green-400">OK: {stats.exito}</span>
                 <span className="text-yellow-400">PARCIAL: {stats.parcial}</span>
                 <span className="text-red-400">ERROR: {stats.error}</span>
@@ -752,39 +765,36 @@ export default function CCLDiagnosticoPage() {
         </Card>
 
         {/* Grid de Estados */}
-        <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6 lg:grid-cols-8 gap-2 mb-6">
+        <div className="grid grid-cols-4 sm:grid-cols-5 md:grid-cols-6 lg:grid-cols-8 gap-1.5 sm:gap-2 mb-4 sm:mb-6">
           {resultados.map((resultado) => (
             <Card 
               key={resultado.estado}
-              className={`${getStatusColor(resultado.status)} border transition-all cursor-pointer hover:scale-105 ${
-                resultado.estado === 'Federal' ? 'ring-2 ring-blue-500 col-span-2' : ''
+              className={`${getStatusColor(resultado.status)} border transition-all cursor-pointer active:scale-95 sm:hover:scale-105 ${
+                resultado.estado === 'Federal' ? 'ring-1 sm:ring-2 ring-blue-500 col-span-2' : ''
               }`}
               onClick={() => resultado.status !== 'pendiente' && resultado.status !== 'en_progreso' && verDetalle(resultado)}
             >
-              <CardContent className="p-2 text-center">
+              <CardContent className="p-1.5 sm:p-2 text-center">
                 {resultado.estado === 'Federal' && (
-                  <Badge className="bg-blue-900 text-blue-300 text-[7px] mb-1">CFCRL</Badge>
+                  <Badge className="bg-blue-900 text-blue-300 text-[6px] sm:text-[7px] mb-0.5 sm:mb-1 px-1">CFCRL</Badge>
                 )}
-                <div className="flex justify-center mb-1">
+                <div className="flex justify-center mb-0.5 sm:mb-1">
                   {getStatusIcon(resultado.status)}
                 </div>
-                <p className={`text-[9px] font-mono truncate ${
+                <p className={`text-[7px] sm:text-[9px] font-mono truncate ${
                   resultado.estado === 'Federal' ? 'text-blue-300' : 'text-green-300'
                 }`} title={resultado.estado}>
-                  {resultado.estado === 'Federal' ? 'FEDERAL' : resultado.estado.slice(0, 10)}
+                  {resultado.estado === 'Federal' ? 'FED' : resultado.estado.slice(0, 8)}
                 </p>
                 {resultado.tiempo > 0 && (
-                  <p className="text-[8px] text-green-700 font-mono">
+                  <p className="text-[6px] sm:text-[8px] text-green-700 font-mono">
                     {resultado.tiempo}ms
                   </p>
                 )}
                 {resultado.captchaPendiente && (
-                  <Badge className="mt-1 bg-red-900 text-red-400 text-[7px] px-1">
-                    CAPTCHA
+                  <Badge className="mt-0.5 sm:mt-1 bg-red-900 text-red-400 text-[6px] sm:text-[7px] px-0.5 sm:px-1">
+                    CAP
                   </Badge>
-                )}
-                {resultado.status !== 'pendiente' && resultado.status !== 'en_progreso' && (
-                  <Eye className="w-3 h-3 text-green-600 mx-auto mt-1" />
                 )}
               </CardContent>
             </Card>
@@ -794,19 +804,19 @@ export default function CCLDiagnosticoPage() {
         {/* Tabla de resultados con errores */}
         {stats.exito + stats.parcial + stats.error > 0 && (
           <Card className="bg-black/80 border-green-800">
-            <CardHeader className="pb-2">
-              <CardTitle className="text-green-400 font-mono text-sm">RESULTADOS DETALLADOS</CardTitle>
+            <CardHeader className="pb-2 px-3 sm:px-4">
+              <CardTitle className="text-green-400 font-mono text-xs sm:text-sm">RESULTADOS</CardTitle>
             </CardHeader>
-            <CardContent className="p-4 pt-0">
-              <div className="max-h-80 overflow-y-auto">
-                <table className="w-full text-xs font-mono">
+            <CardContent className="p-2 sm:p-4 pt-0">
+              <div className="max-h-60 sm:max-h-80 overflow-y-auto overflow-x-auto">
+                <table className="w-full text-[10px] sm:text-xs font-mono min-w-[300px]">
                   <thead className="text-green-600 border-b border-green-900 sticky top-0 bg-black">
                     <tr>
-                      <th className="text-left py-2">ESTADO</th>
-                      <th className="text-center py-2">STATUS</th>
-                      <th className="text-center py-2">ERROR</th>
-                      <th className="text-right py-2">TIEMPO</th>
-                      <th className="text-right py-2">ACCION</th>
+                      <th className="text-left py-1.5 sm:py-2">ESTADO</th>
+                      <th className="text-center py-1.5 sm:py-2">STATUS</th>
+                      <th className="text-center py-1.5 sm:py-2 hidden sm:table-cell">ERROR</th>
+                      <th className="text-right py-1.5 sm:py-2">MS</th>
+                      <th className="text-right py-1.5 sm:py-2">VER</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -884,31 +894,30 @@ export default function CCLDiagnosticoPage() {
 
       {/* Dialog de Detalle */}
       <Dialog open={showDetailDialog} onOpenChange={setShowDetailDialog}>
-        <DialogContent className="bg-black border-green-700 text-green-400 font-mono max-w-lg">
+        <DialogContent className="bg-black border-green-700 text-green-400 font-mono max-w-[95vw] sm:max-w-lg max-h-[90vh] overflow-y-auto mx-2 sm:mx-auto">
           <DialogHeader>
-            <DialogTitle className="text-green-400 font-mono flex items-center gap-2">
-              <Shield className="w-5 h-5" />
+            <DialogTitle className="text-green-400 font-mono flex items-center gap-2 text-sm sm:text-base">
+              <Shield className="w-4 h-4 sm:w-5 sm:h-5" />
               {selectedEstado?.estado}
             </DialogTitle>
-            <DialogDescription className="text-green-700">
-              Detalle del diagnostico para este portal CCL
+            <DialogDescription className="text-green-700 text-xs sm:text-sm">
+              Detalle del diagnostico CCL
             </DialogDescription>
           </DialogHeader>
           
           {selectedEstado && (
-            <div className="space-y-4">
+            <div className="space-y-3 sm:space-y-4">
               {/* Info especial para portal Federal */}
               {selectedEstado.estado === 'Federal' && (
-                <div className="p-3 bg-blue-950/30 rounded border border-blue-700">
-                  <div className="flex items-center gap-2 mb-2">
-                    <Shield className="w-4 h-4 text-blue-400" />
-                    <span className="text-blue-400 text-xs font-bold">JURISDICCION FEDERAL</span>
+                <div className="p-2 sm:p-3 bg-blue-950/30 rounded border border-blue-700">
+                  <div className="flex items-center gap-2 mb-1 sm:mb-2">
+                    <Shield className="w-3 h-3 sm:w-4 sm:h-4 text-blue-400" />
+                    <span className="text-blue-400 text-[10px] sm:text-xs font-bold">JURISDICCION FEDERAL</span>
                   </div>
-                  <p className="text-blue-300 text-xs mb-2">{PORTAL_FEDERAL_INFO.nombre}</p>
-                  <p className="text-blue-600 text-[10px]">{PORTAL_FEDERAL_INFO.descripcion}</p>
-                  <div className="flex flex-wrap gap-1 mt-2">
-                    {PORTAL_FEDERAL_INFO.tiposCasos.map(tipo => (
-                      <Badge key={tipo} variant="outline" className="border-blue-700 text-blue-400 text-[9px]">
+                  <p className="text-blue-300 text-[10px] sm:text-xs mb-1 sm:mb-2">{PORTAL_FEDERAL_INFO.nombre}</p>
+                  <div className="flex flex-wrap gap-1 mt-1 sm:mt-2">
+                    {PORTAL_FEDERAL_INFO.tiposCasos.slice(0, 4).map(tipo => (
+                      <Badge key={tipo} variant="outline" className="border-blue-700 text-blue-400 text-[8px] sm:text-[9px] px-1">
                         {tipo}
                       </Badge>
                     ))}
@@ -917,31 +926,31 @@ export default function CCLDiagnosticoPage() {
               )}
               
               {/* Status */}
-              <div className="flex items-center justify-between p-3 bg-green-950/50 rounded border border-green-800">
-                <span className="text-green-600 text-sm">Status:</span>
-                <Badge className={
+              <div className="flex items-center justify-between p-2 sm:p-3 bg-green-950/50 rounded border border-green-800">
+                <span className="text-green-600 text-xs sm:text-sm">Status:</span>
+                <Badge className={`text-[10px] sm:text-xs ${
                   selectedEstado.status === 'exito' ? 'bg-green-900 text-green-400' :
                   selectedEstado.status === 'parcial' ? 'bg-yellow-900 text-yellow-400' :
                   'bg-red-900 text-red-400'
-                }>
+                }`}>
                   {selectedEstado.status.toUpperCase()}
                 </Badge>
               </div>
 
               {/* URL */}
-              <div className="p-3 bg-green-950/50 rounded border border-green-800">
-                <span className="text-green-600 text-xs block mb-1">Portal URL:</span>
-                <code className="text-green-400 text-xs break-all">{selectedEstado.url}</code>
+              <div className="p-2 sm:p-3 bg-green-950/50 rounded border border-green-800">
+                <span className="text-green-600 text-[10px] sm:text-xs block mb-1">Portal URL:</span>
+                <code className="text-green-400 text-[9px] sm:text-xs break-all">{selectedEstado.url}</code>
               </div>
 
               {/* Pasos del Robot */}
-              <div className="p-3 bg-green-950/50 rounded border border-green-800">
-                <span className="text-green-600 text-xs block mb-2">Secuencia de Pasos:</span>
-                <div className="space-y-1">
+              <div className="p-2 sm:p-3 bg-green-950/50 rounded border border-green-800">
+                <span className="text-green-600 text-[10px] sm:text-xs block mb-1 sm:mb-2">Secuencia de Pasos:</span>
+                <div className="space-y-0.5 sm:space-y-1">
                   {selectedEstado.pasos.map((paso, idx) => (
                     <div 
                       key={paso.paso}
-                      className={`flex items-center justify-between p-2 rounded text-xs ${
+                      className={`flex items-center justify-between p-1.5 sm:p-2 rounded text-[10px] sm:text-xs ${
                         paso.error ? 'bg-red-950/50 border border-red-800' :
                         paso.completado ? 'bg-green-950/50 border border-green-800' :
                         'bg-gray-900/50 border border-gray-800'

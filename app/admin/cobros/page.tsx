@@ -97,100 +97,102 @@ export default function CobrosPage() {
       <MatrixRain />
       
       <header className="bg-black/95 border-b border-green-900 sticky top-0 z-40">
-        <div className="container mx-auto px-4 py-3">
-          <div className="flex items-center gap-3">
-            <Link href="/admin" className="p-2 hover:bg-green-950 rounded-lg transition-colors">
-              <ArrowLeft className="w-5 h-5 text-green-500" />
+        <div className="container mx-auto px-3 sm:px-4 py-2 sm:py-3">
+          <div className="flex items-center gap-2 sm:gap-3">
+            <Link href="/admin" className="p-1.5 sm:p-2 hover:bg-green-950 rounded-lg transition-colors">
+              <ArrowLeft className="w-4 h-4 sm:w-5 sm:h-5 text-green-500" />
             </Link>
             <div>
-              <h1 className="font-mono font-bold text-green-400">COBROS Y SUSCRIPCIONES</h1>
-              <p className="text-xs text-green-700 font-mono">Sistema de pagos recurrentes</p>
+              <h1 className="font-mono font-bold text-green-400 text-sm sm:text-base">COBROS</h1>
+              <p className="text-[10px] sm:text-xs text-green-700 font-mono hidden sm:block">Sistema de pagos recurrentes</p>
             </div>
           </div>
         </div>
       </header>
 
-      <main className="container mx-auto px-4 py-6 space-y-6 max-w-4xl relative z-10">
+      <main className="container mx-auto px-3 sm:px-4 py-4 sm:py-6 space-y-4 sm:space-y-6 max-w-4xl relative z-10">
         {/* Stats */}
-        <div className="grid grid-cols-4 gap-2">
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
           <Card className="bg-black border-green-900">
-            <CardContent className="p-3 text-center">
-              <Users className="w-5 h-5 text-green-500 mx-auto mb-1" />
-              <p className="text-xl font-bold text-green-400 font-mono">{stats.totalActivas}</p>
-              <p className="text-[10px] text-green-700 font-mono">Activas</p>
+            <CardContent className="p-2 sm:p-3 text-center">
+              <Users className="w-4 h-4 sm:w-5 sm:h-5 text-green-500 mx-auto mb-1" />
+              <p className="text-lg sm:text-xl font-bold text-green-400 font-mono">{stats.totalActivas}</p>
+              <p className="text-[9px] sm:text-[10px] text-green-700 font-mono">Activas</p>
             </CardContent>
           </Card>
           <Card className="bg-black border-green-900">
-            <CardContent className="p-3 text-center">
-              <TrendingUp className="w-5 h-5 text-green-500 mx-auto mb-1" />
-              <p className="text-xl font-bold text-green-400 font-mono">{formatCurrency(stats.ingresoMensual)}</p>
-              <p className="text-[10px] text-green-700 font-mono">MRR</p>
+            <CardContent className="p-2 sm:p-3 text-center">
+              <TrendingUp className="w-4 h-4 sm:w-5 sm:h-5 text-green-500 mx-auto mb-1" />
+              <p className="text-sm sm:text-xl font-bold text-green-400 font-mono">{formatCurrency(stats.ingresoMensual)}</p>
+              <p className="text-[9px] sm:text-[10px] text-green-700 font-mono">MRR</p>
             </CardContent>
           </Card>
           <Card className="bg-black border-yellow-900">
-            <CardContent className="p-3 text-center">
-              <Calendar className="w-5 h-5 text-yellow-500 mx-auto mb-1" />
-              <p className="text-xl font-bold text-yellow-400 font-mono">{stats.porVencer}</p>
-              <p className="text-[10px] text-yellow-700 font-mono">Por vencer</p>
+            <CardContent className="p-2 sm:p-3 text-center">
+              <Calendar className="w-4 h-4 sm:w-5 sm:h-5 text-yellow-500 mx-auto mb-1" />
+              <p className="text-lg sm:text-xl font-bold text-yellow-400 font-mono">{stats.porVencer}</p>
+              <p className="text-[9px] sm:text-[10px] text-yellow-700 font-mono">Por vencer</p>
             </CardContent>
           </Card>
           <Card className="bg-black border-red-900">
-            <CardContent className="p-3 text-center">
-              <CreditCard className="w-5 h-5 text-red-500 mx-auto mb-1" />
-              <p className="text-xl font-bold text-red-400 font-mono">{stats.canceladas}</p>
-              <p className="text-[10px] text-red-700 font-mono">Canceladas</p>
+            <CardContent className="p-2 sm:p-3 text-center">
+              <CreditCard className="w-4 h-4 sm:w-5 sm:h-5 text-red-500 mx-auto mb-1" />
+              <p className="text-lg sm:text-xl font-bold text-red-400 font-mono">{stats.canceladas}</p>
+              <p className="text-[9px] sm:text-[10px] text-red-700 font-mono">Canceladas</p>
             </CardContent>
           </Card>
         </div>
 
         {/* Filtros */}
-        <div className="flex gap-2 flex-wrap">
-          <div className="relative flex-1 min-w-[200px]">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-green-600" />
+        <div className="flex gap-1.5 sm:gap-2 flex-wrap">
+          <div className="relative flex-1 min-w-[150px] sm:min-w-[200px]">
+            <Search className="absolute left-2 sm:left-3 top-1/2 -translate-y-1/2 w-3 h-3 sm:w-4 sm:h-4 text-green-600" />
             <Input 
-              placeholder="Buscar usuario..."
+              placeholder="Buscar..."
               value={busqueda}
               onChange={(e) => setBusqueda(e.target.value)}
-              className="pl-9 bg-black border-green-900 text-green-400 font-mono placeholder:text-green-800"
+              className="pl-7 sm:pl-9 bg-black border-green-900 text-green-400 font-mono placeholder:text-green-800 text-xs sm:text-sm h-8 sm:h-10"
             />
           </div>
-          {['todas', 'activa', 'pausada', 'vencida'].map((f) => (
-            <Button
-              key={f}
-              variant={filtro === f ? 'default' : 'outline'}
-              size="sm"
-              onClick={() => setFiltro(f)}
-              className={filtro === f 
-                ? 'bg-green-600 text-black font-mono' 
-                : 'border-green-900 text-green-500 hover:bg-green-950 font-mono bg-transparent'
-              }
-            >
-              {f.charAt(0).toUpperCase() + f.slice(1)}
-            </Button>
-          ))}
+          <div className="flex gap-1 sm:gap-2 overflow-x-auto">
+            {['todas', 'activa', 'pausada', 'vencida'].map((f) => (
+              <Button
+                key={f}
+                variant={filtro === f ? 'default' : 'outline'}
+                size="sm"
+                onClick={() => setFiltro(f)}
+                className={`text-[10px] sm:text-xs px-2 sm:px-3 h-8 sm:h-9 ${filtro === f 
+                  ? 'bg-green-600 text-black font-mono' 
+                  : 'border-green-900 text-green-500 hover:bg-green-950 font-mono bg-transparent'
+                }`}
+              >
+                {f.charAt(0).toUpperCase() + f.slice(1)}
+              </Button>
+            ))}
+          </div>
         </div>
 
         {/* Lista de suscripciones */}
         <div className="space-y-2">
           {filteredSuscripciones.map((sub) => (
             <Card key={sub.id} className="bg-black/80 border-green-900 hover:border-green-600 transition-colors">
-              <CardContent className="p-4">
-                <div className="flex items-center justify-between">
+              <CardContent className="p-3 sm:p-4">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
                   <div className="flex-1">
                     <div className="flex items-center gap-2 mb-1">
-                      <span className={`font-mono font-bold ${tipoColors[sub.tipo]}`}>
+                      <span className={`font-mono font-bold text-xs sm:text-sm ${tipoColors[sub.tipo]}`}>
                         {sub.tipo.toUpperCase()}
                       </span>
-                      <Badge className={`text-[10px] ${statusColors[sub.status]}`}>
+                      <Badge className={`text-[9px] sm:text-[10px] ${statusColors[sub.status]}`}>
                         {sub.status}
                       </Badge>
                     </div>
-                    <p className="text-green-300 font-mono text-sm">{sub.user_name}</p>
-                    <p className="text-green-700 font-mono text-xs">{sub.user_email}</p>
+                    <p className="text-green-300 font-mono text-xs sm:text-sm">{sub.user_name}</p>
+                    <p className="text-green-700 font-mono text-[10px] sm:text-xs">{sub.user_email}</p>
                   </div>
-                  <div className="text-right">
-                    <p className="text-green-400 font-mono font-bold">{formatCurrency(sub.monto)}/mes</p>
-                    <p className="text-green-700 font-mono text-xs">Renueva: {new Date(sub.fecha_renovacion).toLocaleDateString()}</p>
+                  <div className="text-left sm:text-right border-t sm:border-t-0 pt-2 sm:pt-0 mt-1 sm:mt-0 border-green-900">
+                    <p className="text-green-400 font-mono font-bold text-xs sm:text-sm">{formatCurrency(sub.monto)}/mes</p>
+                    <p className="text-green-700 font-mono text-[10px] sm:text-xs">Renueva: {new Date(sub.fecha_renovacion).toLocaleDateString()}</p>
                   </div>
                 </div>
               </CardContent>
@@ -199,13 +201,13 @@ export default function CobrosPage() {
         </div>
 
         {/* Terminal footer */}
-        <div className="mt-8 p-3 bg-black border border-green-900 rounded-lg font-mono text-xs">
-          <p className="text-green-600">
+        <div className="mt-6 sm:mt-8 p-2 sm:p-3 bg-black border border-green-900 rounded-lg font-mono text-[10px] sm:text-xs overflow-x-auto">
+          <p className="text-green-600 whitespace-nowrap">
             <span className="text-green-400">root@cobros</span>
             <span className="text-white">:</span>
             <span className="text-blue-400">~</span>
             <span className="text-white">$ </span>
-            <span className="text-green-300">MRR: {formatCurrency(stats.ingresoMensual)} | Suscripciones: {suscripciones.length}</span>
+            <span className="text-green-300">MRR: {formatCurrency(stats.ingresoMensual)}</span>
           </p>
         </div>
       </main>

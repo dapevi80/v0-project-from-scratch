@@ -85,19 +85,19 @@ export default function WalletPage() {
       <MatrixRain />
       
       <header className="bg-black/95 border-b border-green-900 sticky top-0 z-40">
-        <div className="container mx-auto px-4 py-3">
+        <div className="container mx-auto px-3 sm:px-4 py-2 sm:py-3">
           <div className="flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <Link href="/admin" className="p-2 hover:bg-green-950 rounded-lg transition-colors">
-                <ArrowLeft className="w-5 h-5 text-green-500" />
+            <div className="flex items-center gap-2 sm:gap-3">
+              <Link href="/admin" className="p-1.5 sm:p-2 hover:bg-green-950 rounded-lg transition-colors">
+                <ArrowLeft className="w-4 h-4 sm:w-5 sm:h-5 text-green-500" />
               </Link>
               <div>
-                <h1 className="font-mono font-bold text-green-400">WALLET & MARKETPLACE</h1>
-                <p className="text-xs text-green-700 font-mono">Fichas y suscripciones</p>
+                <h1 className="font-mono font-bold text-green-400 text-sm sm:text-base">WALLET</h1>
+                <p className="text-[10px] sm:text-xs text-green-700 font-mono hidden sm:block">Fichas y suscripciones</p>
               </div>
             </div>
-            <div className="flex items-center gap-2 px-3 py-1.5 bg-green-950 border border-green-700 rounded-full">
-              <Coins className="w-4 h-4 text-green-400" />
+            <div className="flex items-center gap-1.5 sm:gap-2 px-2 sm:px-3 py-1 sm:py-1.5 bg-green-950 border border-green-700 rounded-full">
+              <Coins className="w-3 h-3 sm:w-4 sm:h-4 text-green-400" />
               <span className="font-mono font-bold text-green-400">1,250</span>
               <span className="text-green-700 text-xs font-mono">fichas</span>
             </div>
@@ -105,36 +105,38 @@ export default function WalletPage() {
         </div>
       </header>
 
-      <main className="container mx-auto px-4 py-6 space-y-6 max-w-4xl relative z-10">
+      <main className="container mx-auto px-3 sm:px-4 py-4 sm:py-6 space-y-4 sm:space-y-6 max-w-4xl relative z-10">
         {/* Tabs */}
-        <div className="flex gap-2 justify-center">
+        <div className="flex gap-1.5 sm:gap-2 justify-center">
           <Button
             variant={tab === 'fichas' ? 'default' : 'outline'}
+            size="sm"
             onClick={() => setTab('fichas')}
-            className={tab === 'fichas' 
+            className={`text-xs sm:text-sm ${tab === 'fichas' 
               ? 'bg-green-600 text-black font-mono' 
               : 'border-green-900 text-green-500 hover:bg-green-950 font-mono bg-transparent'
-            }
+            }`}
           >
-            <Coins className="w-4 h-4 mr-2" />
-            Comprar Fichas
+            <Coins className="w-3 h-3 sm:w-4 sm:h-4 mr-1 sm:mr-2" />
+            <span className="hidden sm:inline">Comprar</span> Fichas
           </Button>
           <Button
             variant={tab === 'suscripciones' ? 'default' : 'outline'}
+            size="sm"
             onClick={() => setTab('suscripciones')}
-            className={tab === 'suscripciones' 
+            className={`text-xs sm:text-sm ${tab === 'suscripciones' 
               ? 'bg-green-600 text-black font-mono' 
               : 'border-green-900 text-green-500 hover:bg-green-950 font-mono bg-transparent'
-            }
+            }`}
           >
-            <Crown className="w-4 h-4 mr-2" />
-            Suscripciones (-10%)
+            <Crown className="w-3 h-3 sm:w-4 sm:h-4 mr-1 sm:mr-2" />
+            <span className="hidden sm:inline">Suscripciones</span><span className="sm:hidden">Suscrip.</span> (-10%)
           </Button>
         </div>
 
         {/* Contenido Fichas */}
         {tab === 'fichas' && (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-2 sm:gap-3">
             {paquetesFichas.map((paquete) => (
               <Card 
                 key={paquete.id} 
@@ -142,39 +144,30 @@ export default function WalletPage() {
                   paquete.popular ? 'border-green-500 ring-1 ring-green-500' : ''
                 }`}
               >
-                <CardContent className="p-4 text-center">
+                <CardContent className="p-2 sm:p-4 text-center">
                   {paquete.popular && (
-                    <Badge className="bg-green-600 text-black font-mono mb-2">
-                      <Sparkles className="w-3 h-3 mr-1" />
-                      POPULAR
+                    <Badge className="bg-green-600 text-black font-mono mb-1 sm:mb-2 text-[9px] sm:text-xs">
+                      <Sparkles className="w-2 h-2 sm:w-3 sm:h-3 mr-0.5 sm:mr-1" />
+                      TOP
                     </Badge>
                   )}
-                  <div className="w-12 h-12 rounded-full bg-green-950 border border-green-700 flex items-center justify-center mx-auto mb-3">
-                    <Coins className="w-6 h-6 text-green-400" />
+                  <div className="w-8 h-8 sm:w-12 sm:h-12 rounded-full bg-green-950 border border-green-700 flex items-center justify-center mx-auto mb-1 sm:mb-3">
+                    <Coins className="w-4 h-4 sm:w-6 sm:h-6 text-green-400" />
                   </div>
-                  <h3 className="font-mono font-bold text-green-400 text-lg">{paquete.nombre}</h3>
-                  <p className="font-mono text-3xl font-bold text-green-300 my-2">
+                  <h3 className="font-mono font-bold text-green-400 text-xs sm:text-lg">{paquete.nombre}</h3>
+                  <p className="font-mono text-lg sm:text-3xl font-bold text-green-300 my-1 sm:my-2">
                     {paquete.fichas.toLocaleString()}
                   </p>
-                  <p className="text-green-700 font-mono text-xs mb-3">{paquete.descripcion}</p>
-                  <div className="mb-3">
+                  <div className="mb-2 sm:mb-3">
                     {paquete.descuento ? (
-                      <div className="flex items-center justify-center gap-2">
-                        <span className="text-green-700 line-through text-sm font-mono">
-                          {formatCurrency(paquete.precio / (1 - paquete.descuento/100))}
-                        </span>
-                        <Badge className="bg-red-900 text-red-300 text-[10px]">-{paquete.descuento}%</Badge>
-                      </div>
+                      <Badge className="bg-red-900 text-red-300 text-[8px] sm:text-[10px] mb-1">-{paquete.descuento}%</Badge>
                     ) : null}
-                    <p className="font-mono font-bold text-green-400 text-xl">
+                    <p className="font-mono font-bold text-green-400 text-sm sm:text-xl">
                       {formatCurrency(paquete.precio)}
                     </p>
-                    <p className="text-green-800 font-mono text-[10px]">
-                      {formatCurrency(paquete.precio / paquete.fichas)}/ficha
-                    </p>
                   </div>
-                  <Button className="w-full bg-green-600 text-black font-mono hover:bg-green-500">
-                    <CreditCard className="w-4 h-4 mr-2" />
+                  <Button size="sm" className="w-full bg-green-600 text-black font-mono hover:bg-green-500 text-[10px] sm:text-xs h-7 sm:h-9">
+                    <CreditCard className="w-3 h-3 mr-1" />
                     Comprar
                   </Button>
                 </CardContent>
@@ -186,48 +179,48 @@ export default function WalletPage() {
         {/* Contenido Suscripciones */}
         {tab === 'suscripciones' && (
           <>
-            <div className="text-center mb-4">
-              <Badge className="bg-amber-900 text-amber-300 font-mono">
-                <Zap className="w-3 h-3 mr-1" />
-                Ahorra 10% pagando mensual con tarjeta
+            <div className="text-center mb-2 sm:mb-4">
+              <Badge className="bg-amber-900 text-amber-300 font-mono text-[10px] sm:text-xs">
+                <Zap className="w-2 h-2 sm:w-3 sm:h-3 mr-1" />
+                Ahorra 10% con tarjeta
               </Badge>
             </div>
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 sm:gap-3">
               {suscripciones.map((sub) => (
                 <Card 
                   key={sub.id} 
                   className={`bg-black/80 border-green-900 hover:border-green-500 transition-all ${
-                    sub.popular ? 'border-green-500 ring-1 ring-green-500 scale-105' : ''
+                    sub.popular ? 'border-green-500 ring-1 ring-green-500 sm:scale-105' : ''
                   }`}
                 >
-                  <CardContent className="p-4">
+                  <CardContent className="p-3 sm:p-4">
                     {sub.popular && (
-                      <Badge className="bg-green-600 text-black font-mono mb-2 w-full justify-center">
-                        <Crown className="w-3 h-3 mr-1" />
+                      <Badge className="bg-green-600 text-black font-mono mb-2 w-full justify-center text-[10px] sm:text-xs">
+                        <Crown className="w-2 h-2 sm:w-3 sm:h-3 mr-1" />
                         RECOMENDADO
                       </Badge>
                     )}
-                    <h3 className="font-mono font-bold text-green-400 text-lg text-center">{sub.nombre}</h3>
-                    <div className="text-center my-3">
-                      <p className="font-mono text-3xl font-bold text-green-300">
+                    <h3 className="font-mono font-bold text-green-400 text-sm sm:text-lg text-center">{sub.nombre}</h3>
+                    <div className="text-center my-2 sm:my-3">
+                      <p className="font-mono text-xl sm:text-3xl font-bold text-green-300">
                         {formatCurrency(sub.precioMensual * 0.9)}
                       </p>
-                      <p className="text-green-700 font-mono text-xs line-through">
+                      <p className="text-green-700 font-mono text-[10px] sm:text-xs line-through">
                         {formatCurrency(sub.precioMensual)}/mes
                       </p>
-                      <p className="text-green-600 font-mono text-xs mt-1">
-                        {sub.fichasIncluidas.toLocaleString()} fichas/mes incluidas
+                      <p className="text-green-600 font-mono text-[10px] sm:text-xs mt-1">
+                        {sub.fichasIncluidas.toLocaleString()} fichas/mes
                       </p>
                     </div>
-                    <div className="space-y-2 mb-4">
-                      {sub.beneficios.map((beneficio, idx) => (
-                        <div key={idx} className="flex items-center gap-2 text-green-500 text-xs font-mono">
-                          <Check className="w-3 h-3 text-green-400" />
-                          {beneficio}
+                    <div className="space-y-1.5 sm:space-y-2 mb-3 sm:mb-4">
+                      {sub.beneficios.slice(0, 3).map((beneficio, idx) => (
+                        <div key={idx} className="flex items-center gap-1.5 sm:gap-2 text-green-500 text-[10px] sm:text-xs font-mono">
+                          <Check className="w-2.5 h-2.5 sm:w-3 sm:h-3 text-green-400 flex-shrink-0" />
+                          <span className="truncate">{beneficio}</span>
                         </div>
                       ))}
                     </div>
-                    <Button className="w-full bg-green-600 text-black font-mono hover:bg-green-500">
+                    <Button size="sm" className="w-full bg-green-600 text-black font-mono hover:bg-green-500 text-xs sm:text-sm">
                       Suscribirme
                     </Button>
                   </CardContent>
@@ -239,16 +232,16 @@ export default function WalletPage() {
 
         {/* Info Mercado Pago */}
         <Card className="bg-black/80 border-green-900">
-          <CardContent className="p-4">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-lg bg-blue-600 flex items-center justify-center">
-                <span className="text-white font-bold text-sm">MP</span>
+          <CardContent className="p-3 sm:p-4">
+            <div className="flex items-center gap-2 sm:gap-3">
+              <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-lg bg-blue-600 flex items-center justify-center flex-shrink-0">
+                <span className="text-white font-bold text-[10px] sm:text-sm">MP</span>
               </div>
-              <div className="flex-1">
-                <p className="font-mono text-green-400 text-sm">Pagos procesados por Mercado Pago</p>
-                <p className="font-mono text-green-700 text-xs">Todas las compras generan factura automatica en SAT</p>
+              <div className="flex-1 min-w-0">
+                <p className="font-mono text-green-400 text-xs sm:text-sm">Pagos via Mercado Pago</p>
+                <p className="font-mono text-green-700 text-[10px] sm:text-xs truncate">Factura automatica SAT</p>
               </div>
-              <Badge className="bg-green-950 text-green-400 border border-green-700 font-mono">
+              <Badge className="bg-green-950 text-green-400 border border-green-700 font-mono text-[10px] sm:text-xs hidden sm:flex">
                 Seguro
               </Badge>
             </div>
@@ -256,13 +249,11 @@ export default function WalletPage() {
         </Card>
 
         {/* Terminal footer */}
-        <div className="mt-8 p-3 bg-black border border-green-900 rounded-lg font-mono text-xs">
-          <p className="text-green-600">
+        <div className="mt-4 sm:mt-8 p-2 sm:p-3 bg-black border border-green-900 rounded-lg font-mono text-[10px] sm:text-xs overflow-x-auto">
+          <p className="text-green-600 whitespace-nowrap">
             <span className="text-green-400">root@wallet</span>
-            <span className="text-white">:</span>
-            <span className="text-blue-400">~</span>
             <span className="text-white">$ </span>
-            <span className="text-green-300">API: MercadoPago v2 | Facturacion: Automatica</span>
+            <span className="text-green-300">API: MercadoPago</span>
           </p>
         </div>
       </main>

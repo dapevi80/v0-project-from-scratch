@@ -159,21 +159,21 @@ export default function AdminDashboardPage() {
       
       {/* Header */}
       <header className={`border-b sticky top-0 z-40 ${data.isSuperAdmin ? 'bg-black/95 border-green-900' : 'bg-white'}`}>
-        <div className="container mx-auto px-4 py-4">
+        <div className="container mx-auto px-3 sm:px-4 py-2 sm:py-4">
           <div className="flex items-center justify-between">
-            <div className="flex items-center gap-3">
+            <div className="flex items-center gap-2 sm:gap-3">
               {data.isSuperAdmin ? (
-                <div className="w-10 h-10 rounded-lg bg-green-950 border border-green-600 flex items-center justify-center">
-                  <Terminal className="w-5 h-5 text-green-400" />
+                <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-lg bg-green-950 border border-green-600 flex items-center justify-center">
+                  <Terminal className="w-4 h-4 sm:w-5 sm:h-5 text-green-400" />
                 </div>
               ) : (
-                <span className="text-3xl">🛡️</span>
+                <span className="text-2xl sm:text-3xl">🛡️</span>
               )}
               <div>
-                <h1 className={`font-bold text-lg ${data.isSuperAdmin ? 'text-green-400 font-mono' : 'text-slate-800'}`}>
-                  {data.isSuperAdmin ? 'SUPERADMIN' : 'Admin Panel'}
+                <h1 className={`font-bold text-sm sm:text-lg ${data.isSuperAdmin ? 'text-green-400 font-mono' : 'text-slate-800'}`}>
+                  {data.isSuperAdmin ? 'SUPERADMIN' : 'Admin'}
                 </h1>
-                <p className={`text-xs ${data.isSuperAdmin ? 'text-green-600 font-mono' : 'text-slate-500'}`}>
+                <p className={`text-[10px] sm:text-xs ${data.isSuperAdmin ? 'text-green-600 font-mono' : 'text-slate-500'} hidden sm:block`}>
                   {data.profile.full_name}
                 </p>
               </div>
@@ -182,21 +182,21 @@ export default function AdminDashboardPage() {
               variant="ghost" 
               size="sm" 
               onClick={handleLogout}
-              className={data.isSuperAdmin ? 'text-green-500 hover:text-green-400 hover:bg-green-950' : 'text-slate-600 hover:text-slate-800'}
+              className={`px-2 sm:px-3 ${data.isSuperAdmin ? 'text-green-500 hover:text-green-400 hover:bg-green-950' : 'text-slate-600 hover:text-slate-800'}`}
             >
-              <LogOut className="w-4 h-4 mr-2" />
-              Salir
+              <LogOut className="w-4 h-4" />
+              <span className="hidden sm:inline ml-2">Salir</span>
             </Button>
           </div>
         </div>
       </header>
 
-      <main className="container mx-auto px-4 py-6 space-y-6 max-w-2xl">
+      <main className="container mx-auto px-3 sm:px-4 py-4 sm:py-6 space-y-4 sm:space-y-6 max-w-2xl">
         {/* Badge de rol */}
         <div className="flex justify-center">
           {data.isSuperAdmin ? (
-            <Badge className="bg-green-950 text-green-400 border border-green-600 font-mono px-4 py-1">
-              ROOT ACCESS GRANTED
+            <Badge className="bg-green-950 text-green-400 border border-green-600 font-mono px-2 sm:px-4 py-1 text-[10px] sm:text-xs">
+              ROOT ACCESS
             </Badge>
           ) : (
             <Badge className="bg-purple-100 text-purple-700">
@@ -206,37 +206,37 @@ export default function AdminDashboardPage() {
         </div>
 
         {/* Stats Cards */}
-        <div className={`grid grid-cols-4 gap-2 ${data.isSuperAdmin ? 'font-mono' : ''}`}>
+        <div className={`grid grid-cols-2 sm:grid-cols-4 gap-1.5 sm:gap-2 ${data.isSuperAdmin ? 'font-mono' : ''}`}>
           <Card className={data.isSuperAdmin ? 'bg-black border-green-900' : 'bg-gradient-to-br from-blue-50 to-white border-blue-100'}>
-            <CardContent className="p-3 text-center">
-              <p className={`text-2xl font-bold ${data.isSuperAdmin ? 'text-green-400' : 'text-blue-600'}`}>
+            <CardContent className="p-2 sm:p-3 text-center">
+              <p className={`text-lg sm:text-2xl font-bold ${data.isSuperAdmin ? 'text-green-400' : 'text-blue-600'}`}>
                 {data.stats.totalUsuarios}
               </p>
-              <p className={`text-[10px] ${data.isSuperAdmin ? 'text-green-700' : 'text-slate-500'}`}>Usuarios</p>
+              <p className={`text-[9px] sm:text-[10px] ${data.isSuperAdmin ? 'text-green-700' : 'text-slate-500'}`}>Usuarios</p>
             </CardContent>
           </Card>
           <Card className={data.isSuperAdmin ? 'bg-black border-green-900' : 'bg-gradient-to-br from-amber-50 to-white border-amber-100'}>
-            <CardContent className="p-3 text-center">
-              <p className={`text-2xl font-bold ${data.isSuperAdmin ? 'text-green-400' : 'text-amber-600'}`}>
+            <CardContent className="p-2 sm:p-3 text-center">
+              <p className={`text-lg sm:text-2xl font-bold ${data.isSuperAdmin ? 'text-green-400' : 'text-amber-600'}`}>
                 {data.stats.totalCotizaciones}
               </p>
-              <p className={`text-[10px] ${data.isSuperAdmin ? 'text-green-700' : 'text-slate-500'}`}>Leads</p>
+              <p className={`text-[9px] sm:text-[10px] ${data.isSuperAdmin ? 'text-green-700' : 'text-slate-500'}`}>Leads</p>
             </CardContent>
           </Card>
           <Card className={data.isSuperAdmin ? 'bg-black border-green-900' : 'bg-gradient-to-br from-green-50 to-white border-green-100'}>
-            <CardContent className="p-3 text-center">
-              <p className={`text-2xl font-bold ${data.isSuperAdmin ? 'text-green-400' : 'text-green-600'}`}>
+            <CardContent className="p-2 sm:p-3 text-center">
+              <p className={`text-lg sm:text-2xl font-bold ${data.isSuperAdmin ? 'text-green-400' : 'text-green-600'}`}>
                 {data.stats.totalCasos}
               </p>
-              <p className={`text-[10px] ${data.isSuperAdmin ? 'text-green-700' : 'text-slate-500'}`}>Casos</p>
+              <p className={`text-[9px] sm:text-[10px] ${data.isSuperAdmin ? 'text-green-700' : 'text-slate-500'}`}>Casos</p>
             </CardContent>
           </Card>
           <Card className={data.isSuperAdmin ? 'bg-black border-green-900' : 'bg-gradient-to-br from-purple-50 to-white border-purple-100'}>
-            <CardContent className="p-3 text-center">
-              <p className={`text-2xl font-bold ${data.isSuperAdmin ? 'text-green-400' : 'text-purple-600'}`}>
+            <CardContent className="p-2 sm:p-3 text-center">
+              <p className={`text-lg sm:text-2xl font-bold ${data.isSuperAdmin ? 'text-green-400' : 'text-purple-600'}`}>
                 {data.stats.totalAbogados}
               </p>
-              <p className={`text-[10px] ${data.isSuperAdmin ? 'text-green-700' : 'text-slate-500'}`}>Abogados</p>
+              <p className={`text-[9px] sm:text-[10px] ${data.isSuperAdmin ? 'text-green-700' : 'text-slate-500'}`}>Abogados</p>
             </CardContent>
           </Card>
         </div>
