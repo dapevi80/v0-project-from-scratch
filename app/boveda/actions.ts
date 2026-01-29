@@ -1082,3 +1082,137 @@ export async function actualizarCasoConDireccionTrabajador(
   
   return { success: true, message: 'Dirección del trabajador actualizada en el caso' }
 }
+
+// Tipo para documentos CCL oficiales
+export interface DocumentoCCLOficial {
+  id: string
+  folio: string
+  estado: string
+  tipo: 'solicitud' | 'acuse' | 'constancia'
+  fecha_solicitud: string
+  documento_oficial_url?: string
+  documento_oficial_path?: string
+  nombre_trabajador?: string
+  status: string
+  created_at: string
+}
+
+// Obtener documentos CCL oficiales del usuario (para bóveda)
+export async function obtenerDocumentosCCL(): Promise<{
+  success: boolean
+  documentos?: DocumentoCCLOficial[]
+  error?: string
+}> {
+  const supabase = await createClient()
+  
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) {
+    return { success: false, error: 'No autenticado' }
+  }
+  
+  // Obtener perfil para saber si es abogado o trabajador
+  const { data: profile } = await supabase
+    .from('profiles')
+    .select('role')
+    .eq('id', user.id)
+    .single()
+  
+  // Buscar solicitudes donde el usuario sea el abogado o el trabajador
+  const { data: solicitudes, error } = await supabase
+    .from('solicitudes_ccl')
+    .select(`
+      id,
+      folio,
+      estado,
+      status,
+      documento_oficial_url,
+      documento_oficial_path,
+      created_at,
+      calculos_liquidacion (
+        nombre_trabajador
+      )
+    `)
+    .or(`abogado_id.eq.${user.id},trabajador_id.eq.${user.id}`)
+    .not('documento_oficial_url', 'is', null)
+    .order('created_at', { ascending: false })
+  
+  if (error) {
+    console.error('Error obteniendo documentos CCL:', error)
+    return { success: false, error: error.message }
+  }
+  
+  // Transformar a formato de DocumentoCCLOficial
+  const documentos: DocumentoCCLOficial[] = (solicitudes || []).map(sol => ({
+    id: sol.id,
+    folio: sol.folio || `CCL-${sol.estado?.slice(0,3).toUpperCase()}-${sol.id.slice(0,8)}`,
+    estado: sol.estado || 'Desconocido',
+    tipo: sol.status === 'exitoso' ? 'solicitud' : 'acuse',
+    fecha_solicitud: sol.created_at,
+    documento_oficial_url: sol.documento_oficial_url,
+    documento_oficial_path: sol.documento_oficial_path,
+    nombre_trabajador: (sol.calculos_liquidacion as { nombre_trabajador?: string })?.nombre_trabajador,
+    status: sol.status,
+    created_at: sol.created_at
+  }))
+  
+  return { success: true, documentos }
+}
+
+// Obtener URL firmada para documento CCL oficial
+export async function obtenerUrlDocumentoCCL(solicitudId: string): Promise<{
+  success: boolean
+  url?: string
+  error?: string
+}> {
+  const supabase = await createClient()
+  
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) {
+    return { success: false, error: 'No autenticado' }
+  }
+  
+  // Verificar que el usuario tenga acceso a esta solicitud
+  const { data: solicitud, error } = await supabase
+    .from('solicitudes_ccl')
+    .select('documento_oficial_url, documento_oficial_path, abogado_id, trabajador_id')
+    .eq('id', solicitudId)
+    .single()
+  
+  if (error || !solicitud) {
+    return { success: false, error: 'Solicitud no encontrada' }
+  }
+  
+  // Verificar permisos
+  if (solicitud.abogado_id !== user.id && solicitud.trabajador_id !== user.id) {
+    return { success: false, error: 'No tienes acceso a este documento' }
+  }
+  
+  // Si ya tiene URL pública, devolverla
+  if (solicitud.documento_oficial_url && !solicitud.documento_oficial_path) {
+    return { success: true, url: solicitud.documento_oficial_url }
+  }
+  
+  // Si tiene path en storage, crear URL firmada
+  if (solicitud.documento_oficial_path) {
+    const { data: urlData, error: urlError } = await supabase.storage
+      .from('documentos-ccl')
+      .createSignedUrl(solicitud.documento_oficial_path, 60 * 60) // 1 hora
+    
+    if (urlError) {
+      // Fallback a URL pública si existe
+      if (solicitud.documento_oficial_url) {
+        return { success: true, url: solicitud.documento_oficial_url }
+      }
+      return { success: false, error: urlError.message }
+    }
+    
+    return { success: true, url: urlData.signedUrl }
+  }
+  
+  // Fallback
+  if (solicitud.documento_oficial_url) {
+    return { success: true, url: solicitud.documento_oficial_url }
+  }
+  
+  return { success: false, error: 'Documento no disponible' }
+}

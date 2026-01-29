@@ -1,0 +1,213 @@
+'use server'
+
+import { createClient } from '@/lib/supabase/server'
+import { 
+  templateCorreoAbogado, 
+  templateCorreoTrabajador,
+  templateTextoPlanoAbogado,
+  templateTextoPlanoTrabajador,
+  type DatosSolicitudCCL 
+} from './templates'
+
+// Configuración del servicio de email
+// Puede ser Resend, SendGrid, Nodemailer, etc.
+const EMAIL_FROM = process.env.EMAIL_FROM || 'notificaciones@tuapp.com'
+const EMAIL_SERVICE = process.env.EMAIL_SERVICE || 'console' // 'resend', 'sendgrid', 'console'
+
+interface EmailResult {
+  success: boolean
+  messageId?: string
+  error?: string
+}
+
+// Función genérica para enviar email
+async function enviarEmail(
+  to: string,
+  subject: string,
+  html: string,
+  text: string
+): Promise<EmailResult> {
+  // En desarrollo o si no hay servicio configurado, solo logear
+  if (EMAIL_SERVICE === 'console' || process.env.NODE_ENV === 'development') {
+    console.log('=== EMAIL NOTIFICATION ===')
+    console.log('To:', to)
+    console.log('Subject:', subject)
+    console.log('Text preview:', text.slice(0, 200) + '...')
+    console.log('=== END EMAIL ===')
+    return { success: true, messageId: `dev-${Date.now()}` }
+  }
+
+  // Resend
+  if (EMAIL_SERVICE === 'resend' && process.env.RESEND_API_KEY) {
+    try {
+      const response = await fetch('https://api.resend.com/emails', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${process.env.RESEND_API_KEY}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          from: EMAIL_FROM,
+          to: [to],
+          subject,
+          html,
+          text,
+        }),
+      })
+
+      const data = await response.json()
+      
+      if (!response.ok) {
+        return { success: false, error: data.message || 'Error enviando email' }
+      }
+
+      return { success: true, messageId: data.id }
+    } catch (error) {
+      return { success: false, error: error instanceof Error ? error.message : 'Error desconocido' }
+    }
+  }
+
+  // SendGrid
+  if (EMAIL_SERVICE === 'sendgrid' && process.env.SENDGRID_API_KEY) {
+    try {
+      const response = await fetch('https://api.sendgrid.com/v3/mail/send', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${process.env.SENDGRID_API_KEY}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          personalizations: [{ to: [{ email: to }] }],
+          from: { email: EMAIL_FROM },
+          subject,
+          content: [
+            { type: 'text/plain', value: text },
+            { type: 'text/html', value: html },
+          ],
+        }),
+      })
+
+      if (!response.ok) {
+        const errorText = await response.text()
+        return { success: false, error: errorText }
+      }
+
+      return { success: true, messageId: response.headers.get('x-message-id') || `sg-${Date.now()}` }
+    } catch (error) {
+      return { success: false, error: error instanceof Error ? error.message : 'Error desconocido' }
+    }
+  }
+
+  // Si no hay servicio configurado
+  console.warn('No email service configured. Email not sent.')
+  return { success: false, error: 'Servicio de email no configurado' }
+}
+
+// Enviar notificación al abogado cuando la solicitud CCL se envía exitosamente
+export async function enviarNotificacionAbogado(
+  solicitudId: string,
+  emailAbogado: string,
+  datos: DatosSolicitudCCL
+): Promise<EmailResult> {
+  const subject = `Solicitud CCL Enviada - Folio ${datos.folio}`
+  const html = templateCorreoAbogado(datos)
+  const text = templateTextoPlanoAbogado(datos)
+
+  const result = await enviarEmail(emailAbogado, subject, html, text)
+
+  // Registrar en base de datos
+  const supabase = await createClient()
+  await supabase.from('notificaciones_email').insert({
+    solicitud_id: solicitudId,
+    tipo: 'solicitud_enviada_abogado',
+    destinatario: emailAbogado,
+    asunto: subject,
+    enviado: result.success,
+    message_id: result.messageId,
+    error: result.error,
+  })
+
+  return result
+}
+
+// Enviar notificación al trabajador cuando la solicitud CCL se envía exitosamente
+export async function enviarNotificacionTrabajador(
+  solicitudId: string,
+  emailTrabajador: string,
+  datos: DatosSolicitudCCL
+): Promise<EmailResult> {
+  const subject = `Tu Solicitud de Conciliación - Folio ${datos.folio}`
+  const html = templateCorreoTrabajador(datos)
+  const text = templateTextoPlanoTrabajador(datos)
+
+  const result = await enviarEmail(emailTrabajador, subject, html, text)
+
+  // Registrar en base de datos
+  const supabase = await createClient()
+  await supabase.from('notificaciones_email').insert({
+    solicitud_id: solicitudId,
+    tipo: 'solicitud_enviada_trabajador',
+    destinatario: emailTrabajador,
+    asunto: subject,
+    enviado: result.success,
+    message_id: result.messageId,
+    error: result.error,
+  })
+
+  return result
+}
+
+// Función principal para enviar notificaciones de solicitud CCL exitosa
+export async function enviarNotificacionesSolicitudCCL(
+  solicitudId: string,
+  datos: {
+    folio: string
+    estado: string
+    fechaSolicitud: string
+    nombreTrabajador: string
+    emailTrabajador?: string
+    emailAbogado?: string
+    nombreEmpresa?: string
+    montoCalculado?: number
+    urlDocumento?: string
+  }
+): Promise<{
+  abogado: EmailResult | null
+  trabajador: EmailResult | null
+}> {
+  const datosSolicitud: DatosSolicitudCCL = {
+    folio: datos.folio,
+    estado: datos.estado,
+    fechaSolicitud: datos.fechaSolicitud,
+    nombreTrabajador: datos.nombreTrabajador,
+    nombreEmpresa: datos.nombreEmpresa,
+    montoCalculado: datos.montoCalculado,
+    urlDocumento: datos.urlDocumento,
+    urlBoveda: `${process.env.NEXT_PUBLIC_APP_URL || 'https://tuapp.com'}/boveda`
+  }
+
+  const resultados = {
+    abogado: null as EmailResult | null,
+    trabajador: null as EmailResult | null
+  }
+
+  // Enviar al abogado
+  if (datos.emailAbogado) {
+    resultados.abogado = await enviarNotificacionAbogado(
+      solicitudId, 
+      datos.emailAbogado, 
+      datosSolicitud
+    )
+  }
+
+  // Enviar al trabajador
+  if (datos.emailTrabajador) {
+    resultados.trabajador = await enviarNotificacionTrabajador(
+      solicitudId, 
+      datos.emailTrabajador, 
+      datosSolicitud
+    )
+  }
+
+  return resultados
+}
