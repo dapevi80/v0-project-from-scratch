@@ -36,13 +36,50 @@ interface Resultado {
   accionSugerida: string
 }
 
-// URLs simuladas de portales CCL por estado
+// URLs de portales CCL por estado
 const PORTAL_URLS: Record<string, string> = {
+  'Aguascalientes': 'https://ccl.aguascalientes.gob.mx',
+  'Baja California': 'https://centrolaboral.bajacalifornia.gob.mx',
+  'Baja California Sur': 'https://ccl.bcs.gob.mx',
+  'Campeche': 'https://conciliacion.campeche.gob.mx',
+  'Chiapas': 'https://ccl.chiapas.gob.mx',
+  'Chihuahua': 'https://centroconciliacion.chihuahua.gob.mx',
   'Ciudad de Mexico': 'https://centrolaboral.cdmx.gob.mx',
+  'Coahuila': 'https://ccl.coahuila.gob.mx',
+  'Colima': 'https://conciliacion.colima.gob.mx',
+  'Durango': 'https://ccl.durango.gob.mx',
+  'Guanajuato': 'https://ccl.guanajuato.gob.mx',
+  'Guerrero': 'https://conciliacionlaboral.guerrero.gob.mx',
+  'Hidalgo': 'https://ccl.hidalgo.gob.mx',
   'Jalisco': 'https://ccl.jalisco.gob.mx',
+  'Estado de Mexico': 'https://ccl.edomex.gob.mx',
+  'Michoacan': 'https://conciliacion.michoacan.gob.mx',
+  'Morelos': 'https://ccl.morelos.gob.mx',
+  'Nayarit': 'https://centrolaboral.nayarit.gob.mx',
   'Nuevo Leon': 'https://conciliacion.nl.gob.mx',
-  'Federal': 'https://centrofederalconciliacion.gob.mx',
-  // ... otros estados usarian urls genericas
+  'Oaxaca': 'https://ccl.oaxaca.gob.mx',
+  'Puebla': 'https://conciliacionlaboral.puebla.gob.mx',
+  'Queretaro': 'https://ccl.queretaro.gob.mx',
+  'Quintana Roo': 'https://centrolaboral.qroo.gob.mx',
+  'San Luis Potosi': 'https://ccl.slp.gob.mx',
+  'Sinaloa': 'https://conciliacion.sinaloa.gob.mx',
+  'Sonora': 'https://ccl.sonora.gob.mx',
+  'Tabasco': 'https://centrolaboral.tabasco.gob.mx',
+  'Tamaulipas': 'https://ccl.tamaulipas.gob.mx',
+  'Tlaxcala': 'https://conciliacion.tlaxcala.gob.mx',
+  'Veracruz': 'https://ccl.veracruz.gob.mx',
+  'Yucatan': 'https://centroconciliacion.yucatan.gob.mx',
+  'Zacatecas': 'https://ccl.zacatecas.gob.mx',
+  'Federal': 'https://cfcrl.gob.mx' // Centro Federal de Conciliacion y Registro Laboral
+}
+
+// Configuracion especial para portal Federal
+const PORTAL_FEDERAL_INFO = {
+  nombre: 'Centro Federal de Conciliacion y Registro Laboral (CFCRL)',
+  descripcion: 'Jurisdiccion federal: empresas con actividades de competencia federal',
+  url: 'https://cfcrl.gob.mx',
+  urlSolicitud: 'https://cfcrl.gob.mx/solicitud',
+  tiposCasos: ['Ferrocarriles', 'Aviacion', 'Electricidad', 'Petroleo', 'Banca', 'Seguros']
 }
 
 export default function CCLDiagnosticoPage() {
@@ -379,15 +416,22 @@ export default function CCLDiagnosticoPage() {
           {resultados.map((resultado) => (
             <Card 
               key={resultado.estado}
-              className={`${getStatusColor(resultado.status)} border transition-all cursor-pointer hover:scale-105`}
+              className={`${getStatusColor(resultado.status)} border transition-all cursor-pointer hover:scale-105 ${
+                resultado.estado === 'Federal' ? 'ring-2 ring-blue-500 col-span-2' : ''
+              }`}
               onClick={() => resultado.status !== 'pendiente' && resultado.status !== 'en_progreso' && verDetalle(resultado)}
             >
               <CardContent className="p-2 text-center">
+                {resultado.estado === 'Federal' && (
+                  <Badge className="bg-blue-900 text-blue-300 text-[7px] mb-1">CFCRL</Badge>
+                )}
                 <div className="flex justify-center mb-1">
                   {getStatusIcon(resultado.status)}
                 </div>
-                <p className="text-[9px] font-mono text-green-300 truncate" title={resultado.estado}>
-                  {resultado.estado.slice(0, 10)}
+                <p className={`text-[9px] font-mono truncate ${
+                  resultado.estado === 'Federal' ? 'text-blue-300' : 'text-green-300'
+                }`} title={resultado.estado}>
+                  {resultado.estado === 'Federal' ? 'FEDERAL' : resultado.estado.slice(0, 10)}
                 </p>
                 {resultado.tiempo > 0 && (
                   <p className="text-[8px] text-green-700 font-mono">
@@ -513,6 +557,25 @@ export default function CCLDiagnosticoPage() {
           
           {selectedEstado && (
             <div className="space-y-4">
+              {/* Info especial para portal Federal */}
+              {selectedEstado.estado === 'Federal' && (
+                <div className="p-3 bg-blue-950/30 rounded border border-blue-700">
+                  <div className="flex items-center gap-2 mb-2">
+                    <Shield className="w-4 h-4 text-blue-400" />
+                    <span className="text-blue-400 text-xs font-bold">JURISDICCION FEDERAL</span>
+                  </div>
+                  <p className="text-blue-300 text-xs mb-2">{PORTAL_FEDERAL_INFO.nombre}</p>
+                  <p className="text-blue-600 text-[10px]">{PORTAL_FEDERAL_INFO.descripcion}</p>
+                  <div className="flex flex-wrap gap-1 mt-2">
+                    {PORTAL_FEDERAL_INFO.tiposCasos.map(tipo => (
+                      <Badge key={tipo} variant="outline" className="border-blue-700 text-blue-400 text-[9px]">
+                        {tipo}
+                      </Badge>
+                    ))}
+                  </div>
+                </div>
+              )}
+              
               {/* Status */}
               <div className="flex items-center justify-between p-3 bg-green-950/50 rounded border border-green-800">
                 <span className="text-green-600 text-sm">Status:</span>
