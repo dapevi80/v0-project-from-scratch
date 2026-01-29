@@ -13,9 +13,10 @@ import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
 import { 
   FileText, Calendar, MapPin, Building2, User, Phone, Mail, 
   AlertTriangle, CheckCircle2, Loader2, Clock, Scale, Sparkles,
-  ArrowRight, ArrowLeft, DollarSign, Video, Users
+  ArrowRight, ArrowLeft, DollarSign, Video, Users, Bot, Zap
 } from 'lucide-react'
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group'
+import { AgentProgressModal } from './agent-progress-modal'
 import { 
   generarSolicitudCCL, 
   calcularPrescripcion, 
@@ -98,6 +99,11 @@ export function GenerarSolicitudModal({ isOpen, onClose, caso, onSuccess }: Gene
   const [resultado, setResultado] = useState<ResultadoSolicitud | null>(null)
   const [portal, setPortal] = useState<{ nombre: string; direccion: string; url_portal: string } | null>(null)
   
+  // Estado del agente de IA
+  const [agentJobId, setAgentJobId] = useState<string | null>(null)
+  const [showAgentProgress, setShowAgentProgress] = useState(false)
+  const [useAgent, setUseAgent] = useState(true) // Por defecto usar el agente de IA
+  
   // Datos del formulario
   const [tipoTerminacion, setTipoTerminacion] = useState<TipoTerminacion>('despido')
   const [estadoEmpleador, setEstadoEmpleador] = useState('')
@@ -155,6 +161,39 @@ export function GenerarSolicitudModal({ isOpen, onClose, caso, onSuccess }: Gene
     
     setLoading(true)
     
+    // Si usa el agente de IA, iniciar el proceso automatizado
+    if (useAgent) {
+      try {
+        const response = await fetch('/api/ccl/agent/run', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            casoId: caso.id,
+            modalidad: modalidadConciliacion,
+            tipoPersonaCitado: tipoPersonaCitado,
+            estadoEmpleador: estadoEmpleador,
+            tipoTerminacion: tipoTerminacion,
+            fechaTerminacion: fechaTerminacion
+          })
+        })
+        
+        const data = await response.json()
+        
+        if (data.jobId) {
+          setAgentJobId(data.jobId)
+          setShowAgentProgress(true)
+          setLoading(false)
+          return
+        } else {
+          throw new Error(data.error || 'Error al iniciar el agente')
+        }
+      } catch (error) {
+        console.error('Error iniciando agente:', error)
+        // Fallback al metodo manual si falla el agente
+      }
+    }
+    
+    // Metodo manual (fallback)
     const datos: DatosCasoSolicitud = {
       casoId: caso.id,
       trabajadorNombre: caso.worker?.full_name || 'Sin nombre',
@@ -172,7 +211,6 @@ export function GenerarSolicitudModal({ isOpen, onClose, caso, onSuccess }: Gene
       puestoTrabajo: caso.job_title,
       descripcionHechos: descripcionHechos,
       montoEstimado: montoEstimado ? parseFloat(montoEstimado) : undefined,
-      // Nuevos campos SINACOL
       citadoTipoPersona: tipoPersonaCitado,
       modalidadConciliacion: modalidadConciliacion
     }
@@ -187,10 +225,33 @@ export function GenerarSolicitudModal({ isOpen, onClose, caso, onSuccess }: Gene
     
     setLoading(false)
   }
+  
+  const handleAgentComplete = (job: { resultado?: { folioSolicitud?: string; pdfUrl?: string } }) => {
+    setShowAgentProgress(false)
+    if (job.resultado) {
+      setResultado({
+        success: true,
+        folioSolicitud: job.resultado.folioSolicitud,
+        modalidad: modalidadConciliacion,
+        urlComprobante: job.resultado.pdfUrl,
+        instrucciones: [
+          'El agente de IA ha completado la solicitud automaticamente',
+          `Folio generado: ${job.resultado.folioSolicitud}`,
+          'El PDF del acuse ha sido guardado en el caso',
+          modalidadConciliacion === 'remota' 
+            ? 'Proximo paso: Llama al CCL para confirmar la cita de videollamada'
+            : 'Proximo paso: Acude al CCL a confirmar la solicitud presencialmente'
+        ]
+      })
+      setStep(3)
+    }
+  }
 
   const handleClose = () => {
     setStep(1)
     setResultado(null)
+    setAgentJobId(null)
+    setShowAgentProgress(false)
     onClose()
   }
 
@@ -454,9 +515,61 @@ export function GenerarSolicitudModal({ isOpen, onClose, caso, onSuccess }: Gene
               </div>
             </div>
 
-            {/* Resumen */}
-            <Card className="bg-gray-50">
+{/* Modo de generacion: Agente IA o Manual */}
+            <Card className={useAgent ? 'border-primary bg-primary/5' : 'border-amber-300 bg-amber-50'}>
               <CardContent className="pt-4">
+                <div className="flex items-start justify-between gap-4">
+                  <div className="flex items-start gap-3">
+                    {useAgent ? (
+                      <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center">
+                        <Bot className="h-5 w-5 text-primary" />
+                      </div>
+                    ) : (
+                      <div className="w-10 h-10 rounded-full bg-amber-100 flex items-center justify-center">
+                        <FileText className="h-5 w-5 text-amber-600" />
+                      </div>
+                    )}
+                    <div>
+                      <h4 className="font-semibold flex items-center gap-2">
+                        {useAgent ? (
+                          <>
+                            <Zap className="h-4 w-4 text-primary" />
+                            Agente de IA Activado
+                          </>
+                        ) : (
+                          'Modo Manual'
+                        )}
+                      </h4>
+                      <p className="text-sm text-muted-foreground mt-1">
+                        {useAgent 
+                          ? 'El agente navegara automaticamente el portal SINACOL, llenara los formularios, resolvera CAPTCHAs y obtendra el PDF de tu solicitud.' 
+                          : 'Se generaran instrucciones para completar la solicitud manualmente en el portal CCL.'}
+                      </p>
+                    </div>
+                  </div>
+                  <Button
+                    variant={useAgent ? 'outline' : 'default'}
+                    size="sm"
+                    onClick={() => setUseAgent(!useAgent)}
+                    className="shrink-0"
+                  >
+                    {useAgent ? 'Usar modo manual' : 'Usar Agente IA'}
+                  </Button>
+                </div>
+                {useAgent && (
+                  <Alert className="mt-3 border-blue-200 bg-blue-50">
+                    <Bot className="h-4 w-4 text-blue-600" />
+                    <AlertDescription className="text-blue-700 text-xs">
+                      El agente se ejecutara en segundo plano. Recibiras una notificacion cuando termine con el PDF del acuse listo.
+                    </AlertDescription>
+                  </Alert>
+                )}
+              </CardContent>
+            </Card>
+
+            {/* Resumen */}
+  <Card className="bg-gray-50">
+  <CardContent className="pt-4">
                 <h4 className="font-semibold mb-3">Resumen de la Solicitud</h4>
                 <div className="space-y-2 text-sm">
                   <div className="flex justify-between">
@@ -647,6 +760,16 @@ export function GenerarSolicitudModal({ isOpen, onClose, caso, onSuccess }: Gene
           </div>
         )}
       </DialogContent>
+      
+      {/* Modal del Agente de IA */}
+      {agentJobId && (
+        <AgentProgressModal
+          isOpen={showAgentProgress}
+          onClose={() => setShowAgentProgress(false)}
+          jobId={agentJobId}
+          onComplete={handleAgentComplete}
+        />
+      )}
     </Dialog>
   )
 }
