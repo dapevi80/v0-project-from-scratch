@@ -1,20 +1,27 @@
 'use client'
 
 import React from "react"
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useTransition } from 'react'
 import { Card, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
+import { Switch } from '@/components/ui/switch'
 import { 
   User,
   Shield,
   ChevronRight,
   CheckCircle,
   AlertTriangle,
-  XCircle
+  XCircle,
+  Eye,
+  EyeOff,
+  Copy,
+  Check
 } from 'lucide-react'
 import Link from 'next/link'
+import Image from 'next/image'
 import { generateRandomCode } from '@/lib/types'
+import { createClient } from '@/lib/supabase/client'
 
 interface UserProfileCardProps {
   userId?: string
@@ -26,6 +33,8 @@ interface UserProfileCardProps {
   isVerified?: boolean
   verificationStatus?: string // 'none' | 'pending' | 'verified'
   casosActivos?: number
+  isProfilePublic?: boolean
+  avatarUrl?: string | null
 }
 
 // Genera o recupera datos del perfil desde localStorage
@@ -51,15 +60,36 @@ function getOrCreateGuestProfile() {
   return profile
 }
 
+// Funcion para actualizar el modo publico del perfil
+async function updateProfilePublicMode(userId: string, isPublic: boolean) {
+  const supabase = createClient()
+  const { error } = await supabase
+    .from('profiles')
+    .update({ is_profile_public: isPublic })
+    .eq('id', userId)
+  
+  if (error) {
+    console.error('Error updating profile public mode:', error)
+    return false
+  }
+  return true
+}
+
 export function UserProfileCard({
+  userId,
   fullName: propFullName,
   role = 'guest',
   codigoUsuario,
   isVerified = false,
   verificationStatus = 'none',
-  casosActivos = 0
+  casosActivos = 0,
+  isProfilePublic = true,
+  avatarUrl
 }: UserProfileCardProps) {
   const [codigo, setCodigo] = useState(codigoUsuario || '--------')
+  const [isPublic, setIsPublic] = useState(isProfilePublic)
+  const [isPending, startTransition] = useTransition()
+  const [copied, setCopied] = useState(false)
 
   useEffect(() => {
     if (codigoUsuario) {
@@ -69,6 +99,27 @@ export function UserProfileCard({
       setCodigo(guestProfile.referralCode)
     }
   }, [codigoUsuario])
+
+  useEffect(() => {
+    setIsPublic(isProfilePublic)
+  }, [isProfilePublic])
+
+  const handlePublicModeChange = (checked: boolean) => {
+    if (!userId) return
+    setIsPublic(checked)
+    startTransition(async () => {
+      const success = await updateProfilePublicMode(userId, checked)
+      if (!success) {
+        setIsPublic(!checked) // Revertir si fallo
+      }
+    })
+  }
+
+  const handleCopyCode = async () => {
+    await navigator.clipboard.writeText(codigo)
+    setCopied(true)
+    setTimeout(() => setCopied(false), 2000)
+  }
 
   // Determinar estado de verificacion
   const getVerificationDisplay = () => {
@@ -109,29 +160,91 @@ export function UserProfileCard({
   const roleLabel = role === 'guest' ? 'Invitado' : 
                     role === 'worker' ? 'Trabajador' : 
                     role === 'lawyer' ? 'Abogado' : 
+                    role === 'guestlawyer' ? 'Abogado Invitado' :
                     role === 'admin' ? 'Admin' : 
                     role === 'superadmin' ? 'SuperAdmin' : role
+
+  // Determinar avatar segun rol
+  const getAvatarSrc = () => {
+    if (avatarUrl) return avatarUrl
+    if (role === 'superadmin') return '/avatars/superadmin-avatar.jpg'
+    return '/avatars/default-user-avatar.jpg'
+  }
+
+  // Colores de borde del avatar segun rol
+  const getAvatarBorderClass = () => {
+    switch (role) {
+      case 'superadmin': return 'ring-2 ring-green-400 ring-offset-2 ring-offset-slate-900'
+      case 'admin': return 'ring-2 ring-amber-400 ring-offset-2 ring-offset-slate-900'
+      case 'lawyer': return 'ring-2 ring-blue-400 ring-offset-2 ring-offset-slate-900'
+      case 'worker': return 'ring-2 ring-emerald-400 ring-offset-2 ring-offset-slate-900'
+      default: return 'ring-2 ring-slate-500 ring-offset-2 ring-offset-slate-900'
+    }
+  }
 
   return (
     <Card className="overflow-hidden">
       <CardContent className="p-0">
-        {/* Header compacto con gradiente */}
-        <div className="bg-gradient-to-br from-slate-800 to-slate-900 p-4">
-          <div className="flex items-center gap-3">
-            {/* Avatar circular con inicial */}
-            <div className="w-12 h-12 rounded-full bg-slate-700 flex items-center justify-center border-2 border-slate-600 text-white font-bold text-lg">
-              {propFullName ? propFullName.charAt(0).toUpperCase() : <User className="w-6 h-6" />}
+        {/* Header con gradiente y avatar */}
+        <div className="bg-gradient-to-br from-slate-800 to-slate-900 p-4 relative">
+          <div className="flex items-center gap-4">
+            {/* Avatar con imagen */}
+            <div className={`relative w-14 h-14 rounded-full overflow-hidden ${getAvatarBorderClass()}`}>
+              <Image
+                src={getAvatarSrc() || "/placeholder.svg"}
+                alt="Avatar"
+                fill
+                className="object-cover"
+                priority
+              />
             </div>
             
             <div className="flex-1 min-w-0">
-              <h3 className="text-white font-semibold truncate">{displayName}</h3>
-              <div className="flex items-center gap-2 mt-0.5">
+              {/* Nombre visible solo si es publico o es el propio usuario */}
+              <h3 className="text-white font-semibold truncate text-lg">
+                {isPublic ? displayName : 'Usuario Privado'}
+              </h3>
+              <div className="flex items-center gap-2 mt-1">
                 <Badge variant="secondary" className="bg-slate-700 text-slate-300 border-slate-600 text-xs">
                   {roleLabel}
                 </Badge>
-                <span className="font-mono text-xs text-slate-400">{codigo}</span>
+                {/* Codigo de referido visible solo si es publico */}
+                {isPublic && (
+                  <button
+                    onClick={handleCopyCode}
+                    className="flex items-center gap-1 font-mono text-xs text-slate-400 hover:text-white transition-colors"
+                    title="Copiar codigo de referido"
+                  >
+                    <span>{codigo}</span>
+                    {copied ? (
+                      <Check className="w-3 h-3 text-green-400" />
+                    ) : (
+                      <Copy className="w-3 h-3" />
+                    )}
+                  </button>
+                )}
               </div>
             </div>
+          </div>
+
+          {/* Switch de modo publico/privado */}
+          <div className="mt-3 flex items-center justify-between p-2 rounded-lg bg-slate-700/50">
+            <div className="flex items-center gap-2">
+              {isPublic ? (
+                <Eye className="w-4 h-4 text-green-400" />
+              ) : (
+                <EyeOff className="w-4 h-4 text-slate-400" />
+              )}
+              <span className="text-xs text-slate-300">
+                Perfil {isPublic ? 'Publico' : 'Privado'}
+              </span>
+            </div>
+            <Switch
+              checked={isPublic}
+              onCheckedChange={handlePublicModeChange}
+              disabled={isPending || !userId}
+              className="data-[state=checked]:bg-green-500"
+            />
           </div>
         </div>
 
