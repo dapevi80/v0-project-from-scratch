@@ -10,7 +10,6 @@ import { Button } from '@/components/ui/button'
 import Link from 'next/link'
 import { LogoutButton } from './logout-button'
 import { UserProfileCard } from '@/components/user/user-profile-card'
-import { SuperAdminProfileCard } from '@/components/user/superadmin-profile-card'
 import { AyudaUrgenteButton } from '@/components/ayuda-urgente-button'
 import { Lock } from 'lucide-react'
 import { CryptoWallet } from '@/components/wallet/crypto-wallet'
@@ -18,7 +17,6 @@ import { VerificacionCelebration } from '@/components/verificacion-celebration'
 import { DowngradeAlert } from '@/components/downgrade-alert'
 import { UpgradeAlert } from '@/components/upgrade-alert'
 import { DashboardSkeleton } from '@/components/ui/dashboard-skeleton'
-import { WelcomeAIAssistant } from '@/components/welcome-ai-assistant'
 
 export default function DashboardPage() {
   const router = useRouter()
@@ -52,17 +50,6 @@ export default function DashboardPage() {
       // Actualizar sin bloquear
       const supabase = createClient()
       supabase.from('profiles').update({ celebration_shown: true }).eq('id', profile.id)
-    }
-    
-    // Detectar primer login
-    if (!profile.first_login_at || profile.login_count === 1) {
-      setIsFirstLogin(true)
-      // Actualizar contador de login y fecha de primer login
-      const supabase = createClient()
-      supabase.from('profiles').update({ 
-        first_login_at: profile.first_login_at || new Date().toISOString(),
-        login_count: (profile.login_count || 0) + 1
-      }).eq('id', profile.id)
     }
   }, [loading, profile, router])
 
@@ -198,28 +185,19 @@ export default function DashboardPage() {
             <DowngradeAlert userId={user?.id} />
           )}
 
-          {/* Perfil de usuario - Diferente segun rol */}
-          {role === 'superadmin' ? (
-            <SuperAdminProfileCard
-              userId={user?.id || ''}
-              fullName={profile?.full_name}
-              codigoUsuario={profile?.codigo_usuario}
-              isProfilePublic={profile?.is_profile_public ?? true}
-            />
-          ) : (
-            <UserProfileCard
-              userId={user?.id}
-              email={user?.email}
-              isGuest={isGuest}
-              codigoUsuario={profile?.codigo_usuario}
-              fullName={profile?.full_name}
-              role={role}
-              isVerified={profile?.verification_status === 'verified' || role === 'worker' || role === 'lawyer'}
-              verificationStatus={profile?.verification_status || 'none'}
-              casosActivos={casosActivos}
-              isProfilePublic={profile?.is_profile_public ?? true}
-            />
-          )}
+          {/* Perfil de usuario */}
+          <UserProfileCard
+            userId={user?.id}
+            email={user?.email}
+            isGuest={isGuest}
+            codigoUsuario={profile?.codigo_usuario}
+            fullName={profile?.full_name}
+            role={role}
+            isVerified={profile?.verification_status === 'verified' || role === 'worker' || role === 'lawyer'}
+            verificationStatus={profile?.verification_status || 'none'}
+            casosActivos={casosActivos}
+            isProfilePublic={profile?.is_profile_public ?? true}
+          />
 
           {/* Herramientas Gratuitas */}
           <div>
@@ -394,23 +372,7 @@ export default function DashboardPage() {
         </div>
       </main>
 
-      {/* Asistente de bienvenida con IA */}
-      {user && profile && (
-        <WelcomeAIAssistant
-          userId={user.id}
-          userProfile={{
-            id: profile.id,
-            full_name: profile.full_name,
-            role: profile.role,
-            is_verified: profile.verification_status === 'verified',
-            verification_status: profile.verification_status,
-            first_login_at: profile.first_login_at,
-            login_count: profile.login_count,
-            codigo_usuario: profile.codigo_usuario
-          }}
-          isFirstLogin={isFirstLogin}
-        />
-      )}
+      {/* El asistente IA (LIA, Mandu, Bora) se renderiza globalmente desde layout.tsx */}
     </div>
   )
 }
