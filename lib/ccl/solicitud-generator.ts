@@ -1,5 +1,3 @@
-'use server'
-
 import { createClient } from '@/lib/supabase/server'
 
 // Tipos de terminación laboral
