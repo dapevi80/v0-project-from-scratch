@@ -105,12 +105,19 @@ export default function AbogadoDashboardPage() {
     { name: 'Guia LFT', href: '/guia-lft', emoji: '📖', description: 'Ley Federal del Trabajo', available: true }
   ]
 
+  const isAdmin = role === 'admin' || role === 'superadmin'
+  
   const lawyerTools = [
     { name: 'Mis Casos', href: '/abogado/casos', emoji: '⚖️', description: 'Gestiona y toma casos', available: true, highlight: true },
     { name: 'Mis Referidos', href: '/abogado/referidos', emoji: '🔗', description: 'Tu red de comisiones', available: true },
     { name: 'AutoCCL', href: '/oficina-virtual/ccl', emoji: '📝', description: 'Genera solicitudes CCL', available: isVerified, badge: isGuestLawyer ? 'Verificate' : undefined },
     { name: 'Marketplace', href: '/oficina-virtual/casos', emoji: '🛒', description: 'Casos disponibles', available: isVerified, badge: isGuestLawyer ? 'Verificate' : undefined },
-    { name: 'Leads', href: '/oficina-virtual/leads', emoji: '👥', description: 'Clientes potenciales', available: isVerified, badge: isGuestLawyer ? 'Verificate' : undefined }
+    { name: 'Leads', href: '/oficina-virtual/leads', emoji: '👥', description: 'Clientes potenciales', available: isVerified, badge: isGuestLawyer ? 'Verificate' : undefined },
+    // Admin tools (visible solo para admin/superadmin)
+    ...(isAdmin ? [
+      { name: 'Todos los Leads', href: '/abogado/leads', emoji: '📋', description: 'Cotizaciones (Admin)', available: true, highlight: true },
+      { name: 'Casos Activos', href: '/admin/casos', emoji: '📂', description: 'Todos los casos (Admin)', available: true }
+    ] : [])
   ]
 
   return (
