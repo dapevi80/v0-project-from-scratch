@@ -26,6 +26,7 @@ import {
   sugerirJurisdiccion,
   getCaseHistory
 } from '../../actions'
+import { CCLPortalTab } from '@/components/caso/ccl-portal-tab'
 
 const statusLabels: Record<string, string> = {
   draft: 'Borrador',
@@ -242,11 +243,12 @@ export default function CasoDetallePage() {
         
         {/* Tabs */}
         <Tabs value={activeTab} onValueChange={setActiveTab}>
-          <TabsList className="w-full grid grid-cols-5">
+          <TabsList className="w-full grid grid-cols-6">
             <TabsTrigger value="resumen">Resumen</TabsTrigger>
             <TabsTrigger value="trabajador">Trabajador</TabsTrigger>
             <TabsTrigger value="conciliacion">Conciliación</TabsTrigger>
             <TabsTrigger value="audiencias">Audiencias</TabsTrigger>
+            <TabsTrigger value="ccl">Portal CCL</TabsTrigger>
             <TabsTrigger value="historial">Historial</TabsTrigger>
           </TabsList>
           
@@ -717,7 +719,7 @@ export default function CasoDetallePage() {
                 {caso.case_events?.length > 0 ? (
                   <div className="space-y-3">
                     {caso.case_events.sort((a: any, b: any) => new Date(a.starts_at).getTime() - new Date(b.starts_at).getTime()).map((event: any) => (
-                      <div key={event.id} className="flex items-start gap-3 p-3 border rounded-lg">
+                      <div key={event.id || event.starts_at} className="flex items-start gap-3 p-3 border rounded-lg">
                         <div className={`w-2 h-2 rounded-full mt-2 ${event.event_type === 'audiencia' ? 'bg-red-500' : event.event_type === 'cita' ? 'bg-blue-500' : 'bg-yellow-500'}`} />
                         <div className="flex-1">
                           <p className="font-medium">{event.title}</p>
@@ -740,6 +742,11 @@ export default function CasoDetallePage() {
                 )}
               </CardContent>
             </Card>
+          </TabsContent>
+          
+          {/* Tab: Portal CCL */}
+          <TabsContent value="ccl" className="space-y-4">
+            <CCLPortalTab casoId={casoId} caso={caso} worker={worker} onRefresh={loadData} />
           </TabsContent>
           
           {/* Tab: Historial */}

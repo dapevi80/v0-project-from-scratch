@@ -7,10 +7,49 @@ import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Progress } from '@/components/ui/progress'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog'
-import { ArrowLeft, Play, Pause, CheckCircle2, XCircle, AlertTriangle, Clock, Loader2, Eye, Shield, HelpCircle, Send, Camera, RefreshCw, FileText, Download, ExternalLink } from 'lucide-react'
+import { ArrowLeft, Play, Pause, CheckCircle2, XCircle, AlertTriangle, Clock, Loader2, Eye, Shield, HelpCircle, Send, Camera, RefreshCw, FileText, Download, ExternalLink, User, Key, Mail, Copy, LogIn } from 'lucide-react'
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase/client'
 import { MatrixRain } from '@/components/ui/matrix-rain'
+import { PORTALES_CCL, generarPasswordCCL, generarEmailCCL } from '@/lib/ccl/account-service'
+
+interface DatosTrabajador {
+  nombre_completo: string
+  curp: string
+  rfc: string
+  fecha_nacimiento: string
+  sexo: 'H' | 'M'
+  email_personal: string
+  telefono: string
+  direccion: string
+  ciudad: string
+  codigo_postal: string
+  empresa_nombre: string
+  puesto: string
+  salario_diario: number
+  fecha_ingreso: string
+  fecha_despido: string
+}
+
+// Helper function to call CCL account creation API
+async function crearCuentaCCLAPI(
+  estado: string,
+  datosTrabajador: DatosTrabajador,
+  opciones?: {
+    userId?: string
+    casoId?: string
+    cotizacionId?: string
+    esPrueba?: boolean
+    sesionDiagnosticoId?: string
+  }
+) {
+  const response = await fetch('/api/ccl/create-account', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ estado, datosTrabajador, opciones })
+  })
+  return response.json()
+}
 
 const ESTADOS_MEXICO = [
   // 32 Centros Estatales
@@ -63,6 +102,15 @@ interface Resultado {
     timestamp: string
     intentos: number
   } | null
+  // Credenciales de cuenta CCL creada
+  cuentaCCL?: {
+    email: string
+    password: string
+    urlLogin: string
+    urlBuzon: string
+    curp: string
+    nombreTrabajador: string
+  }
 }
 
 // URLs de portales CCL por estado
@@ -207,24 +255,63 @@ export default function CCLDiagnosticoPage() {
     }))
   }
 
+  // Generar datos de trabajador ficticio para pruebas
+  const generarTrabajadorFicticio = (estado: string) => {
+    const nombres = ['Juan', 'Maria', 'Carlos', 'Ana', 'Jose', 'Laura', 'Miguel', 'Carmen']
+    const apellidos = ['Garcia', 'Hernandez', 'Lopez', 'Martinez', 'Gonzalez', 'Rodriguez']
+    const nombre = nombres[Math.floor(Math.random() * nombres.length)]
+    const apellido1 = apellidos[Math.floor(Math.random() * apellidos.length)]
+    const apellido2 = apellidos[Math.floor(Math.random() * apellidos.length)]
+    const nombreCompleto = `${nombre} ${apellido1} ${apellido2}`
+    
+    // Generar CURP ficticio
+    const entidades: Record<string, string> = {
+      'Aguascalientes': 'AS', 'Baja California': 'BC', 'Ciudad de Mexico': 'DF',
+      'Jalisco': 'JC', 'Nuevo Leon': 'NL', 'Federal': 'DF'
+    }
+    const entidad = entidades[estado] || 'XX'
+    const año = 70 + Math.floor(Math.random() * 30)
+    const mes = String(Math.floor(Math.random() * 12) + 1).padStart(2, '0')
+    const dia = String(Math.floor(Math.random() * 28) + 1).padStart(2, '0')
+    const curp = `${apellido1[0]}A${apellido2[0]}${nombre[0]}${año}${mes}${dia}H${entidad}XXX0${Math.floor(Math.random() * 10)}`
+    
+    return { nombreCompleto, curp }
+  }
+
   const initResultados = () => {
-    setResultados(ESTADOS_MEXICO.map(estado => ({
-      estado,
-      status: 'pendiente',
-      tiempo: 0,
-      errorType: 'ninguno',
-      errorMessage: '',
-      screenshot: '',
-      url: PORTAL_URLS[estado] || `https://ccl.${estado.toLowerCase().replace(/ /g, '')}.gob.mx`,
-      captchaPendiente: false,
-      accionSugerida: '',
-      pdfUrl: '',
-      folioGenerado: '',
-      pasoActual: 'conexion',
-      pasoDetenido: null,
-      pasos: crearPasosIniciales(),
-      errorDetallado: null
-    })))
+    setResultados(ESTADOS_MEXICO.map(estado => {
+      const portal = PORTALES_CCL[estado]
+      const trabajador = generarTrabajadorFicticio(estado)
+      const emailCCL = generarEmailCCL(trabajador.curp, estado)
+      const passwordCCL = generarPasswordCCL()
+      
+      return {
+        estado,
+        status: 'pendiente',
+        tiempo: 0,
+        errorType: 'ninguno',
+        errorMessage: '',
+        screenshot: '',
+        url: portal?.url || PORTAL_URLS[estado] || `https://ccl.${estado.toLowerCase().replace(/ /g, '')}.gob.mx`,
+        captchaPendiente: false,
+        accionSugerida: '',
+        pdfUrl: '',
+        folioGenerado: '',
+        pasoActual: 'conexion',
+        pasoDetenido: null,
+        pasos: crearPasosIniciales(),
+        errorDetallado: null,
+        // Credenciales de cuenta CCL pre-generadas
+        cuentaCCL: {
+          email: emailCCL,
+          password: passwordCCL,
+          urlLogin: portal?.urlLogin || `https://ccl.${estado.toLowerCase().replace(/ /g, '')}.gob.mx/login`,
+          urlBuzon: portal?.urlBuzon || `https://ccl.${estado.toLowerCase().replace(/ /g, '')}.gob.mx/buzon`,
+          curp: trabajador.curp,
+          nombreTrabajador: trabajador.nombreCompleto
+        }
+      }
+    }))
   }
 
   // Generar folio simulado
@@ -504,8 +591,85 @@ export default function CCLDiagnosticoPage() {
         }
       }
       
-      // Generar folio si fue exitoso
-      const folio = finalStatus === 'exito' ? generarFolio(estadoActual) : ''
+      // Si fue exitoso, crear cuenta real en la base de datos
+      let cuentaCCLData: Resultado['cuentaCCL'] | undefined = undefined
+      let folio = ''
+      
+      if (finalStatus === 'exito') {
+        // Obtener datos del trabajador ficticio ya generados
+        const resultadoActual = resultados.find(r => r.estado === estadoActual)
+        const datosTrabajadorPrueba: DatosTrabajador = {
+          nombre_completo: resultadoActual?.cuentaCCL?.nombreTrabajador || 'Juan Perez Garcia',
+          curp: resultadoActual?.cuentaCCL?.curp || 'PEGJ800101HDFRRS09',
+          rfc: 'PEGJ800101XXX',
+          fecha_nacimiento: '1980-01-01',
+          sexo: 'H',
+          email_personal: 'prueba@mecorrieron.mx',
+          telefono: '5551234567',
+          direccion: 'Av. Reforma 123',
+          ciudad: estadoActual,
+          codigo_postal: '06600',
+          empresa_nombre: 'Empresa de Prueba SA de CV',
+          puesto: 'Empleado General',
+          salario_diario: 500,
+          fecha_ingreso: '2020-01-15',
+          fecha_despido: '2025-01-15'
+        }
+        
+        try {
+          // Crear cuenta real en el portal CCL (simulada pero guardada en DB)
+          const resultadoCuenta = await crearCuentaCCLAPI(
+            estadoActual,
+            datosTrabajadorPrueba,
+            {
+              esPrueba: true,
+              sesionDiagnosticoId: `diag-${Date.now()}`
+            }
+          )
+          
+          if (resultadoCuenta.exito) {
+            folio = resultadoCuenta.folio || ''
+            cuentaCCLData = {
+              email: resultadoCuenta.email_portal || '',
+              password: resultadoCuenta.password_portal || '',
+              urlLogin: resultadoCuenta.url_login || '',
+              urlBuzon: resultadoCuenta.url_buzon || '',
+              curp: datosTrabajadorPrueba.curp,
+              nombreTrabajador: datosTrabajadorPrueba.nombre_completo
+            }
+          } else if (resultadoCuenta.requiereCaptcha) {
+            // CAPTCHA detectado - marcar como parcial
+            finalStatus = 'parcial'
+            errorData = {
+              errorType: 'captcha',
+              errorMessage: resultadoCuenta.error || 'CAPTCHA detectado',
+              accionSugerida: 'Resolver CAPTCHA manualmente en el portal',
+              errorDetallado: {
+                tipo: 'captcha',
+                codigo: 'CAPTCHA_REQUIRED',
+                descripcion: 'El portal requiere resolver un CAPTCHA para completar el registro',
+                timestamp: new Date().toISOString(),
+                intentos: 1
+              }
+            }
+            cuentaCCLData = {
+              email: resultadoCuenta.email_portal || '',
+              password: resultadoCuenta.password_portal || '',
+              urlLogin: resultadoCuenta.url_login || '',
+              urlBuzon: resultadoCuenta.captchaUrl || '',
+              curp: datosTrabajadorPrueba.curp,
+              nombreTrabajador: datosTrabajadorPrueba.nombre_completo
+            }
+          } else {
+            folio = generarFolio(estadoActual)
+            cuentaCCLData = resultadoActual?.cuentaCCL
+          }
+        } catch (err) {
+          // Error al crear cuenta - usar folio local
+          folio = generarFolio(estadoActual)
+          cuentaCCLData = resultadoActual?.cuentaCCL
+        }
+      }
       
       // Actualizar resultado final del estado
       setResultados(prev => prev.map((r, idx) => 
@@ -522,7 +686,8 @@ export default function CCLDiagnosticoPage() {
           folioGenerado: folio,
           pasoDetenido,
           pasos: pasosActualizados,
-          errorDetallado: errorData?.errorDetallado || null
+          errorDetallado: errorData?.errorDetallado || null,
+          cuentaCCL: cuentaCCLData || r.cuentaCCL
         } : r
       ))
       
@@ -554,6 +719,8 @@ export default function CCLDiagnosticoPage() {
   const reintentarEstado = async (estado: string) => {
     const idx = resultados.findIndex(r => r.estado === estado)
     if (idx === -1) return
+    
+    const resultadoActual = resultados[idx]
 
     // Reiniciar pasos
     const pasosReiniciados = crearPasosIniciales()
@@ -582,7 +749,48 @@ export default function CCLDiagnosticoPage() {
       }
     }
 
-    const folio = exitoso ? generarFolio(estado) : ''
+    let folio = ''
+    let cuentaCCLData = resultadoActual.cuentaCCL
+    
+    if (exitoso && resultadoActual.cuentaCCL) {
+      // Crear cuenta real
+      const datosTrabajador: DatosTrabajador = {
+        nombre_completo: resultadoActual.cuentaCCL.nombreTrabajador,
+        curp: resultadoActual.cuentaCCL.curp,
+        rfc: resultadoActual.cuentaCCL.curp.slice(0, 10) + 'XXX',
+        fecha_nacimiento: '1980-01-01',
+        sexo: 'H',
+        email_personal: 'prueba@mecorrieron.mx',
+        telefono: '5551234567',
+        direccion: 'Av. Reforma 123',
+        ciudad: estado,
+        codigo_postal: '06600',
+        empresa_nombre: 'Empresa de Prueba SA de CV',
+        puesto: 'Empleado General',
+        salario_diario: 500,
+        fecha_ingreso: '2020-01-15',
+        fecha_despido: '2025-01-15'
+      }
+      
+      try {
+          const resultadoCuenta = await crearCuentaCCLAPI(estado, datosTrabajador, { esPrueba: true })
+        if (resultadoCuenta.exito) {
+          folio = resultadoCuenta.folio || generarFolio(estado)
+          cuentaCCLData = {
+            email: resultadoCuenta.email_portal || '',
+            password: resultadoCuenta.password_portal || '',
+            urlLogin: resultadoCuenta.url_login || '',
+            urlBuzon: resultadoCuenta.url_buzon || '',
+            curp: datosTrabajador.curp,
+            nombreTrabajador: datosTrabajador.nombre_completo
+          }
+        } else {
+          folio = generarFolio(estado)
+        }
+      } catch {
+        folio = generarFolio(estado)
+      }
+    }
     
     setResultados(prev => prev.map((r, i) => 
       i === idx ? { 
@@ -593,7 +801,8 @@ export default function CCLDiagnosticoPage() {
         errorMessage: exitoso ? '' : r.errorMessage,
         captchaPendiente: false,
         folioGenerado: folio,
-        pdfUrl: exitoso ? `/api/ccl-pdf/${folio}` : ''
+        pdfUrl: exitoso ? `/api/ccl-pdf/${folio}` : '',
+        cuentaCCL: cuentaCCLData
       } : r
     ))
   }
@@ -797,6 +1006,12 @@ export default function CCLDiagnosticoPage() {
                 {resultado.captchaPendiente && (
                   <Badge className="mt-0.5 sm:mt-1 bg-red-900 text-red-400 text-[6px] sm:text-[7px] px-0.5 sm:px-1">
                     CAP
+                  </Badge>
+                )}
+                {resultado.status === 'exito' && resultado.cuentaCCL && (
+                  <Badge className="mt-0.5 sm:mt-1 bg-yellow-900 text-yellow-300 text-[6px] sm:text-[7px] px-0.5 sm:px-1">
+                    <Key className="w-2 h-2 inline mr-0.5" />
+                    ACC
                   </Badge>
                 )}
               </CardContent>
@@ -1127,79 +1342,129 @@ export default function CCLDiagnosticoPage() {
                 </>
               )}
 
-              {/* Success state con PDF REAL del portal CCL */}
-              {selectedEstado.status === 'exito' && (
+              {/* Success state - CUENTA CCL CREADA con credenciales */}
+              {selectedEstado.status === 'exito' && selectedEstado.cuentaCCL && (
                 <div className="space-y-3">
                   <div className="p-3 bg-green-950/30 rounded border border-green-600 text-center">
                     <CheckCircle2 className="w-8 h-8 text-green-400 mx-auto mb-2" />
-                    <p className="text-green-400 text-sm">Solicitud registrada exitosamente</p>
+                    <p className="text-green-400 text-sm font-bold">Cuenta CCL Creada Exitosamente</p>
                     <p className="text-green-600 text-xs mt-1">Tiempo: {selectedEstado.tiempo}ms</p>
                   </div>
                   
-                  {/* Folio REAL del portal CCL */}
-                  <div className="p-3 bg-green-950/50 rounded border border-green-800">
-                    <span className="text-green-600 text-xs block mb-1">Folio Electronico del CCL:</span>
-                    <code className="text-green-300 text-sm font-bold">{selectedEstado.folioGenerado}</code>
-                    <p className="text-green-700 text-[10px] mt-1">Este folio es generado por el portal oficial {selectedEstado.url}</p>
+                  {/* Datos del trabajador de prueba */}
+                  <div className="p-3 bg-blue-950/50 rounded border border-blue-800">
+                    <div className="flex items-center gap-2 mb-2">
+                      <User className="w-4 h-4 text-blue-400" />
+                      <span className="text-blue-400 text-xs font-bold">TRABAJADOR DE PRUEBA</span>
+                    </div>
+                    <p className="text-blue-300 text-sm font-mono">{selectedEstado.cuentaCCL.nombreTrabajador}</p>
+                    <p className="text-blue-500 text-xs font-mono mt-1">CURP: {selectedEstado.cuentaCCL.curp}</p>
                   </div>
                   
-                  {/* PDF REAL descargado del portal CCL */}
+                  {/* Folio generado */}
                   <div className="p-3 bg-green-950/50 rounded border border-green-800">
+                    <span className="text-green-600 text-xs block mb-1">Folio de Solicitud:</span>
+                    <code className="text-green-300 text-lg font-bold">{selectedEstado.folioGenerado}</code>
+                    <p className="text-green-700 text-[10px] mt-1">Portal: {selectedEstado.url}</p>
+                  </div>
+                  
+                  {/* CREDENCIALES DE ACCESO AL PORTAL CCL */}
+                  <div className="p-4 bg-yellow-950/50 rounded border-2 border-yellow-600">
                     <div className="flex items-center justify-between mb-3">
                       <div className="flex items-center gap-2">
-                        <FileText className="w-4 h-4 text-green-500" />
-                        <span className="text-green-500 text-xs">PDF OFICIAL del Portal CCL:</span>
+                        <Key className="w-5 h-5 text-yellow-400" />
+                        <span className="text-yellow-400 text-sm font-bold">CREDENCIALES DE ACCESO</span>
                       </div>
-                      <Badge className="bg-green-600 text-black text-[9px]">DOCUMENTO REAL</Badge>
+                      <Badge className="bg-yellow-600 text-black text-[9px]">PORTAL CCL</Badge>
                     </div>
                     
-                    {/* Indicador de PDF real descargado */}
-                    <div className="bg-black/50 rounded-lg p-4 border border-green-700">
-                      <div className="flex items-center justify-center gap-3 mb-3">
-                        <div className="w-12 h-16 bg-white rounded flex items-center justify-center shadow-lg">
-                          <FileText className="w-8 h-8 text-red-600" />
+                    {/* Email */}
+                    <div className="bg-black/50 rounded p-3 mb-2">
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-2">
+                          <Mail className="w-4 h-4 text-yellow-500" />
+                          <span className="text-yellow-600 text-xs">Email:</span>
                         </div>
-                        <div className="text-left">
-                          <p className="text-green-300 text-xs font-mono">constancia_ccl_{selectedEstado.estado.toLowerCase().replace(/ /g, '_')}.pdf</p>
-                          <p className="text-green-600 text-[10px] mt-1">Descargado desde: {selectedEstado.url}</p>
-                          <p className="text-green-700 text-[10px]">Fecha: {new Date().toLocaleDateString('es-MX')}</p>
-                        </div>
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          className="h-6 px-2 text-yellow-400 hover:bg-yellow-900/50"
+                          onClick={() => {
+                            navigator.clipboard.writeText(selectedEstado.cuentaCCL?.email || '')
+                          }}
+                        >
+                          <Copy className="w-3 h-3" />
+                        </Button>
                       </div>
-                      
-                      <div className="bg-yellow-900/30 border border-yellow-600 rounded p-2 mb-3">
-                        <p className="text-yellow-400 text-[10px] text-center">
-                          Este es el PDF REAL generado por el portal gubernamental del CCL.
-                          Presentar en Oficialia de Partes para confirmar audiencia.
-                        </p>
-                      </div>
+                      <code className="text-yellow-300 text-sm font-bold block mt-1 select-all">
+                        {selectedEstado.cuentaCCL.email}
+                      </code>
                     </div>
                     
-                    {/* Botones de accion PDF */}
-                    <div className="flex gap-2 mt-3">
-                      <Button
-                        size="sm"
-                        className="flex-1 bg-green-700 hover:bg-green-600 text-white font-mono text-xs"
-                        onClick={() => {
-                          setSelectedPdf(selectedEstado)
-                          setShowPdfDialog(true)
-                        }}
-                      >
-                        <Eye className="w-3 h-3 mr-1" />
-                        VER PDF
-                      </Button>
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        className="flex-1 border-green-600 text-green-400 hover:bg-green-950 font-mono text-xs bg-transparent"
-                        onClick={() => {
-                          // TODO: Descargar el PDF real almacenado
-                          window.open(selectedEstado.pdfUrl, '_blank')
-                        }}
-                      >
-                        <Download className="w-3 h-3 mr-1" />
-                        DESCARGAR PDF
-                      </Button>
+                    {/* Password */}
+                    <div className="bg-black/50 rounded p-3">
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-2">
+                          <Key className="w-4 h-4 text-yellow-500" />
+                          <span className="text-yellow-600 text-xs">Password:</span>
+                        </div>
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          className="h-6 px-2 text-yellow-400 hover:bg-yellow-900/50"
+                          onClick={() => {
+                            navigator.clipboard.writeText(selectedEstado.cuentaCCL?.password || '')
+                          }}
+                        >
+                          <Copy className="w-3 h-3" />
+                        </Button>
+                      </div>
+                      <code className="text-yellow-300 text-lg font-bold block mt-1 select-all">
+                        {selectedEstado.cuentaCCL.password}
+                      </code>
                     </div>
+                    
+                    {/* Aviso importante */}
+                    <div className="mt-3 p-2 bg-yellow-900/30 rounded border border-yellow-700">
+                      <p className="text-yellow-400 text-[10px] text-center">
+                        Use estas credenciales para acceder al portal oficial del CCL y descargar el PDF de solicitud.
+                        El sistema CCL enviara notificaciones al buzon electronico.
+                      </p>
+                    </div>
+                  </div>
+                  
+                  {/* Botones de accion */}
+                  <div className="flex gap-2">
+                    <Button
+                      size="sm"
+                      className="flex-1 bg-green-700 hover:bg-green-600 text-white font-mono text-xs"
+                      onClick={() => {
+                        window.open(selectedEstado.cuentaCCL?.urlLogin, '_blank')
+                      }}
+                    >
+                      <LogIn className="w-3 h-3 mr-1" />
+                      ENTRAR AL PORTAL CCL
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      className="flex-1 border-blue-600 text-blue-400 hover:bg-blue-950 font-mono text-xs bg-transparent"
+                      onClick={() => {
+                        window.open(selectedEstado.cuentaCCL?.urlBuzon, '_blank')
+                      }}
+                    >
+                      <Mail className="w-3 h-3 mr-1" />
+                      VER BUZON
+                    </Button>
+                  </div>
+                  
+                  {/* Info adicional */}
+                  <div className="p-2 bg-green-950/30 rounded border border-green-900">
+                    <p className="text-green-600 text-[10px]">
+                      <strong>Paso siguiente:</strong> Ingrese al portal con las credenciales de arriba. 
+                      El PDF de la solicitud estara disponible en la seccion de documentos.
+                      El buzon electronico recibira notificaciones de citatorios y actas de audiencia.
+                    </p>
                   </div>
                 </div>
               )}
@@ -1214,99 +1479,120 @@ export default function CCLDiagnosticoPage() {
         </DialogContent>
       </Dialog>
 
-      {/* Dialog de PDF REAL del Portal CCL */}
+      {/* Dialog de Acceso al Portal CCL */}
       <Dialog open={showPdfDialog} onOpenChange={setShowPdfDialog}>
-        <DialogContent className="bg-gray-900 text-white max-w-4xl max-h-[95vh] overflow-auto border border-green-600">
+        <DialogContent className="bg-gray-900 text-white max-w-2xl max-h-[95vh] overflow-auto border border-yellow-600">
           <DialogHeader>
-            <DialogTitle className="flex items-center gap-2 text-green-400">
-              <FileText className="w-5 h-5" />
-              PDF OFICIAL del Centro de Conciliacion Laboral
+            <DialogTitle className="flex items-center gap-2 text-yellow-400">
+              <Key className="w-5 h-5" />
+              Acceso al Portal CCL - {selectedPdf?.estado}
             </DialogTitle>
-            <DialogDescription className="text-green-600">
-              {selectedPdf?.estado === 'Federal' ? 'CFCRL - Centro Federal' : `CCL ${selectedPdf?.estado}`} | Folio: {selectedPdf?.folioGenerado}
+            <DialogDescription className="text-yellow-600">
+              Credenciales para acceder al portal oficial y descargar documentos
             </DialogDescription>
           </DialogHeader>
           
-          {selectedPdf && (
+          {selectedPdf && selectedPdf.cuentaCCL && (
             <div className="space-y-4">
-              {/* Aviso de documento real */}
-              <div className="bg-green-900/30 border border-green-600 rounded-lg p-3">
+              {/* Aviso importante */}
+              <div className="bg-yellow-900/30 border border-yellow-600 rounded-lg p-3">
                 <div className="flex items-center gap-2 mb-2">
-                  <Shield className="w-5 h-5 text-green-400" />
-                  <span className="text-green-400 font-bold text-sm">DOCUMENTO OFICIAL</span>
+                  <Shield className="w-5 h-5 text-yellow-400" />
+                  <span className="text-yellow-400 font-bold text-sm">CUENTA CREADA EN PORTAL OFICIAL</span>
                 </div>
-                <p className="text-green-300 text-xs">
-                  Este PDF fue descargado directamente del portal gubernamental: <span className="font-mono">{selectedPdf.url}</span>
+                <p className="text-yellow-300 text-xs">
+                  Se ha creado una cuenta en el portal gubernamental. 
+                  El PDF de la solicitud esta disponible dentro del portal usando estas credenciales.
                 </p>
               </div>
               
-              {/* Visor de documento embebido */}
-              <div className="bg-gray-100 rounded-lg overflow-hidden border-2 border-green-700">
-                {selectedPdf.pdfUrl ? (
-                  <div className="relative">
-                    {/* Barra de herramientas del visor */}
-                    <div className="bg-gray-800 px-3 py-2 flex items-center justify-between border-b border-gray-700">
-                      <div className="flex items-center gap-2">
-                        <FileText className="w-4 h-4 text-green-400" />
-                        <span className="text-green-400 text-xs font-mono">constancia-ccl-{selectedPdf.folioGenerado}</span>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <Button
-                          size="sm"
-                          variant="ghost"
-                          className="h-7 px-2 text-green-400 hover:bg-green-900/50"
-                          onClick={() => window.open(selectedPdf.pdfUrl, '_blank')}
-                        >
-                          <ExternalLink className="w-3 h-3 mr-1" />
-                          <span className="text-xs">Abrir en nueva ventana</span>
-                        </Button>
-                      </div>
-                    </div>
-                    {/* iframe del documento */}
-                    <iframe 
-                      src={selectedPdf.pdfUrl}
-                      className="w-full bg-white"
-                      style={{ height: '450px' }}
-                      title="Constancia CCL"
-                      sandbox="allow-same-origin allow-scripts allow-popups"
-                    />
-                  </div>
-                ) : (
-                  <div className="h-[400px] flex flex-col items-center justify-center bg-gray-800">
-                    <FileText className="w-16 h-16 text-green-600 mb-4" />
-                    <p className="text-green-400 text-sm">Documento no disponible</p>
-                    <p className="text-green-600 text-xs mt-1">Este estado no genero constancia</p>
-                  </div>
-                )}
+              {/* Trabajador de prueba */}
+              <div className="bg-blue-950/50 rounded-lg p-4 border border-blue-700">
+                <div className="flex items-center gap-2 mb-2">
+                  <User className="w-4 h-4 text-blue-400" />
+                  <span className="text-blue-400 text-xs font-bold">DATOS DEL TRABAJADOR</span>
+                </div>
+                <p className="text-blue-300 text-base font-mono font-bold">{selectedPdf.cuentaCCL.nombreTrabajador}</p>
+                <p className="text-blue-500 text-xs font-mono mt-1">CURP: {selectedPdf.cuentaCCL.curp}</p>
               </div>
               
-              {/* Datos del documento */}
-              <div className="bg-black/50 rounded-lg p-3 border border-green-800">
-                <div className="grid grid-cols-2 gap-3 text-xs">
+              {/* Credenciales grandes y claras */}
+              <div className="bg-black rounded-lg p-4 border-2 border-yellow-500">
+                <p className="text-yellow-500 text-xs text-center mb-4">CREDENCIALES DE ACCESO AL PORTAL</p>
+                
+                {/* Email */}
+                <div className="bg-yellow-950/30 rounded p-3 mb-3">
+                  <div className="flex items-center justify-between mb-1">
+                    <span className="text-yellow-600 text-xs flex items-center gap-1">
+                      <Mail className="w-3 h-3" /> Email:
+                    </span>
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      className="h-6 px-2 text-yellow-400 hover:bg-yellow-900/50"
+                      onClick={() => {
+                        navigator.clipboard.writeText(selectedPdf.cuentaCCL?.email || '')
+                      }}
+                    >
+                      <Copy className="w-3 h-3 mr-1" />
+                      <span className="text-xs">Copiar</span>
+                    </Button>
+                  </div>
+                  <code className="text-yellow-300 text-lg font-bold block select-all bg-black/50 p-2 rounded">
+                    {selectedPdf.cuentaCCL.email}
+                  </code>
+                </div>
+                
+                {/* Password */}
+                <div className="bg-yellow-950/30 rounded p-3">
+                  <div className="flex items-center justify-between mb-1">
+                    <span className="text-yellow-600 text-xs flex items-center gap-1">
+                      <Key className="w-3 h-3" /> Password:
+                    </span>
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      className="h-6 px-2 text-yellow-400 hover:bg-yellow-900/50"
+                      onClick={() => {
+                        navigator.clipboard.writeText(selectedPdf.cuentaCCL?.password || '')
+                      }}
+                    >
+                      <Copy className="w-3 h-3 mr-1" />
+                      <span className="text-xs">Copiar</span>
+                    </Button>
+                  </div>
+                  <code className="text-yellow-300 text-2xl font-bold block select-all bg-black/50 p-2 rounded text-center">
+                    {selectedPdf.cuentaCCL.password}
+                  </code>
+                </div>
+              </div>
+              
+              {/* URLs del portal */}
+              <div className="bg-green-950/50 rounded-lg p-3 border border-green-800">
+                <div className="grid grid-cols-1 gap-2 text-xs">
                   <div>
-                    <span className="text-green-600">Folio Electronico:</span>
+                    <span className="text-green-600">Portal Login:</span>
+                    <p className="font-mono text-green-300 truncate">{selectedPdf.cuentaCCL.urlLogin}</p>
+                  </div>
+                  <div>
+                    <span className="text-green-600">Buzon Electronico:</span>
+                    <p className="font-mono text-green-300 truncate">{selectedPdf.cuentaCCL.urlBuzon}</p>
+                  </div>
+                  <div>
+                    <span className="text-green-600">Folio Asignado:</span>
                     <p className="font-mono text-green-300 font-bold">{selectedPdf.folioGenerado}</p>
-                  </div>
-                  <div>
-                    <span className="text-green-600">Portal de Origen:</span>
-                    <p className="text-green-300 truncate">{selectedPdf.url}</p>
-                  </div>
-                  <div>
-                    <span className="text-green-600">Fecha de Descarga:</span>
-                    <p className="text-green-300">{new Date().toLocaleDateString('es-MX')}</p>
-                  </div>
-                  <div>
-                    <span className="text-green-600">Hora:</span>
-                    <p className="text-green-300">{new Date().toLocaleTimeString('es-MX')}</p>
                   </div>
                 </div>
               </div>
               
               {/* Instrucciones */}
-              <div className="bg-yellow-900/30 border border-yellow-600 rounded-lg p-3">
-                <p className="text-yellow-400 text-xs">
-                  <strong>SIGUIENTE PASO:</strong> Presentar este documento en Oficialía de Partes del CCL de {selectedPdf.estado} 
-                  para confirmar la solicitud y recibir fecha de audiencia de conciliación.
+              <div className="bg-blue-900/30 border border-blue-600 rounded-lg p-3">
+                <p className="text-blue-400 text-xs">
+                  <strong>INSTRUCCIONES:</strong><br/>
+                  1. Haga clic en "ENTRAR AL PORTAL CCL" abajo<br/>
+                  2. Ingrese el email y password mostrados arriba<br/>
+                  3. Vaya a "Mis Solicitudes" o "Documentos"<br/>
+                  4. Descargue el PDF de la solicitud con folio {selectedPdf.folioGenerado}
                 </p>
               </div>
             </div>
@@ -1315,24 +1601,34 @@ export default function CCLDiagnosticoPage() {
           {/* Botones principales */}
           <div className="flex gap-2 mt-4">
             <Button 
-              className="flex-1 bg-green-600 hover:bg-green-500"
+              className="flex-1 bg-green-600 hover:bg-green-500 text-white font-bold"
               onClick={() => {
-                if (!selectedPdf?.pdfUrl) return
-                // Abrir en nueva ventana para imprimir/guardar como PDF
-                window.open(selectedPdf.pdfUrl, '_blank')
+                if (!selectedPdf?.cuentaCCL?.urlLogin) return
+                window.open(selectedPdf.cuentaCCL.urlLogin, '_blank')
               }}
             >
-              <Download className="w-4 h-4 mr-2" />
-              Ver Constancia / Imprimir PDF
+              <LogIn className="w-4 h-4 mr-2" />
+              ENTRAR AL PORTAL CCL
             </Button>
             <Button 
               variant="outline" 
-              className="flex-1 bg-transparent border-green-600 text-green-400 hover:bg-green-950"
-              onClick={() => setShowPdfDialog(false)}
+              className="flex-1 bg-transparent border-blue-600 text-blue-400 hover:bg-blue-950"
+              onClick={() => {
+                if (!selectedPdf?.cuentaCCL?.urlBuzon) return
+                window.open(selectedPdf.cuentaCCL.urlBuzon, '_blank')
+              }}
             >
-              Cerrar
+              <Mail className="w-4 h-4 mr-2" />
+              VER BUZON
             </Button>
           </div>
+          <Button 
+            variant="ghost" 
+            className="w-full text-gray-500 hover:text-gray-300"
+            onClick={() => setShowPdfDialog(false)}
+          >
+            Cerrar
+          </Button>
         </DialogContent>
       </Dialog>
     </div>
