@@ -24,7 +24,6 @@ export default function AbogadoDashboardPage() {
   const [stats, setStats] = useState({ casos: 0, completados: 0, calculos: 0 })
   const [lawyerProfile, setLawyerProfile] = useState<{ display_name?: string; verification_status?: string; cedula_profesional?: string; photo_url?: string } | null>(null)
   const [verificationProgress, setVerificationProgress] = useState(0)
-  const [isFirstLogin, setIsFirstLogin] = useState(false)
 
   // Redirigir si no es abogado
   useEffect(() => {
@@ -78,10 +77,6 @@ export default function AbogadoDashboardPage() {
         supabase.from('profiles').update({ celebration_shown: true }).eq('id', user.id)
       }
       
-      // Detectar primer login
-      if (!profile?.first_login_at || profile?.login_count === 1) {
-        setIsFirstLogin(true)
-      }
     } catch (e) {
       console.log('[v0] Error loading lawyer data:', e)
     } finally {
