@@ -181,51 +181,41 @@ export function CCLPortalTab({ casoId, caso, worker, onRefresh }: CCLPortalTabPr
                 </div>
               )}
 
-              {/* Credenciales */}
+              {/* Informacion SINACOL */}
               <div className="p-4 bg-amber-50 dark:bg-amber-950 rounded-lg border border-amber-200 dark:border-amber-800">
                 <p className="text-sm font-medium text-amber-800 dark:text-amber-300 mb-3 flex items-center gap-2">
-                  <Key className="h-4 w-4" />
-                  Credenciales de Acceso al Portal
+                  <User className="h-4 w-4" />
+                  Datos para Solicitud SINACOL
                 </p>
                 
-                {/* Email */}
+                {/* CURP */}
                 <div className="mb-3">
                   <div className="flex items-center justify-between mb-1">
                     <span className="text-xs text-amber-700 dark:text-amber-400 flex items-center gap-1">
-                      <Mail className="h-3 w-3" /> Email:
+                      <User className="h-3 w-3" /> CURP del trabajador:
                     </span>
                     <Button
                       size="sm"
                       variant="ghost"
                       className="h-6 px-2"
-                      onClick={() => copyToClipboard(mainAccount.email_portal, 'email')}
+                      onClick={() => copyToClipboard(worker?.curp || '', 'curp')}
                     >
-                      {copiedField === 'email' ? <CheckCircle className="h-3 w-3 text-green-600" /> : <Copy className="h-3 w-3" />}
+                      {copiedField === 'curp' ? <CheckCircle className="h-3 w-3 text-green-600" /> : <Copy className="h-3 w-3" />}
                     </Button>
                   </div>
-                  <code className="block p-2 bg-white dark:bg-black rounded text-sm font-mono select-all">
-                    {mainAccount.email_portal}
+                  <code className="block p-2 bg-white dark:bg-black rounded text-lg font-mono font-bold select-all text-center tracking-wider">
+                    {worker?.curp || 'Sin CURP'}
                   </code>
+                  <p className="text-xs text-amber-600 dark:text-amber-500 mt-2">
+                    SINACOL cargara automaticamente los datos del trabajador con su CURP
+                  </p>
                 </div>
 
-                {/* Password */}
-                <div>
-                  <div className="flex items-center justify-between mb-1">
-                    <span className="text-xs text-amber-700 dark:text-amber-400 flex items-center gap-1">
-                      <Key className="h-3 w-3" /> Password:
-                    </span>
-                    <Button
-                      size="sm"
-                      variant="ghost"
-                      className="h-6 px-2"
-                      onClick={() => copyToClipboard(mainAccount.password_portal, 'password')}
-                    >
-                      {copiedField === 'password' ? <CheckCircle className="h-3 w-3 text-green-600" /> : <Copy className="h-3 w-3" />}
-                    </Button>
-                  </div>
-                  <code className="block p-2 bg-white dark:bg-black rounded text-lg font-mono font-bold select-all text-center">
-                    {mainAccount.password_portal}
-                  </code>
+                {/* Aviso importante */}
+                <div className="mt-3 p-2 bg-amber-100 dark:bg-amber-900 rounded text-xs text-amber-800 dark:text-amber-300">
+                  <strong>Nota:</strong> El portal SINACOL es el sistema oficial del gobierno. 
+                  Despues del pre-registro en linea, se requiere ratificacion presencial con 
+                  identificacion oficial vigente.
                 </div>
               </div>
 
@@ -235,15 +225,15 @@ export function CCLPortalTab({ casoId, caso, worker, onRefresh }: CCLPortalTabPr
                   className="flex-1"
                   onClick={() => window.open(mainAccount.url_login, '_blank')}
                 >
-                  <LogIn className="h-4 w-4 mr-2" />
-                  Entrar al Portal CCL
+                  <ExternalLink className="h-4 w-4 mr-2" />
+                  Ir a SINACOL
                 </Button>
                 <Button 
                   variant="outline"
                   onClick={() => window.open(mainAccount.url_buzon, '_blank')}
                 >
-                  <Mail className="h-4 w-4 mr-2" />
-                  Ver Buzon
+                  <FileText className="h-4 w-4 mr-2" />
+                  Info CCL
                 </Button>
                 <Button 
                   variant="ghost"
@@ -270,18 +260,18 @@ export function CCLPortalTab({ casoId, caso, worker, onRefresh }: CCLPortalTabPr
                 <FileText className="h-8 w-8 text-muted-foreground" />
               </div>
               <p className="text-muted-foreground mb-4">
-                No hay cuenta CCL vinculada a este caso
+                No hay enlace SINACOL configurado para este caso
               </p>
               <Button onClick={createAccount} disabled={creating}>
                 {creating ? (
                   <>
                     <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                    Creando cuenta...
+                    Preparando enlace...
                   </>
                 ) : (
                   <>
-                    <Key className="h-4 w-4 mr-2" />
-                    Crear Cuenta en Portal CCL
+                    <ExternalLink className="h-4 w-4 mr-2" />
+                    Obtener Enlace a SINACOL
                   </>
                 )}
               </Button>
