@@ -2,7 +2,7 @@
 
 import React from "react"
 import { useState, useRef, useCallback } from 'react'
-import { AIAssistant } from './ai-assistant'
+import { openAIChatWithDocument } from '@/components/global-ai-assistant'
 import { Button } from '@/components/ui/button'
 import { Slider } from '@/components/ui/slider'
 import { 
@@ -79,7 +79,6 @@ export function OCRScanner({ onClose, onComplete, initialImages }: OCRScannerPro
   const [documentName, setDocumentName] = useState('')
   const [ocrQuality, setOcrQuality] = useState(0)
   const [showRetryPrompt, setShowRetryPrompt] = useState(false)
-  const [showAIAssistant, setShowAIAssistant] = useState(false)
   const [scanQuality, setScanQuality] = useState(0)
   const [isCorrectingOrientation, setIsCorrectingOrientation] = useState(false)
   const [orientationCorrected, setOrientationCorrected] = useState(false)
@@ -94,6 +93,16 @@ export function OCRScanner({ onClose, onComplete, initialImages }: OCRScannerPro
   const fileInputRef = useRef<HTMLInputElement>(null)
   const cameraInputRef = useRef<HTMLInputElement>(null)
   const pdfInputRef = useRef<HTMLInputElement>(null)
+
+  const handleOpenAISummary = useCallback(() => {
+    const isPdfReview = step === 'pdf-review'
+    const textToAnalyze = isPdfReview ? editableText : extractedText
+    if (!textToAnalyze) return
+    const name = isPdfReview
+      ? (documentName || pdfFile?.name || 'Documento PDF')
+      : `Documento escaneado (${pages.length} páginas)`
+    openAIChatWithDocument(textToAnalyze, name)
+  }, [documentName, editableText, extractedText, pages.length, pdfFile?.name, step])
 
   // Cargar imágenes iniciales de la bóveda
   const loadInitialImages = useCallback(async () => {
@@ -923,10 +932,10 @@ export function OCRScanner({ onClose, onComplete, initialImages }: OCRScannerPro
               </div>
             </div>
             
-                  {/* Botón de Resumen IA - solo si calidad >= 50% */}
-                  {ocrQuality >= 50 && (
+            {/* Botón de Resumen IA - solo si calidad >= 50% */}
+            {ocrQuality >= 50 && (
               <button
-                onClick={() => setShowAIAssistant(true)}
+                onClick={handleOpenAISummary}
                 className="w-full p-4 bg-gradient-to-r from-blue-500 to-indigo-600 rounded-xl text-white flex items-center justify-center gap-3 hover:from-blue-600 hover:to-indigo-700 transition-all shadow-lg hover:shadow-xl"
               >
                 <div className="relative">
@@ -942,7 +951,7 @@ export function OCRScanner({ onClose, onComplete, initialImages }: OCRScannerPro
             )}
             
             {/* Mensaje de reintentar si calidad baja */}
-                  {ocrQuality < 50 && (
+            {ocrQuality < 50 && (
                     <div className="p-4 bg-amber-50 rounded-xl border border-amber-200">
                       <div className="flex items-start gap-3">
                         <div className="w-10 h-10 rounded-full bg-amber-100 flex items-center justify-center shrink-0">
@@ -1455,10 +1464,10 @@ export function OCRScanner({ onClose, onComplete, initialImages }: OCRScannerPro
                 </p>
               </div>
               
-                  {/* Botón de Resumen IA - solo si calidad >= 50% */}
-                  {scanQuality >= 50 && (
+              {/* Botón de Resumen IA - solo si calidad >= 50% */}
+              {scanQuality >= 50 && (
                 <button
-                  onClick={() => setShowAIAssistant(true)}
+                  onClick={handleOpenAISummary}
                   className="w-full p-4 bg-gradient-to-r from-blue-500 to-indigo-600 rounded-xl text-white flex items-center justify-center gap-3 hover:from-blue-600 hover:to-indigo-700 transition-all shadow-lg hover:shadow-xl mb-4"
                 >
                   <div className="relative">
@@ -1525,13 +1534,6 @@ export function OCRScanner({ onClose, onComplete, initialImages }: OCRScannerPro
         </div>
       )}
       
-      {/* Asistente Legal IA - disponible en todos los pasos */}
-      <AIAssistant
-        isOpen={showAIAssistant}
-        onClose={() => setShowAIAssistant(false)}
-        documentText={step === 'pdf-review' ? editableText : extractedText}
-        documentName={step === 'pdf-review' ? (documentName || pdfFile?.name || 'Documento PDF') : `Documento escaneado (${pages.length} páginas)`}
-      />
     </div>
   )
 }
