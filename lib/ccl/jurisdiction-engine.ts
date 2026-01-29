@@ -25,6 +25,7 @@ export interface JurisdiccionResult {
     codigoPostal: string
     telefono: string
     portalUrl: string
+    urlSinacol: string // URL directa al formulario SINACOL
     sistema: string
     horario: string
     coordenadas?: { lat: number; lng: number }
@@ -115,6 +116,7 @@ export async function determinarJurisdiccion(
         codigoPostal: ccl.codigo_postal || '',
         telefono: ccl.telefono || '',
         portalUrl: ccl.portal_url || '',
+        urlSinacol: ccl.url_sinacol || ccl.portal_url || '', // URL directa a SINACOL
         sistema: ccl.sistema,
         horario: ccl.horario || '',
         coordenadas: ccl.coordenadas

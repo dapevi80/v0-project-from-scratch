@@ -11,7 +11,7 @@ import { ArrowLeft, Play, Pause, CheckCircle2, XCircle, AlertTriangle, Clock, Lo
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase/client'
 import { MatrixRain } from '@/components/ui/matrix-rain'
-import { PORTALES_CCL, generarPasswordCCL, generarEmailCCL } from '@/lib/ccl/account-service'
+import { PORTALES_CCL, obtenerUrlSinacol } from '@/lib/ccl/account-service'
 
 interface DatosTrabajador {
   nombre_completo: string
@@ -102,52 +102,34 @@ interface Resultado {
     timestamp: string
     intentos: number
   } | null
-  // Credenciales de cuenta CCL creada
+  // Datos para acceso a SINACOL (con datos reales de prueba del SuperAdmin)
   cuentaCCL?: {
-    email: string
-    password: string
-    urlLogin: string
-    urlBuzon: string
-    curp: string
+    email: string // Email aleatorio generado para la prueba
+    password: string // SINACOL no usa password
+    urlLogin: string // URL de SINACOL para crear solicitud
+    urlBuzon: string // URL del portal CCL informativo
+    urlSinacol?: string // URL directa a formulario SINACOL
+    curp: string // CURP real del usuario de prueba
+    telefono?: string // Telefono real
     nombreTrabajador: string
+    empresaEjemplo?: {
+      razonSocial: string
+      rfc: string
+      direccion: string
+    }
   }
 }
 
-// URLs de portales CCL por estado
-const PORTAL_URLS: Record<string, string> = {
-  'Aguascalientes': 'https://ccl.aguascalientes.gob.mx',
-  'Baja California': 'https://centrolaboral.bajacalifornia.gob.mx',
-  'Baja California Sur': 'https://ccl.bcs.gob.mx',
-  'Campeche': 'https://conciliacion.campeche.gob.mx',
-  'Chiapas': 'https://ccl.chiapas.gob.mx',
-  'Chihuahua': 'https://centroconciliacion.chihuahua.gob.mx',
-  'Ciudad de Mexico': 'https://centrolaboral.cdmx.gob.mx',
-  'Coahuila': 'https://ccl.coahuila.gob.mx',
-  'Colima': 'https://conciliacion.colima.gob.mx',
-  'Durango': 'https://ccl.durango.gob.mx',
-  'Guanajuato': 'https://ccl.guanajuato.gob.mx',
-  'Guerrero': 'https://conciliacionlaboral.guerrero.gob.mx',
-  'Hidalgo': 'https://ccl.hidalgo.gob.mx',
-  'Jalisco': 'https://ccl.jalisco.gob.mx',
-  'Estado de Mexico': 'https://ccl.edomex.gob.mx',
-  'Michoacan': 'https://conciliacion.michoacan.gob.mx',
-  'Morelos': 'https://ccl.morelos.gob.mx',
-  'Nayarit': 'https://centrolaboral.nayarit.gob.mx',
-  'Nuevo Leon': 'https://conciliacion.nl.gob.mx',
-  'Oaxaca': 'https://ccl.oaxaca.gob.mx',
-  'Puebla': 'https://conciliacionlaboral.puebla.gob.mx',
-  'Queretaro': 'https://ccl.queretaro.gob.mx',
-  'Quintana Roo': 'https://centrolaboral.qroo.gob.mx',
-  'San Luis Potosi': 'https://ccl.slp.gob.mx',
-  'Sinaloa': 'https://conciliacion.sinaloa.gob.mx',
-  'Sonora': 'https://ccl.sonora.gob.mx',
-  'Tabasco': 'https://centrolaboral.tabasco.gob.mx',
-  'Tamaulipas': 'https://ccl.tamaulipas.gob.mx',
-  'Tlaxcala': 'https://conciliacion.tlaxcala.gob.mx',
-  'Veracruz': 'https://ccl.veracruz.gob.mx',
-  'Yucatan': 'https://centroconciliacion.yucatan.gob.mx',
-  'Zacatecas': 'https://ccl.zacatecas.gob.mx',
-  'Federal': 'https://cfcrl.gob.mx' // Centro Federal de Conciliacion y Registro Laboral
+// URLs de portales SINACOL reales por estado (verificados enero 2026)
+// SINACOL es el Sistema Nacional de Conciliación Laboral usado por todos los estados
+const obtenerPortalUrl = (estado: string): string => {
+  const portal = PORTALES_CCL[estado]
+  return portal?.urlSinacol || obtenerUrlSinacol(estado)
+}
+
+const obtenerPortalInfo = (estado: string): string => {
+  const portal = PORTALES_CCL[estado]
+  return portal?.url || `https://ccl.${estado.toLowerCase().replace(/ /g, '')}.gob.mx`
 }
 
 // Configuracion especial para portal Federal
@@ -255,35 +237,40 @@ export default function CCLDiagnosticoPage() {
     }))
   }
 
-  // Generar datos de trabajador ficticio para pruebas
-  const generarTrabajadorFicticio = (estado: string) => {
-    const nombres = ['Juan', 'Maria', 'Carlos', 'Ana', 'Jose', 'Laura', 'Miguel', 'Carmen']
-    const apellidos = ['Garcia', 'Hernandez', 'Lopez', 'Martinez', 'Gonzalez', 'Rodriguez']
-    const nombre = nombres[Math.floor(Math.random() * nombres.length)]
-    const apellido1 = apellidos[Math.floor(Math.random() * apellidos.length)]
-    const apellido2 = apellidos[Math.floor(Math.random() * apellidos.length)]
-    const nombreCompleto = `${nombre} ${apellido1} ${apellido2}`
+  // Generar email aleatorio para pruebas SINACOL
+  const generarEmailPrueba = (estado: string) => {
+    const timestamp = Date.now().toString(36)
+    const random = Math.random().toString(36).substring(2, 6)
+    const estadoSlug = estado.toLowerCase().replace(/ /g, '').substring(0, 3)
+    return `david.perez.ccl.${estadoSlug}.${timestamp}${random}@gmail.com`
+  }
+  
+  // Datos REALES del usuario de prueba (SuperAdmin: David Perez Villasenor)
+  // Cada prueba genera un email aleatorio pero usa CURP real
+  const generarTrabajadorPrueba = (estado: string) => {
+    const emailPrueba = generarEmailPrueba(estado)
     
-    // Generar CURP ficticio
-    const entidades: Record<string, string> = {
-      'Aguascalientes': 'AS', 'Baja California': 'BC', 'Ciudad de Mexico': 'DF',
-      'Jalisco': 'JC', 'Nuevo Leon': 'NL', 'Federal': 'DF'
+    // DATOS REALES del SuperAdmin para pruebas SINACOL
+    // El CURP es real - el email es aleatorio para cada prueba
+    return { 
+      nombreCompleto: 'David Perez Villasenor',
+      curp: 'PEVD930106HDFRLV00', // CURP REAL
+      telefono: '9985933232', // Telefono REAL
+      email: emailPrueba, // Email aleatorio para esta prueba
+      // Datos de empresa ejemplo para pruebas
+      empresaEjemplo: {
+        razonSocial: 'Experiencias Xcaret SAPI de CV',
+        rfc: 'EXC030627NY6',
+        direccion: 'Carretera Chetumal - Puerto Juarez Km 282, Solidaridad, Quintana Roo'
+      }
     }
-    const entidad = entidades[estado] || 'XX'
-    const año = 70 + Math.floor(Math.random() * 30)
-    const mes = String(Math.floor(Math.random() * 12) + 1).padStart(2, '0')
-    const dia = String(Math.floor(Math.random() * 28) + 1).padStart(2, '0')
-    const curp = `${apellido1[0]}A${apellido2[0]}${nombre[0]}${año}${mes}${dia}H${entidad}XXX0${Math.floor(Math.random() * 10)}`
-    
-    return { nombreCompleto, curp }
   }
 
   const initResultados = () => {
     setResultados(ESTADOS_MEXICO.map(estado => {
       const portal = PORTALES_CCL[estado]
-      const trabajador = generarTrabajadorFicticio(estado)
-      const emailCCL = generarEmailCCL(trabajador.curp, estado)
-      const passwordCCL = generarPasswordCCL()
+      const trabajador = generarTrabajadorPrueba(estado)
+      // SINACOL no requiere email/password - solo CURP del trabajador
       
       return {
         estado,
@@ -292,7 +279,7 @@ export default function CCLDiagnosticoPage() {
         errorType: 'ninguno',
         errorMessage: '',
         screenshot: '',
-        url: portal?.url || PORTAL_URLS[estado] || `https://ccl.${estado.toLowerCase().replace(/ /g, '')}.gob.mx`,
+        url: portal?.url || `https://ccl.${estado.toLowerCase().replace(/ /g, '')}.gob.mx`,
         captchaPendiente: false,
         accionSugerida: '',
         pdfUrl: '',
@@ -301,25 +288,28 @@ export default function CCLDiagnosticoPage() {
         pasoDetenido: null,
         pasos: crearPasosIniciales(),
         errorDetallado: null,
-        // Credenciales de cuenta CCL pre-generadas
+        // Datos para acceso a SINACOL real con datos de prueba del SuperAdmin
         cuentaCCL: {
-          email: emailCCL,
-          password: passwordCCL,
-          urlLogin: portal?.urlLogin || `https://ccl.${estado.toLowerCase().replace(/ /g, '')}.gob.mx/login`,
-          urlBuzon: portal?.urlBuzon || `https://ccl.${estado.toLowerCase().replace(/ /g, '')}.gob.mx/buzon`,
-          curp: trabajador.curp,
-          nombreTrabajador: trabajador.nombreCompleto
+          email: trabajador.email, // Email aleatorio generado para esta prueba
+          password: '', // SINACOL no usa password - acceso con CURP
+          urlLogin: portal?.urlSinacol || obtenerUrlSinacol(estado), // URL real de SINACOL
+          urlBuzon: portal?.url || obtenerPortalInfo(estado), // Sitio informativo del CCL
+          urlSinacol: portal?.urlSinacol || obtenerUrlSinacol(estado),
+          curp: trabajador.curp, // CURP REAL: PEVD930106HDFRLV00
+          telefono: trabajador.telefono, // Telefono REAL: 9985933232
+          nombreTrabajador: trabajador.nombreCompleto, // David Perez Villasenor
+          empresaEjemplo: trabajador.empresaEjemplo // Xcaret como ejemplo
         }
       }
     }))
   }
 
-  // Generar folio simulado
-  const generarFolio = (estado: string) => {
+  // Generar referencia interna (NO es folio oficial de SINACOL)
+  const generarReferenciaInterna = (estado: string) => {
     const prefijo = estado.slice(0, 3).toUpperCase()
     const fecha = new Date().toISOString().slice(0, 10).replace(/-/g, '')
     const numero = Math.floor(Math.random() * 9999).toString().padStart(4, '0')
-    return `CCL-${prefijo}-${fecha}-${numero}`
+    return `REF-${prefijo}-${fecha}-${numero}` // REF indica que es referencia interna
   }
 
   // Generador de errores detallados con paso especifico
@@ -661,12 +651,12 @@ export default function CCLDiagnosticoPage() {
               nombreTrabajador: datosTrabajadorPrueba.nombre_completo
             }
           } else {
-            folio = generarFolio(estadoActual)
+            folio = generarReferenciaInterna(estadoActual)
             cuentaCCLData = resultadoActual?.cuentaCCL
           }
         } catch (err) {
           // Error al crear cuenta - usar folio local
-          folio = generarFolio(estadoActual)
+          folio = generarReferenciaInterna(estadoActual)
           cuentaCCLData = resultadoActual?.cuentaCCL
         }
       }
@@ -775,7 +765,7 @@ export default function CCLDiagnosticoPage() {
       try {
           const resultadoCuenta = await crearCuentaCCLAPI(estado, datosTrabajador, { esPrueba: true })
         if (resultadoCuenta.exito) {
-          folio = resultadoCuenta.folio || generarFolio(estado)
+          folio = resultadoCuenta.folio || generarReferenciaInterna(estado)
           cuentaCCLData = {
             email: resultadoCuenta.email_portal || '',
             password: resultadoCuenta.password_portal || '',
@@ -785,10 +775,10 @@ export default function CCLDiagnosticoPage() {
             nombreTrabajador: datosTrabajador.nombre_completo
           }
         } else {
-          folio = generarFolio(estado)
+          folio = generarReferenciaInterna(estado)
         }
       } catch {
-        folio = generarFolio(estado)
+        folio = generarReferenciaInterna(estado)
       }
     }
     
@@ -878,10 +868,15 @@ export default function CCLDiagnosticoPage() {
                   <span className="hidden sm:inline ml-1">ADMIN</span>
                 </Button>
               </Link>
-              <div>
-                <h1 className="text-sm sm:text-lg font-bold text-green-400 font-mono">DIAGNOSTICO CCL</h1>
-                <p className="text-[10px] sm:text-xs text-green-700 font-mono hidden sm:block">32 Centros Estatales + 1 Federal</p>
-              </div>
+  <div>
+  <div className="flex items-center gap-2">
+    <h1 className="text-sm sm:text-lg font-bold text-green-400 font-mono">DIAGNOSTICO CCL</h1>
+    <Badge className="bg-red-600 text-white text-[8px] px-1 py-0">DATOS REALES</Badge>
+  </div>
+  <p className="text-[10px] sm:text-xs text-green-700 font-mono hidden sm:block">
+    32 Centros Estatales + 1 Federal | Usuario Prueba: David Perez Villasenor
+  </p>
+  </div>
             </div>
             
             <div className="flex items-center gap-1 sm:gap-2">
@@ -1461,9 +1456,10 @@ export default function CCLDiagnosticoPage() {
                   {/* Info adicional */}
                   <div className="p-2 bg-green-950/30 rounded border border-green-900">
                     <p className="text-green-600 text-[10px]">
-                      <strong>Paso siguiente:</strong> Ingrese al portal con las credenciales de arriba. 
-                      El PDF de la solicitud estara disponible en la seccion de documentos.
-                      El buzon electronico recibira notificaciones de citatorios y actas de audiencia.
+                      <strong>Pasos en SINACOL:</strong> 1) Ingresa tu CURP en el formulario. 
+                      2) Completa los datos de tu relacion laboral. 
+                      3) Agenda tu cita de ratificacion presencial.
+                      4) Acude al CCL con identificacion oficial vigente.
                     </p>
                   </div>
                 </div>
@@ -1479,16 +1475,16 @@ export default function CCLDiagnosticoPage() {
         </DialogContent>
       </Dialog>
 
-      {/* Dialog de Acceso al Portal CCL */}
+      {/* Dialog de Acceso a SINACOL */}
       <Dialog open={showPdfDialog} onOpenChange={setShowPdfDialog}>
-        <DialogContent className="bg-gray-900 text-white max-w-2xl max-h-[95vh] overflow-auto border border-yellow-600">
+        <DialogContent className="bg-gray-900 text-white max-w-2xl max-h-[95vh] overflow-auto border border-green-600">
           <DialogHeader>
-            <DialogTitle className="flex items-center gap-2 text-yellow-400">
-              <Key className="w-5 h-5" />
-              Acceso al Portal CCL - {selectedPdf?.estado}
+            <DialogTitle className="flex items-center gap-2 text-green-400">
+              <ExternalLink className="w-5 h-5" />
+              Portal SINACOL - {selectedPdf?.estado}
             </DialogTitle>
-            <DialogDescription className="text-yellow-600">
-              Credenciales para acceder al portal oficial y descargar documentos
+            <DialogDescription className="text-green-600">
+              Enlace al portal oficial para crear solicitud de conciliacion laboral
             </DialogDescription>
           </DialogHeader>
           
@@ -1498,72 +1494,68 @@ export default function CCLDiagnosticoPage() {
               <div className="bg-yellow-900/30 border border-yellow-600 rounded-lg p-3">
                 <div className="flex items-center gap-2 mb-2">
                   <Shield className="w-5 h-5 text-yellow-400" />
-                  <span className="text-yellow-400 font-bold text-sm">CUENTA CREADA EN PORTAL OFICIAL</span>
+                  <span className="text-yellow-400 font-bold text-sm">PORTAL SINACOL OFICIAL</span>
                 </div>
                 <p className="text-yellow-300 text-xs">
-                  Se ha creado una cuenta en el portal gubernamental. 
-                  El PDF de la solicitud esta disponible dentro del portal usando estas credenciales.
+                  El enlace te llevara al portal SINACOL oficial del gobierno. 
+                  Ahi podras iniciar tu solicitud de conciliacion laboral con tu CURP.
+                  <strong className="block mt-1 text-yellow-200">Nota: Mecorrieron.mx NO crea cuentas automaticamente. Solo te guiamos al portal oficial.</strong>
                 </p>
               </div>
               
-              {/* Trabajador de prueba */}
+              {/* Trabajador de prueba - DATOS REALES SuperAdmin */}
               <div className="bg-blue-950/50 rounded-lg p-4 border border-blue-700">
                 <div className="flex items-center gap-2 mb-2">
                   <User className="w-4 h-4 text-blue-400" />
-                  <span className="text-blue-400 text-xs font-bold">DATOS DEL TRABAJADOR</span>
+                  <span className="text-blue-400 text-xs font-bold">DATOS DEL TRABAJADOR (SuperAdmin Pruebas)</span>
                 </div>
                 <p className="text-blue-300 text-base font-mono font-bold">{selectedPdf.cuentaCCL.nombreTrabajador}</p>
                 <p className="text-blue-500 text-xs font-mono mt-1">CURP: {selectedPdf.cuentaCCL.curp}</p>
+                <p className="text-blue-500 text-xs font-mono">Tel: {selectedPdf.cuentaCCL.telefono}</p>
+                <p className="text-blue-500 text-xs font-mono">Email Prueba: {selectedPdf.cuentaCCL.email}</p>
               </div>
               
-              {/* Credenciales grandes y claras */}
-              <div className="bg-black rounded-lg p-4 border-2 border-yellow-500">
-                <p className="text-yellow-500 text-xs text-center mb-4">CREDENCIALES DE ACCESO AL PORTAL</p>
-                
-                {/* Email */}
-                <div className="bg-yellow-950/30 rounded p-3 mb-3">
-                  <div className="flex items-center justify-between mb-1">
-                    <span className="text-yellow-600 text-xs flex items-center gap-1">
-                      <Mail className="w-3 h-3" /> Email:
-                    </span>
-                    <Button
-                      size="sm"
-                      variant="ghost"
-                      className="h-6 px-2 text-yellow-400 hover:bg-yellow-900/50"
-                      onClick={() => {
-                        navigator.clipboard.writeText(selectedPdf.cuentaCCL?.email || '')
-                      }}
-                    >
-                      <Copy className="w-3 h-3 mr-1" />
-                      <span className="text-xs">Copiar</span>
-                    </Button>
+              {/* Empresa ejemplo para demanda */}
+              {selectedPdf.cuentaCCL.empresaEjemplo && (
+                <div className="bg-red-950/50 rounded-lg p-4 border border-red-700">
+                  <div className="flex items-center gap-2 mb-2">
+                    <FileText className="w-4 h-4 text-red-400" />
+                    <span className="text-red-400 text-xs font-bold">EMPRESA EJEMPLO (Demandado)</span>
                   </div>
-                  <code className="text-yellow-300 text-lg font-bold block select-all bg-black/50 p-2 rounded">
-                    {selectedPdf.cuentaCCL.email}
-                  </code>
+                  <p className="text-red-300 text-sm font-bold">{selectedPdf.cuentaCCL.empresaEjemplo.razonSocial}</p>
+                  <p className="text-red-500 text-xs font-mono mt-1">RFC: {selectedPdf.cuentaCCL.empresaEjemplo.rfc}</p>
+                  <p className="text-red-500 text-xs mt-1">{selectedPdf.cuentaCCL.empresaEjemplo.direccion}</p>
                 </div>
+              )}
+              
+              {/* CURP para iniciar solicitud */}
+              <div className="bg-black rounded-lg p-4 border-2 border-yellow-500">
+                <p className="text-yellow-500 text-xs text-center mb-4">DATOS PARA INICIAR SOLICITUD EN SINACOL</p>
                 
-                {/* Password */}
+                {/* CURP */}
                 <div className="bg-yellow-950/30 rounded p-3">
                   <div className="flex items-center justify-between mb-1">
                     <span className="text-yellow-600 text-xs flex items-center gap-1">
-                      <Key className="w-3 h-3" /> Password:
+                      <User className="w-3 h-3" /> CURP del trabajador:
                     </span>
                     <Button
                       size="sm"
                       variant="ghost"
                       className="h-6 px-2 text-yellow-400 hover:bg-yellow-900/50"
                       onClick={() => {
-                        navigator.clipboard.writeText(selectedPdf.cuentaCCL?.password || '')
+                        navigator.clipboard.writeText(selectedPdf.cuentaCCL?.curp || '')
                       }}
                     >
                       <Copy className="w-3 h-3 mr-1" />
                       <span className="text-xs">Copiar</span>
                     </Button>
                   </div>
-                  <code className="text-yellow-300 text-2xl font-bold block select-all bg-black/50 p-2 rounded text-center">
-                    {selectedPdf.cuentaCCL.password}
+                  <code className="text-yellow-300 text-xl font-bold block select-all bg-black/50 p-2 rounded text-center tracking-wider">
+                    {selectedPdf.cuentaCCL.curp}
                   </code>
+                  <p className="text-yellow-600 text-xs mt-2 text-center">
+                    El sistema SINACOL cargara tus datos automaticamente con tu CURP
+                  </p>
                 </div>
               </div>
               
@@ -1571,16 +1563,17 @@ export default function CCLDiagnosticoPage() {
               <div className="bg-green-950/50 rounded-lg p-3 border border-green-800">
                 <div className="grid grid-cols-1 gap-2 text-xs">
                   <div>
-                    <span className="text-green-600">Portal Login:</span>
+                    <span className="text-green-600">Portal SINACOL (Solicitud):</span>
                     <p className="font-mono text-green-300 truncate">{selectedPdf.cuentaCCL.urlLogin}</p>
                   </div>
                   <div>
-                    <span className="text-green-600">Buzon Electronico:</span>
+                    <span className="text-green-600">Sitio CCL Informativo:</span>
                     <p className="font-mono text-green-300 truncate">{selectedPdf.cuentaCCL.urlBuzon}</p>
                   </div>
                   <div>
-                    <span className="text-green-600">Folio Asignado:</span>
-                    <p className="font-mono text-green-300 font-bold">{selectedPdf.folioGenerado}</p>
+                    <span className="text-green-600">Referencia Interna (MeCorrieron.mx):</span>
+                    <p className="font-mono text-green-300 font-bold text-xs">{selectedPdf.folioGenerado}</p>
+                    <p className="text-green-700 text-[10px]">El folio oficial lo genera SINACOL al completar la solicitud</p>
                   </div>
                 </div>
               </div>
@@ -1588,11 +1581,12 @@ export default function CCLDiagnosticoPage() {
               {/* Instrucciones */}
               <div className="bg-blue-900/30 border border-blue-600 rounded-lg p-3">
                 <p className="text-blue-400 text-xs">
-                  <strong>INSTRUCCIONES:</strong><br/>
-                  1. Haga clic en "ENTRAR AL PORTAL CCL" abajo<br/>
-                  2. Ingrese el email y password mostrados arriba<br/>
-                  3. Vaya a "Mis Solicitudes" o "Documentos"<br/>
-                  4. Descargue el PDF de la solicitud con folio {selectedPdf.folioGenerado}
+                  <strong>COMO CREAR TU SOLICITUD EN SINACOL:</strong><br/>
+                  1. Haz clic en "IR A SINACOL" abajo<br/>
+                  2. Ingresa tu CURP: <span className="text-blue-300 font-mono">{selectedPdf.cuentaCCL.curp}</span><br/>
+                  3. Completa el formulario con tus datos laborales<br/>
+                  4. Agenda tu cita de ratificacion presencial<br/>
+                  5. Acude al CCL con tu identificacion oficial
                 </p>
               </div>
             </div>
@@ -1607,8 +1601,8 @@ export default function CCLDiagnosticoPage() {
                 window.open(selectedPdf.cuentaCCL.urlLogin, '_blank')
               }}
             >
-              <LogIn className="w-4 h-4 mr-2" />
-              ENTRAR AL PORTAL CCL
+              <ExternalLink className="w-4 h-4 mr-2" />
+              IR A SINACOL
             </Button>
             <Button 
               variant="outline" 
@@ -1618,8 +1612,8 @@ export default function CCLDiagnosticoPage() {
                 window.open(selectedPdf.cuentaCCL.urlBuzon, '_blank')
               }}
             >
-              <Mail className="w-4 h-4 mr-2" />
-              VER BUZON
+              <HelpCircle className="w-4 h-4 mr-2" />
+              INFO CCL
             </Button>
           </div>
           <Button 
