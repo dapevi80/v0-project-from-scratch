@@ -713,23 +713,27 @@ export default function CCLFlowPage() {
             <Alert>
               <AlertCircle className="w-4 h-4" />
               <AlertDescription>
-                {resultado.folio 
-                  ? 'Recuerde que debe ratificar la solicitud en persona dentro de los 5 dias habiles siguientes.'
-                  : 'Use la guia para llenar manualmente el formulario en el portal del CCL.'
-                }
+                <strong>Pasos a seguir en SINACOL:</strong>
+                <ol className="list-decimal ml-4 mt-2 space-y-1">
+                  <li>Haga clic en "Ir a SINACOL" para abrir el portal oficial</li>
+                  <li>Ingrese el CURP del trabajador para cargar sus datos</li>
+                  <li>Complete el formulario con los datos de la relacion laboral</li>
+                  <li>Agende su cita de ratificacion presencial</li>
+                  <li>Acuda al CCL con identificacion oficial vigente</li>
+                </ol>
               </AlertDescription>
             </Alert>
 
             <div className="flex gap-4">
               <Button asChild variant="outline">
-                <Link href={`/oficina-virtual/casos/${casoId}`}>
+                <Link href={`/oficina-virtual/caso/${casoId}`}>
                   Volver al caso
                 </Link>
               </Button>
-              {jurisdiccion?.centroConciliacion.portalUrl && (
-                <Button asChild>
-                  <a href={jurisdiccion.centroConciliacion.portalUrl} target="_blank" rel="noopener noreferrer">
-                    Abrir portal CCL
+              {jurisdiccion?.centroConciliacion.urlSinacol && (
+                <Button asChild className="bg-green-600 hover:bg-green-700">
+                  <a href={jurisdiccion.centroConciliacion.urlSinacol} target="_blank" rel="noopener noreferrer">
+                    Ir a SINACOL
                   </a>
                 </Button>
               )}

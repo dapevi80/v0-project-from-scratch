@@ -11,7 +11,7 @@ import { ArrowLeft, Play, Pause, CheckCircle2, XCircle, AlertTriangle, Clock, Lo
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase/client'
 import { MatrixRain } from '@/components/ui/matrix-rain'
-import { PORTALES_CCL, generarPasswordCCL, generarEmailCCL, obtenerUrlSinacol } from '@/lib/ccl/account-service'
+import { PORTALES_CCL, obtenerUrlSinacol } from '@/lib/ccl/account-service'
 
 interface DatosTrabajador {
   nombre_completo: string
@@ -102,15 +102,21 @@ interface Resultado {
     timestamp: string
     intentos: number
   } | null
-  // Credenciales de cuenta CCL creada
+  // Datos para acceso a SINACOL (con datos reales de prueba del SuperAdmin)
   cuentaCCL?: {
-    email: string
-    password: string
+    email: string // Email aleatorio generado para la prueba
+    password: string // SINACOL no usa password
     urlLogin: string // URL de SINACOL para crear solicitud
     urlBuzon: string // URL del portal CCL informativo
     urlSinacol?: string // URL directa a formulario SINACOL
-    curp: string
+    curp: string // CURP real del usuario de prueba
+    telefono?: string // Telefono real
     nombreTrabajador: string
+    empresaEjemplo?: {
+      razonSocial: string
+      rfc: string
+      direccion: string
+    }
   }
 }
 
@@ -231,35 +237,40 @@ export default function CCLDiagnosticoPage() {
     }))
   }
 
-  // Generar datos de trabajador ficticio para pruebas
-  const generarTrabajadorFicticio = (estado: string) => {
-    const nombres = ['Juan', 'Maria', 'Carlos', 'Ana', 'Jose', 'Laura', 'Miguel', 'Carmen']
-    const apellidos = ['Garcia', 'Hernandez', 'Lopez', 'Martinez', 'Gonzalez', 'Rodriguez']
-    const nombre = nombres[Math.floor(Math.random() * nombres.length)]
-    const apellido1 = apellidos[Math.floor(Math.random() * apellidos.length)]
-    const apellido2 = apellidos[Math.floor(Math.random() * apellidos.length)]
-    const nombreCompleto = `${nombre} ${apellido1} ${apellido2}`
+  // Generar email aleatorio para pruebas SINACOL
+  const generarEmailPrueba = (estado: string) => {
+    const timestamp = Date.now().toString(36)
+    const random = Math.random().toString(36).substring(2, 6)
+    const estadoSlug = estado.toLowerCase().replace(/ /g, '').substring(0, 3)
+    return `david.perez.ccl.${estadoSlug}.${timestamp}${random}@gmail.com`
+  }
+  
+  // Datos REALES del usuario de prueba (SuperAdmin: David Perez Villasenor)
+  // Cada prueba genera un email aleatorio pero usa CURP real
+  const generarTrabajadorPrueba = (estado: string) => {
+    const emailPrueba = generarEmailPrueba(estado)
     
-    // Generar CURP ficticio
-    const entidades: Record<string, string> = {
-      'Aguascalientes': 'AS', 'Baja California': 'BC', 'Ciudad de Mexico': 'DF',
-      'Jalisco': 'JC', 'Nuevo Leon': 'NL', 'Federal': 'DF'
+    // DATOS REALES del SuperAdmin para pruebas SINACOL
+    // El CURP es real - el email es aleatorio para cada prueba
+    return { 
+      nombreCompleto: 'David Perez Villasenor',
+      curp: 'PEVD930106HDFRLV00', // CURP REAL
+      telefono: '9985933232', // Telefono REAL
+      email: emailPrueba, // Email aleatorio para esta prueba
+      // Datos de empresa ejemplo para pruebas
+      empresaEjemplo: {
+        razonSocial: 'Experiencias Xcaret SAPI de CV',
+        rfc: 'EXC030627NY6',
+        direccion: 'Carretera Chetumal - Puerto Juarez Km 282, Solidaridad, Quintana Roo'
+      }
     }
-    const entidad = entidades[estado] || 'XX'
-    const año = 70 + Math.floor(Math.random() * 30)
-    const mes = String(Math.floor(Math.random() * 12) + 1).padStart(2, '0')
-    const dia = String(Math.floor(Math.random() * 28) + 1).padStart(2, '0')
-    const curp = `${apellido1[0]}A${apellido2[0]}${nombre[0]}${año}${mes}${dia}H${entidad}XXX0${Math.floor(Math.random() * 10)}`
-    
-    return { nombreCompleto, curp }
   }
 
   const initResultados = () => {
     setResultados(ESTADOS_MEXICO.map(estado => {
       const portal = PORTALES_CCL[estado]
-      const trabajador = generarTrabajadorFicticio(estado)
-      const emailCCL = generarEmailCCL(trabajador.curp, estado)
-      const passwordCCL = generarPasswordCCL()
+      const trabajador = generarTrabajadorPrueba(estado)
+      // SINACOL no requiere email/password - solo CURP del trabajador
       
       return {
         estado,
@@ -277,25 +288,28 @@ export default function CCLDiagnosticoPage() {
         pasoDetenido: null,
         pasos: crearPasosIniciales(),
         errorDetallado: null,
-        // Credenciales de cuenta CCL pre-generadas
+        // Datos para acceso a SINACOL real con datos de prueba del SuperAdmin
         cuentaCCL: {
-          email: emailCCL,
-          password: passwordCCL,
-    urlLogin: portal?.urlSinacol || obtenerUrlSinacol(estado),
-    urlBuzon: portal?.urlBuzon || portal?.url || obtenerPortalInfo(estado),
-          curp: trabajador.curp,
-          nombreTrabajador: trabajador.nombreCompleto
+          email: trabajador.email, // Email aleatorio generado para esta prueba
+          password: '', // SINACOL no usa password - acceso con CURP
+          urlLogin: portal?.urlSinacol || obtenerUrlSinacol(estado), // URL real de SINACOL
+          urlBuzon: portal?.url || obtenerPortalInfo(estado), // Sitio informativo del CCL
+          urlSinacol: portal?.urlSinacol || obtenerUrlSinacol(estado),
+          curp: trabajador.curp, // CURP REAL: PEVD930106HDFRLV00
+          telefono: trabajador.telefono, // Telefono REAL: 9985933232
+          nombreTrabajador: trabajador.nombreCompleto, // David Perez Villasenor
+          empresaEjemplo: trabajador.empresaEjemplo // Xcaret como ejemplo
         }
       }
     }))
   }
 
-  // Generar folio simulado
-  const generarFolio = (estado: string) => {
+  // Generar referencia interna (NO es folio oficial de SINACOL)
+  const generarReferenciaInterna = (estado: string) => {
     const prefijo = estado.slice(0, 3).toUpperCase()
     const fecha = new Date().toISOString().slice(0, 10).replace(/-/g, '')
     const numero = Math.floor(Math.random() * 9999).toString().padStart(4, '0')
-    return `CCL-${prefijo}-${fecha}-${numero}`
+    return `REF-${prefijo}-${fecha}-${numero}` // REF indica que es referencia interna
   }
 
   // Generador de errores detallados con paso especifico
@@ -637,12 +651,12 @@ export default function CCLDiagnosticoPage() {
               nombreTrabajador: datosTrabajadorPrueba.nombre_completo
             }
           } else {
-            folio = generarFolio(estadoActual)
+            folio = generarReferenciaInterna(estadoActual)
             cuentaCCLData = resultadoActual?.cuentaCCL
           }
         } catch (err) {
           // Error al crear cuenta - usar folio local
-          folio = generarFolio(estadoActual)
+          folio = generarReferenciaInterna(estadoActual)
           cuentaCCLData = resultadoActual?.cuentaCCL
         }
       }
@@ -751,7 +765,7 @@ export default function CCLDiagnosticoPage() {
       try {
           const resultadoCuenta = await crearCuentaCCLAPI(estado, datosTrabajador, { esPrueba: true })
         if (resultadoCuenta.exito) {
-          folio = resultadoCuenta.folio || generarFolio(estado)
+          folio = resultadoCuenta.folio || generarReferenciaInterna(estado)
           cuentaCCLData = {
             email: resultadoCuenta.email_portal || '',
             password: resultadoCuenta.password_portal || '',
@@ -761,10 +775,10 @@ export default function CCLDiagnosticoPage() {
             nombreTrabajador: datosTrabajador.nombre_completo
           }
         } else {
-          folio = generarFolio(estado)
+          folio = generarReferenciaInterna(estado)
         }
       } catch {
-        folio = generarFolio(estado)
+        folio = generarReferenciaInterna(estado)
       }
     }
     
@@ -1437,9 +1451,10 @@ export default function CCLDiagnosticoPage() {
                   {/* Info adicional */}
                   <div className="p-2 bg-green-950/30 rounded border border-green-900">
                     <p className="text-green-600 text-[10px]">
-                      <strong>Paso siguiente:</strong> Ingrese al portal con las credenciales de arriba. 
-                      El PDF de la solicitud estara disponible en la seccion de documentos.
-                      El buzon electronico recibira notificaciones de citatorios y actas de audiencia.
+                      <strong>Pasos en SINACOL:</strong> 1) Ingresa tu CURP en el formulario. 
+                      2) Completa los datos de tu relacion laboral. 
+                      3) Agenda tu cita de ratificacion presencial.
+                      4) Acude al CCL con identificacion oficial vigente.
                     </p>
                   </div>
                 </div>
@@ -1455,16 +1470,16 @@ export default function CCLDiagnosticoPage() {
         </DialogContent>
       </Dialog>
 
-      {/* Dialog de Acceso al Portal CCL */}
+      {/* Dialog de Acceso a SINACOL */}
       <Dialog open={showPdfDialog} onOpenChange={setShowPdfDialog}>
-        <DialogContent className="bg-gray-900 text-white max-w-2xl max-h-[95vh] overflow-auto border border-yellow-600">
+        <DialogContent className="bg-gray-900 text-white max-w-2xl max-h-[95vh] overflow-auto border border-green-600">
           <DialogHeader>
-            <DialogTitle className="flex items-center gap-2 text-yellow-400">
-              <Key className="w-5 h-5" />
-              Acceso al Portal CCL - {selectedPdf?.estado}
+            <DialogTitle className="flex items-center gap-2 text-green-400">
+              <ExternalLink className="w-5 h-5" />
+              Portal SINACOL - {selectedPdf?.estado}
             </DialogTitle>
-            <DialogDescription className="text-yellow-600">
-              Credenciales para acceder al portal oficial y descargar documentos
+            <DialogDescription className="text-green-600">
+              Enlace al portal oficial para crear solicitud de conciliacion laboral
             </DialogDescription>
           </DialogHeader>
           

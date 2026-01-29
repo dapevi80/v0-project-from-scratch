@@ -552,14 +552,19 @@ export interface DatosTrabajador {
 export interface ResultadoCreacionCuenta {
   exito: boolean
   accountId?: string
-  email_portal?: string
-  password_portal?: string
-  folio?: string
-  url_login?: string
+  // SINACOL no usa email/password - solo CURP
+  referencia_interna?: string // Referencia interna de Mecorrieron.mx
+  url_sinacol?: string // URL directa al formulario SINACOL
+  url_info?: string // URL del sitio CCL informativo
   url_buzon?: string
+  curp?: string
+  nombre_trabajador?: string
+  estado_ccl?: string
+  portal_nombre?: string
+  requiere_ratificacion_presencial?: boolean
+  notas?: string
+  mensaje?: string
   error?: string
-  requiereCaptcha?: boolean
-  captchaUrl?: string
 }
 
 export interface CCLUserAccount {
@@ -570,17 +575,20 @@ export interface CCLUserAccount {
   estado: string
   portal_url: string
   portal_nombre: string | null
-  email_portal: string
-  password_portal: string
-  url_login: string | null
+  // SINACOL no usa email/password - ahora son opcionales
+  email_portal: string | null
+  password_portal: string | null
+  url_login: string | null // URL de SINACOL real
   url_buzon: string | null
+  url_sinacol: string | null // URL directa al formulario
   curp_usado: string | null
   rfc_usado: string | null
   cuenta_creada: boolean
   cuenta_verificada: boolean
   buzon_activo: boolean
-  status: 'pendiente' | 'pendiente_captcha' | 'activa' | 'error' | 'cancelada'
-  folio_solicitud: string | null
+  // Nuevo status para SINACOL
+  status: 'pendiente' | 'pendiente_sinacol' | 'pendiente_captcha' | 'activa' | 'error' | 'cancelada'
+  folio_solicitud: string | null // Referencia interna (no folio oficial)
   fecha_solicitud: string | null
   pdf_solicitud_url: string | null
   ultimo_check_buzon: string | null
@@ -591,6 +599,7 @@ export interface CCLUserAccount {
   es_prueba: boolean
   sesion_diagnostico_id: string | null
   datos_trabajador: DatosTrabajador | null
+  notas: string | null
   created_at: string
   updated_at: string
 }

@@ -12,17 +12,19 @@ import {
 interface CCLAccount {
   id: string
   estado: string
-  email_portal: string
-  password_portal: string
+  email_portal: string | null // SINACOL no usa email
+  password_portal: string | null // SINACOL no usa password
   url_portal: string
-  url_login: string
+  url_login: string // URL real de SINACOL
   url_buzon: string
-  folio_solicitud: string
+  url_sinacol?: string // URL directa al formulario SINACOL
+  folio_solicitud: string // Referencia interna (no folio oficial)
   status: string
   buzon_activo: boolean
   ultimo_check_buzon: string | null
   notificaciones_pendientes: number
   created_at: string
+  notas?: string
 }
 
 interface CCLPortalTabProps {
@@ -133,15 +135,15 @@ export function CCLPortalTab({ casoId, caso, worker, onRefresh }: CCLPortalTabPr
 
   return (
     <div className="space-y-4">
-      {/* Estado de la cuenta CCL */}
+      {/* Acceso a SINACOL */}
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2 text-base">
-            <Key className="h-4 w-4" />
-            Cuenta en Portal del Centro de Conciliacion
+            <ExternalLink className="h-4 w-4" />
+            Portal SINACOL - Centro de Conciliacion
           </CardTitle>
           <CardDescription>
-            Acceso al portal oficial del CCL para gestionar la solicitud de conciliacion
+            Enlace al portal oficial SINACOL para iniciar solicitud de conciliacion laboral
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -151,11 +153,11 @@ export function CCLPortalTab({ casoId, caso, worker, onRefresh }: CCLPortalTabPr
               <div className="flex items-center gap-2">
                 <Badge className={
                   mainAccount.status === 'activa' ? 'bg-green-600' :
-                  mainAccount.status === 'pendiente_captcha' ? 'bg-yellow-600' :
+                  mainAccount.status === 'pendiente_sinacol' ? 'bg-yellow-600' :
                   mainAccount.status === 'error' ? 'bg-red-600' : 'bg-gray-600'
                 }>
-                  {mainAccount.status === 'activa' ? 'Cuenta Activa' :
-                   mainAccount.status === 'pendiente_captcha' ? 'Pendiente CAPTCHA' :
+                  {mainAccount.status === 'activa' ? 'Solicitud Completada' :
+                   mainAccount.status === 'pendiente_sinacol' ? 'Pendiente en SINACOL' :
                    mainAccount.status === 'error' ? 'Error' : mainAccount.status}
                 </Badge>
                 {mainAccount.buzon_activo && (
@@ -171,12 +173,15 @@ export function CCLPortalTab({ casoId, caso, worker, onRefresh }: CCLPortalTabPr
                 )}
               </div>
 
-              {/* Folio */}
+              {/* Referencia Interna */}
               {mainAccount.folio_solicitud && (
-                <div className="p-3 bg-green-50 dark:bg-green-950 rounded-lg border border-green-200 dark:border-green-800">
-                  <p className="text-xs text-green-700 dark:text-green-400 mb-1">Folio de Solicitud CCL:</p>
-                  <p className="font-mono font-bold text-lg text-green-800 dark:text-green-300">
+                <div className="p-3 bg-blue-50 dark:bg-blue-950 rounded-lg border border-blue-200 dark:border-blue-800">
+                  <p className="text-xs text-blue-700 dark:text-blue-400 mb-1">Referencia Interna (Mecorrieron.mx):</p>
+                  <p className="font-mono font-bold text-sm text-blue-800 dark:text-blue-300">
                     {mainAccount.folio_solicitud}
+                  </p>
+                  <p className="text-xs text-blue-600 dark:text-blue-500 mt-1">
+                    Nota: El folio oficial de SINACOL se genera al completar la solicitud en el portal.
                   </p>
                 </div>
               )}
