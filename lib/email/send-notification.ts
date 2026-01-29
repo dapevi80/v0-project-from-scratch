@@ -10,14 +10,57 @@ import {
 } from './templates'
 
 // Configuración del servicio de email
-// Puede ser Resend, SendGrid, Nodemailer, etc.
-const EMAIL_FROM = process.env.EMAIL_FROM || 'notificaciones@tuapp.com'
-const EMAIL_SERVICE = process.env.EMAIL_SERVICE || 'console' // 'resend', 'sendgrid', 'console'
+const EMAIL_FROM = process.env.EMAIL_FROM || 'notificaciones@tudominio.com'
+const EMAIL_FROM_NAME = process.env.EMAIL_FROM_NAME || 'Sistema CCL'
+const EMAIL_SERVICE = process.env.EMAIL_SERVICE || 'console' // 'smtp', 'resend', 'sendgrid', 'console'
+
+// Configuración SMTP para Hostinger
+const SMTP_CONFIG = {
+  host: process.env.SMTP_HOST || 'smtp.hostinger.com',
+  port: Number(process.env.SMTP_PORT) || 465,
+  secure: process.env.SMTP_SECURE !== 'false', // true para 465, false para otros puertos
+  user: process.env.SMTP_USER || '',
+  pass: process.env.SMTP_PASS || '',
+}
 
 interface EmailResult {
   success: boolean
   messageId?: string
   error?: string
+}
+
+// Función para enviar via SMTP (Hostinger/Nodemailer compatible via fetch)
+async function enviarViaSMTP(
+  to: string,
+  subject: string,
+  html: string,
+  text: string
+): Promise<EmailResult> {
+  // Usar API route interna para enviar via nodemailer
+  try {
+    const response = await fetch(`${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/api/email/send`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        to,
+        subject,
+        html,
+        text,
+        from: `${EMAIL_FROM_NAME} <${EMAIL_FROM}>`,
+      }),
+    })
+
+    const data = await response.json()
+    
+    if (!response.ok) {
+      return { success: false, error: data.error || 'Error enviando email via SMTP' }
+    }
+
+    return { success: true, messageId: data.messageId }
+  } catch (error) {
+    console.error('Error SMTP:', error)
+    return { success: false, error: error instanceof Error ? error.message : 'Error desconocido' }
+  }
 }
 
 // Función genérica para enviar email
@@ -27,14 +70,19 @@ async function enviarEmail(
   html: string,
   text: string
 ): Promise<EmailResult> {
-  // En desarrollo o si no hay servicio configurado, solo logear
-  if (EMAIL_SERVICE === 'console' || process.env.NODE_ENV === 'development') {
+  // En desarrollo sin config, solo logear
+  if (EMAIL_SERVICE === 'console') {
     console.log('=== EMAIL NOTIFICATION ===')
     console.log('To:', to)
     console.log('Subject:', subject)
     console.log('Text preview:', text.slice(0, 200) + '...')
     console.log('=== END EMAIL ===')
     return { success: true, messageId: `dev-${Date.now()}` }
+  }
+
+  // SMTP (Hostinger, Gmail, etc.)
+  if (EMAIL_SERVICE === 'smtp' && SMTP_CONFIG.user && SMTP_CONFIG.pass) {
+    return enviarViaSMTP(to, subject, html, text)
   }
 
   // Resend
@@ -47,7 +95,7 @@ async function enviarEmail(
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          from: EMAIL_FROM,
+          from: `${EMAIL_FROM_NAME} <${EMAIL_FROM}>`,
           to: [to],
           subject,
           html,
@@ -78,7 +126,7 @@ async function enviarEmail(
         },
         body: JSON.stringify({
           personalizations: [{ to: [{ email: to }] }],
-          from: { email: EMAIL_FROM },
+          from: { email: EMAIL_FROM, name: EMAIL_FROM_NAME },
           subject,
           content: [
             { type: 'text/plain', value: text },
