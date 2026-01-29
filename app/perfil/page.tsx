@@ -35,8 +35,14 @@ import {
   Building2,
   Briefcase,
   Scale,
-  LogOut
+  LogOut,
+  Eye,
+  EyeOff,
+  Copy,
+  Check
 } from 'lucide-react'
+import { Switch } from '@/components/ui/switch'
+import Image from 'next/image'
 import { CasoCreadoCelebration } from '@/components/caso-creado-celebration'
 import { crearCasoDesdeVerificacion } from '@/app/casos/actions'
 import { createClient } from '@/lib/supabase/client'
@@ -67,6 +73,8 @@ interface ProfileData {
   role: string
   codigoUsuario: string
   verificationStatus: string // 'none' | 'pending' | 'verified'
+  isProfilePublic: boolean
+  avatarUrl?: string
   // Datos de INE
   curp?: string
   tipoIdentificacion?: string
@@ -95,6 +103,9 @@ export default function PerfilPage() {
   const [showCelebration, setShowCelebration] = useState(false)
   const [creatingCaso, setCreatingCaso] = useState(false)
   const [nombreEmpresa, setNombreEmpresa] = useState('')
+  const [isPublic, setIsPublic] = useState(true)
+  const [copied, setCopied] = useState(false)
+  const [savingPublic, setSavingPublic] = useState(false)
   
   // Campos editables
   const [editFullName, setEditFullName] = useState('')
@@ -153,6 +164,8 @@ export default function PerfilPage() {
         role: profileData?.role || 'guest',
         codigoUsuario: profileData?.codigo_usuario || '',
         verificationStatus: profileData?.verification_status || 'none',
+        isProfilePublic: profileData?.is_profile_public ?? true,
+        avatarUrl: profileData?.avatar_url,
         curp: profileData?.curp,
         tipoIdentificacion: profileData?.tipo_identificacion,
         numeroIdentificacion: profileData?.numero_identificacion,
@@ -168,6 +181,7 @@ export default function PerfilPage() {
       }
 
       setProfile(profile)
+      setIsPublic(profile.isProfilePublic)
       
       // Inicializar campos editables
       setEditFullName(profile.fullName)
@@ -289,6 +303,43 @@ export default function PerfilPage() {
     const supabase = createClient()
     await supabase.auth.signOut()
     router.push('/acceso')
+  }
+
+  const handleCopyCode = async () => {
+    if (profile?.codigoUsuario) {
+      await navigator.clipboard.writeText(profile.codigoUsuario)
+      setCopied(true)
+      setTimeout(() => setCopied(false), 2000)
+    }
+  }
+
+  const handlePublicModeChange = async (checked: boolean) => {
+    if (!profile) return
+    setSavingPublic(true)
+    setIsPublic(checked)
+    
+    try {
+      const supabase = createClient()
+      const { error } = await supabase
+        .from('profiles')
+        .update({ is_profile_public: checked })
+        .eq('id', profile.id)
+      
+      if (error) throw error
+      setProfile({ ...profile, isProfilePublic: checked })
+    } catch (error) {
+      setIsPublic(!checked) // Revertir
+      toast({ title: 'Error', description: 'No se pudo actualizar', variant: 'destructive' })
+    } finally {
+      setSavingPublic(false)
+    }
+  }
+
+  // Determinar avatar segun rol
+  const getAvatarSrc = () => {
+    if (profile?.avatarUrl) return profile.avatarUrl
+    if (profile?.role === 'superadmin') return '/avatars/superadmin-avatar.jpg'
+    return '/avatars/default-user-avatar.jpg'
   }
 
   // Determinar estado de verificacion
@@ -452,22 +503,107 @@ export default function PerfilPage() {
           </CardContent>
         </Card>
 
-        {/* 2. CODIGO DE USUARIO */}
-        <Card>
-          <CardContent className="py-4">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-xs text-muted-foreground uppercase tracking-wide">Tu Codigo</p>
-                <p className="font-mono text-xl font-bold text-primary">{profile.codigoUsuario}</p>
+        {/* 2. PERFIL CON AVATAR Y CODIGO */}
+        <Card className="overflow-hidden">
+          <div className={`p-4 ${
+            profile.role === 'superadmin' 
+              ? 'bg-gradient-to-br from-black to-zinc-900' 
+              : 'bg-gradient-to-br from-slate-800 to-slate-900'
+          }`}>
+            <div className="flex items-center gap-4">
+              {/* Avatar */}
+              <div className={`relative w-16 h-16 rounded-full overflow-hidden ${
+                profile.role === 'superadmin' 
+                  ? 'ring-2 ring-green-400 ring-offset-2 ring-offset-black' 
+                  : profile.role === 'admin'
+                  ? 'ring-2 ring-amber-400 ring-offset-2 ring-offset-slate-900'
+                  : profile.role === 'lawyer' || profile.role === 'guestlawyer'
+                  ? 'ring-2 ring-blue-400 ring-offset-2 ring-offset-slate-900'
+                  : profile.role === 'worker'
+                  ? 'ring-2 ring-emerald-400 ring-offset-2 ring-offset-slate-900'
+                  : 'ring-2 ring-slate-500 ring-offset-2 ring-offset-slate-900'
+              }`}>
+                <Image
+                  src={getAvatarSrc() || "/placeholder.svg"}
+                  alt="Avatar"
+                  fill
+                  className="object-cover"
+                  priority
+                />
               </div>
-              <Badge variant={profile.role === 'guest' ? 'secondary' : 'default'}>
-                {profile.role === 'guest' ? 'Invitado' : 
-                 profile.role === 'worker' ? 'Trabajador' : 
-                 profile.role === 'lawyer' ? 'Abogado' : 
-                 profile.role === 'admin' ? 'Admin' : profile.role}
-              </Badge>
+
+              <div className="flex-1 min-w-0">
+                {/* Nombre visible solo si es publico */}
+                <h3 className={`font-semibold text-lg truncate ${
+                  profile.role === 'superadmin' ? 'text-green-400 font-mono' : 'text-white'
+                }`}>
+                  {isPublic ? (profile.fullName || 'Usuario') : 'Usuario Privado'}
+                </h3>
+                <div className="flex items-center gap-2 mt-1 flex-wrap">
+                  <Badge variant="secondary" className={`text-xs ${
+                    profile.role === 'superadmin' 
+                      ? 'bg-green-500/20 text-green-400 border-green-500/50' 
+                      : 'bg-slate-700 text-slate-300 border-slate-600'
+                  }`}>
+                    {profile.role === 'guest' ? 'Invitado' : 
+                     profile.role === 'worker' ? 'Trabajador' : 
+                     profile.role === 'lawyer' ? 'Abogado' : 
+                     profile.role === 'guestlawyer' ? 'Abogado Invitado' :
+                     profile.role === 'admin' ? 'Admin' : 
+                     profile.role === 'superadmin' ? 'ROOT' : profile.role}
+                  </Badge>
+                  {/* Codigo de referido visible solo si es publico */}
+                  {isPublic && (
+                    <button
+                      onClick={handleCopyCode}
+                      className={`flex items-center gap-1 font-mono text-xs transition-colors ${
+                        profile.role === 'superadmin'
+                          ? 'text-green-500/70 hover:text-green-400'
+                          : 'text-slate-400 hover:text-white'
+                      }`}
+                      title="Copiar codigo de referido"
+                    >
+                      <span>{profile.codigoUsuario}</span>
+                      {copied ? (
+                        <Check className="w-3 h-3 text-green-400" />
+                      ) : (
+                        <Copy className="w-3 h-3" />
+                      )}
+                    </button>
+                  )}
+                </div>
+              </div>
             </div>
-          </CardContent>
+
+            {/* Switch de modo publico/privado */}
+            <div className={`mt-4 flex items-center justify-between p-3 rounded-lg ${
+              profile.role === 'superadmin'
+                ? 'bg-green-500/10 border border-green-500/30'
+                : 'bg-slate-700/50'
+            }`}>
+              <div className="flex items-center gap-2">
+                {isPublic ? (
+                  <Eye className={`w-4 h-4 ${profile.role === 'superadmin' ? 'text-green-400' : 'text-green-400'}`} />
+                ) : (
+                  <EyeOff className="w-4 h-4 text-slate-400" />
+                )}
+                <span className={`text-sm ${
+                  profile.role === 'superadmin' ? 'text-green-400/80 font-mono' : 'text-slate-300'
+                }`}>
+                  {profile.role === 'superadmin' 
+                    ? `PROFILE.visibility = "${isPublic ? 'PUBLIC' : 'PRIVATE'}"`
+                    : `Perfil ${isPublic ? 'Publico' : 'Privado'}`
+                  }
+                </span>
+              </div>
+              <Switch
+                checked={isPublic}
+                onCheckedChange={handlePublicModeChange}
+                disabled={savingPublic}
+                className="data-[state=checked]:bg-green-500"
+              />
+            </div>
+          </div>
         </Card>
 
         {/* 3. DATOS PERSONALES (de INE/OCR) */}
