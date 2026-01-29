@@ -140,12 +140,23 @@ export default function AbogadoDashboardPage() {
       </header>
 
       <main className="container px-4 py-6 space-y-6 max-w-5xl">
-        {/* Perfil */}
-        <Card>
+        {/* Perfil con Avatar de Abogado */}
+        <Card className="overflow-hidden">
           <CardContent className="p-4 sm:p-6">
             <div className="flex items-center gap-4">
-              <div className="w-16 h-16 rounded-full bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center text-white text-xl font-bold">
-                {displayName.charAt(0).toUpperCase()}
+              {/* Avatar de abogado profesional */}
+              <div className={`relative w-16 h-16 sm:w-20 sm:h-20 rounded-full overflow-hidden ${
+                isVerified 
+                  ? 'ring-2 ring-blue-500 ring-offset-2' 
+                  : 'ring-2 ring-gray-300 ring-offset-2'
+              }`}>
+                <Image
+                  src={lawyerProfile?.photo_url || '/avatars/lawyer-default.jpg'}
+                  alt={displayName}
+                  fill
+                  className="object-cover"
+                  priority
+                />
               </div>
               <div className="flex-1 min-w-0">
                 <h1 className="text-lg sm:text-xl font-bold truncate">{displayName}</h1>

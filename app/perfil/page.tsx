@@ -339,6 +339,10 @@ export default function PerfilPage() {
   const getAvatarSrc = () => {
     if (profile?.avatarUrl) return profile.avatarUrl
     if (profile?.role === 'superadmin') return '/avatars/superadmin-avatar.jpg'
+    // Avatar de abogado para roles de abogado (lawyer, admin, guestlawyer)
+    if (profile?.role === 'lawyer' || profile?.role === 'admin' || profile?.role === 'guestlawyer') {
+      return '/avatars/lawyer-default.jpg'
+    }
     return '/avatars/default-user-avatar.jpg'
   }
 
