@@ -114,7 +114,8 @@ export interface UsuarioPrueba {
   monto_liquidacion: number
 }
 
-export function generarUsuarioPrueba(estado: string, sesionId: string): UsuarioPrueba {
+// Funcion interna sincrona (no Server Action)
+function generarUsuarioPruebaSync(estado: string, sesionId: string): UsuarioPrueba {
   const sexo = Math.random() > 0.5 ? 'H' : 'M'
   const nombre = randomItem(NOMBRES)
   const apellidoP = randomItem(APELLIDOS_P)
@@ -174,6 +175,9 @@ export function generarUsuarioPrueba(estado: string, sesionId: string): UsuarioP
     monto_liquidacion: montoLiquidacion
   }
 }
+
+// Alias para uso interno
+const generarUsuarioPrueba = generarUsuarioPruebaSync
 
 export async function iniciarSesionDiagnostico(ejecutadoPor: string): Promise<{ sesionId: string; error?: string }> {
   const supabase = await createClient()

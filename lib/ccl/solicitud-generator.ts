@@ -1,19 +1,26 @@
+'use server'
+
 import { createClient } from '@/lib/supabase/server'
 import { 
-  calcularPrescripcion, 
+  calcularPrescripcion as calcularPrescripcionSync, 
+  ESTADOS_MEXICO as ESTADOS,
   type DatosCasoSolicitud, 
   type ResultadoSolicitud,
   type TipoTerminacion 
 } from './solicitud-utils'
 
-// Re-exportar tipos y funciones puras desde el archivo de utilidades
-export { 
-  calcularPrescripcion,
-  ESTADOS_MEXICO,
-  type TipoTerminacion,
-  type DatosCasoSolicitud,
-  type ResultadoSolicitud
-} from './solicitud-utils'
+// Re-exportar solo tipos (permitido en 'use server')
+export type { TipoTerminacion, DatosCasoSolicitud, ResultadoSolicitud }
+
+// Wrapper async para obtener estados (requerido por 'use server')
+export async function getEstadosMexico() {
+  return ESTADOS
+}
+
+// Wrapper async para la funcion sincrona (requerido por 'use server')
+export async function calcularPrescripcion(tipoTerminacion: TipoTerminacion, fechaTerminacion: string) {
+  return calcularPrescripcionSync(tipoTerminacion, fechaTerminacion)
+}
 
 // Obtener portal CCL por estado
 export async function obtenerPortalCCL(estado: string) {
