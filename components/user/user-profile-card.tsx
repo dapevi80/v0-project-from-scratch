@@ -164,9 +164,13 @@ export function UserProfileCard({
                     role === 'admin' ? 'Admin' : 
                     role === 'superadmin' ? 'SuperAdmin' : role
 
-  // Determinar avatar segun rol
+  // Determinar avatar segun modo publico/privado
   const getAvatarSrc = () => {
+    // Si el perfil es privado, mostrar avatar anonimo con antifaz
+    if (!isPublic) return '/avatars/anonymous-user.jpg'
+    // Si tiene avatar personalizado, usarlo
     if (avatarUrl) return avatarUrl
+    // Avatar por defecto segun rol
     if (role === 'superadmin') return '/avatars/superadmin-avatar.jpg'
     return '/avatars/default-user-avatar.jpg'
   }
@@ -188,11 +192,11 @@ export function UserProfileCard({
         {/* Header con gradiente y avatar */}
         <div className="bg-gradient-to-br from-slate-800 to-slate-900 p-4 relative">
           <div className="flex items-center gap-4">
-            {/* Avatar con imagen */}
-            <div className={`relative w-14 h-14 rounded-full overflow-hidden ${getAvatarBorderClass()}`}>
+            {/* Avatar con imagen - Muestra anonimo si es privado */}
+            <div className={`relative w-16 h-16 rounded-full overflow-hidden ${getAvatarBorderClass()} ${!isPublic ? 'ring-slate-500 ring-offset-slate-900' : ''}`}>
               <Image
                 src={getAvatarSrc() || "/placeholder.svg"}
-                alt="Avatar"
+                alt={isPublic ? "Avatar" : "Modo Anonimo"}
                 fill
                 className="object-cover"
                 priority
@@ -200,32 +204,48 @@ export function UserProfileCard({
             </div>
             
             <div className="flex-1 min-w-0">
-              {/* Nombre visible solo si es publico o es el propio usuario */}
+              {/* Nombre visible solo si es publico */}
               <h3 className="text-white font-semibold truncate text-lg">
-                {isPublic ? displayName : 'Usuario Privado'}
+                {isPublic ? displayName : 'Usuario Anonimo'}
               </h3>
               <div className="flex items-center gap-2 mt-1">
-                <Badge variant="secondary" className="bg-slate-700 text-slate-300 border-slate-600 text-xs">
-                  {roleLabel}
+                <Badge variant="secondary" className={`text-xs ${!isPublic ? 'bg-slate-600 text-slate-400 border-slate-500' : 'bg-slate-700 text-slate-300 border-slate-600'}`}>
+                  {!isPublic ? 'Incognito' : roleLabel}
                 </Badge>
-                {/* Codigo de referido visible solo si es publico */}
-                {isPublic && (
-                  <button
-                    onClick={handleCopyCode}
-                    className="flex items-center gap-1 font-mono text-xs text-slate-400 hover:text-white transition-colors"
-                    title="Copiar codigo de referido"
-                  >
-                    <span>{codigo}</span>
-                    {copied ? (
-                      <Check className="w-3 h-3 text-green-400" />
-                    ) : (
-                      <Copy className="w-3 h-3" />
-                    )}
-                  </button>
-                )}
               </div>
             </div>
           </div>
+
+          {/* CODIGO DE REFERIDO - Grande y visible para compartir */}
+          {isPublic && (
+            <div className="mt-4 p-3 rounded-xl bg-gradient-to-r from-emerald-600/20 to-green-600/20 border border-emerald-500/30">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-xs text-emerald-400 font-medium uppercase tracking-wide">Tu Codigo de Referido</p>
+                  <p className="text-2xl font-bold font-mono text-white tracking-wider mt-1">{codigo}</p>
+                </div>
+                <Button
+                  onClick={handleCopyCode}
+                  variant="outline"
+                  size="sm"
+                  className="bg-emerald-500/20 border-emerald-500/50 text-emerald-400 hover:bg-emerald-500/30 hover:text-white"
+                >
+                  {copied ? (
+                    <>
+                      <Check className="w-4 h-4 mr-1" />
+                      Copiado
+                    </>
+                  ) : (
+                    <>
+                      <Copy className="w-4 h-4 mr-1" />
+                      Copiar
+                    </>
+                  )}
+                </Button>
+              </div>
+              <p className="text-xs text-slate-400 mt-2">Comparte este codigo y gana recompensas</p>
+            </div>
+          )}
 
           {/* Switch de modo publico/privado */}
           <div className="mt-3 flex items-center justify-between p-2 rounded-lg bg-slate-700/50">
@@ -233,10 +253,10 @@ export function UserProfileCard({
               {isPublic ? (
                 <Eye className="w-4 h-4 text-green-400" />
               ) : (
-                <EyeOff className="w-4 h-4 text-slate-400" />
+                <EyeOff className="w-4 h-4 text-amber-400" />
               )}
               <span className="text-xs text-slate-300">
-                Perfil {isPublic ? 'Publico' : 'Privado'}
+                {isPublic ? 'Perfil Publico' : 'Modo Incognito (navegando anonimo)'}
               </span>
             </div>
             <Switch

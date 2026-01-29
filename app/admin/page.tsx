@@ -151,6 +151,7 @@ export default function AdminDashboardPage() {
     { name: 'Wallet', href: '/admin/wallet', emoji: '🪙', description: 'Fichas y recargas' },
     { name: 'Reportes', href: '/admin/reportes', emoji: '📊', description: 'Analytics' },
     { name: 'Config', href: '/admin/config', emoji: '⚙️', description: 'Sistema' },
+    { name: 'C:/', href: '/admin/terminal', symbol: true, description: 'Terminal modo' },
   ]
 
   return (
@@ -308,15 +309,25 @@ export default function AdminDashboardPage() {
             <h2 className="text-sm font-medium mb-3 px-1 text-green-500 font-mono flex items-center gap-2">
               <span className="animate-pulse">{'>'}</span> ROOT_ACCESS
             </h2>
-            <div className="grid grid-cols-3 gap-2">
+            <div className="grid grid-cols-4 gap-2">
               {superAdminTools.map((tool) => (
                 <Link key={tool.name} href={tool.href}>
-                  <Card className="h-full transition-all cursor-pointer bg-green-950/50 border-green-600 hover:border-green-400 hover:bg-green-900/50 hover:shadow-[0_0_15px_rgba(0,255,0,0.3)]">
+                  <Card className={`h-full transition-all cursor-pointer ${
+                    'symbol' in tool && tool.symbol
+                      ? 'bg-black border-green-400 hover:border-green-300 hover:shadow-[0_0_20px_rgba(0,255,0,0.4)]'
+                      : 'bg-green-950/50 border-green-600 hover:border-green-400 hover:bg-green-900/50 hover:shadow-[0_0_15px_rgba(0,255,0,0.3)]'
+                  }`}>
                     <CardContent className="p-3 flex flex-col items-center text-center gap-1">
-                      <span className="text-xl">{tool.emoji}</span>
-                      <p className="font-mono font-medium text-[10px] text-green-300">
-                        {tool.name}
-                      </p>
+                      {'symbol' in tool && tool.symbol ? (
+                        <span className="text-xl font-mono font-bold text-green-400">{tool.name}</span>
+                      ) : (
+                        <>
+                          <span className="text-xl">{tool.emoji}</span>
+                          <p className="font-mono font-medium text-[10px] text-green-300">
+                            {tool.name}
+                          </p>
+                        </>
+                      )}
                     </CardContent>
                   </Card>
                 </Link>
