@@ -342,12 +342,19 @@ export default function LeadsTinderPage() {
               </div>
             </div>
             
-            {/* Creditos */}
-            <div className="flex items-center gap-1.5 px-3 py-1.5 bg-gradient-to-r from-amber-50 to-yellow-50 border border-amber-200 rounded-full">
-              <Coins className="w-4 h-4 text-amber-600" />
-              <span className="font-bold text-amber-700">{creditos}</span>
-              <span className="text-xs text-amber-600">MXN</span>
-            </div>
+            {/* Creditos - SuperAdmin tiene ilimitado */}
+            {userRole === 'superadmin' ? (
+              <div className="flex items-center gap-1.5 px-3 py-1.5 bg-gradient-to-r from-emerald-50 to-teal-50 border border-emerald-200 rounded-full">
+                <Sparkles className="w-4 h-4 text-emerald-600" />
+                <span className="font-bold text-emerald-700">Ilimitado</span>
+              </div>
+            ) : (
+              <div className="flex items-center gap-1.5 px-3 py-1.5 bg-gradient-to-r from-amber-50 to-yellow-50 border border-amber-200 rounded-full">
+                <Coins className="w-4 h-4 text-amber-600" />
+                <span className="font-bold text-amber-700">{creditos}</span>
+                <span className="text-xs text-amber-600">MXN</span>
+              </div>
+            )}
           </div>
         </div>
       </header>
@@ -458,8 +465,18 @@ export default function LeadsTinderPage() {
                           <div className="w-12 h-12 rounded-full bg-white/10 flex items-center justify-center mx-auto mb-2">
                             <User className="w-6 h-6 text-white/70" />
                           </div>
-                          <div className="text-sm font-medium text-white/80">Trabajador</div>
-                          <div className="text-xs text-emerald-300 font-mono">#{currentLead.codigo_usuario || 'XXXXXX'}</div>
+                          {/* SuperAdmin ve nombre completo, otros ven codigo */}
+                          {userRole === 'superadmin' ? (
+                            <>
+                              <div className="text-sm font-medium text-white">{currentLead.nombre_trabajador || 'Sin nombre'}</div>
+                              <div className="text-xs text-emerald-300">{currentLead.telefono || 'Sin tel.'}</div>
+                            </>
+                          ) : (
+                            <>
+                              <div className="text-sm font-medium text-white/80">Trabajador</div>
+                              <div className="text-xs text-emerald-300 font-mono">#{currentLead.codigo_usuario || 'XXXXXX'}</div>
+                            </>
+                          )}
                         </div>
                         
                         <div className="px-3">
@@ -530,24 +547,57 @@ export default function LeadsTinderPage() {
                         </div>
                       </div>
 
-                      {/* Datos bloqueados */}
-                      <div className="relative p-3 bg-slate-100 rounded-lg border-2 border-dashed border-slate-300">
-                        <div className="absolute inset-0 backdrop-blur-sm bg-white/70 rounded-lg flex flex-col items-center justify-center">
-                          <Lock className="w-6 h-6 text-slate-400 mb-1" />
-                          <span className="text-xs font-medium text-slate-500">Contacto bloqueado</span>
-                          <span className="text-[10px] text-slate-400">${COSTO_DESBLOQUEO} MXN para desbloquear</span>
-                        </div>
-                        <div className="space-y-1 opacity-20 select-none text-sm">
-                          <div className="flex items-center gap-2">
-                            <User className="w-3 h-3" />
-                            <span>**** **** ****</span>
+                      {/* Datos de contacto - SuperAdmin ve todo, otros ven bloqueado */}
+                      {userRole === 'superadmin' ? (
+                        <div className="p-4 bg-emerald-50 rounded-lg border border-emerald-200">
+                          <div className="flex items-center gap-2 mb-2">
+                            <Eye className="w-4 h-4 text-emerald-600" />
+                            <span className="text-xs font-medium text-emerald-700">Datos completos (SuperAdmin)</span>
                           </div>
-                          <div className="flex items-center gap-2">
-                            <Phone className="w-3 h-3" />
-                            <span>** ** ** ** **</span>
+                          <div className="space-y-2 text-sm">
+                            <div className="flex items-center gap-2">
+                              <User className="w-4 h-4 text-emerald-600" />
+                              <span className="font-medium">{currentLead.nombre_trabajador || 'Sin nombre'}</span>
+                            </div>
+                            <div className="flex items-center gap-2">
+                              <Phone className="w-4 h-4 text-emerald-600" />
+                              <a href={`tel:${currentLead.telefono}`} className="text-emerald-700 hover:underline">
+                                {currentLead.telefono || 'Sin telefono'}
+                              </a>
+                            </div>
+                            {currentLead.email && (
+                              <div className="flex items-center gap-2">
+                                <span className="w-4 h-4 text-emerald-600 text-xs">@</span>
+                                <a href={`mailto:${currentLead.email}`} className="text-emerald-700 hover:underline">
+                                  {currentLead.email}
+                                </a>
+                              </div>
+                            )}
+                            <div className="flex items-center gap-2 pt-1 border-t border-emerald-200 mt-2">
+                              <Building2 className="w-4 h-4 text-emerald-600" />
+                              <span className="text-slate-600">{currentLead.puesto || 'Sin puesto'}</span>
+                            </div>
                           </div>
                         </div>
-                      </div>
+                      ) : (
+                        <div className="relative p-3 bg-slate-100 rounded-lg border-2 border-dashed border-slate-300">
+                          <div className="absolute inset-0 backdrop-blur-sm bg-white/70 rounded-lg flex flex-col items-center justify-center">
+                            <Lock className="w-6 h-6 text-slate-400 mb-1" />
+                            <span className="text-xs font-medium text-slate-500">Contacto bloqueado</span>
+                            <span className="text-[10px] text-slate-400">${COSTO_DESBLOQUEO} MXN para desbloquear</span>
+                          </div>
+                          <div className="space-y-1 opacity-20 select-none text-sm">
+                            <div className="flex items-center gap-2">
+                              <User className="w-3 h-3" />
+                              <span>**** **** ****</span>
+                            </div>
+                            <div className="flex items-center gap-2">
+                              <Phone className="w-3 h-3" />
+                              <span>** ** ** ** **</span>
+                            </div>
+                          </div>
+                        </div>
+                      )}
 
                       {/* Disclaimer */}
                       <p className="text-[9px] text-slate-400 text-center leading-tight px-2">
