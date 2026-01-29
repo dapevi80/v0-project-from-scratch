@@ -2,9 +2,8 @@
 
 import React from "react"
 
-import { useState, useEffect, useCallback } from 'react'
-import { useChat } from '@ai-sdk/react'
-import { Card, CardContent } from '@/components/ui/card'
+import { useState, useEffect, useCallback, useRef } from 'react'
+import { Card } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Input } from '@/components/ui/input'
@@ -49,6 +48,12 @@ interface CasoInfo {
   estado: string
   tipo_terminacion?: string
   created_at: string
+}
+
+interface Message {
+  id: string
+  role: 'user' | 'assistant'
+  content: string
 }
 
 interface WelcomeAIAssistantProps {
@@ -138,17 +143,10 @@ export function WelcomeAIAssistant({ userId, userProfile, isFirstLogin = false }
   const [welcomeMessage, setWelcomeMessage] = useState<string>('')
   const [hasShownWelcome, setHasShownWelcome] = useState(false)
   
-  const { messages, input, handleInputChange, handleSubmit, isLoading, setMessages } = useChat({
-    api: '/api/legal-assistant',
-    body: {
-      userId,
-      context: {
-        profile: userProfile,
-        documentsCount: documents.length,
-        casosCount: casos.length
-      }
-    }
-  })
+  const [messages, setMessages] = useState<Message[]>([])
+  const [input, setInput] = useState('')
+  const [isLoading, setIsLoading] = useState(false)
+  const scrollRef = useRef<HTMLDivElement>(null)
 
   // Cargar datos del usuario
   const loadUserData = useCallback(async () => {
@@ -190,8 +188,8 @@ export function WelcomeAIAssistant({ userId, userProfile, isFirstLogin = false }
       const sugs = generateSuggestions(userProfile, docs, casosData)
       setSuggestions(sugs)
       
-      // Mostrar automaticamente si es primer login o usuario recurrente
-      if (isFirstLogin || !hasShownWelcome) {
+      // Mostrar automaticamente si es primer login
+      if (isFirstLogin && !hasShownWelcome) {
         setIsOpen(true)
         setHasShownWelcome(true)
         
@@ -216,10 +214,72 @@ export function WelcomeAIAssistant({ userId, userProfile, isFirstLogin = false }
         content: welcomeMessage
       }])
     }
-  }, [welcomeMessage, isOpen, messages.length, setMessages])
+  }, [welcomeMessage, isOpen, messages.length])
+
+  // Scroll al ultimo mensaje
+  useEffect(() => {
+    if (scrollRef.current) {
+      scrollRef.current.scrollTop = scrollRef.current.scrollHeight
+    }
+  }, [messages])
 
   const handleSuggestionClick = (suggestion: string) => {
-    handleInputChange({ target: { value: suggestion } } as React.ChangeEvent<HTMLInputElement>)
+    setInput(suggestion)
+  }
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!input.trim() || isLoading) return
+
+    const userMessage: Message = {
+      id: Date.now().toString(),
+      role: 'user',
+      content: input.trim()
+    }
+
+    setMessages(prev => [...prev, userMessage])
+    setInput('')
+    setIsLoading(true)
+
+    try {
+      const response = await fetch('/api/welcome-assistant', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          messages: [...messages, userMessage].map(m => ({
+            role: m.role,
+            content: m.content
+          })),
+          userContext: {
+            isFirstLogin,
+            isVerified: userProfile.is_verified || userProfile.verification_status === 'verified',
+            role: userProfile.role,
+            documentCount: documents.length,
+            casosActivos: casos.length,
+            documentos: documents.map(d => ({ nombre: d.nombre, tipo: d.tipo })),
+            casos: casos.map(c => ({ estado: c.estado, tipo_terminacion: c.tipo_terminacion }))
+          }
+        })
+      })
+
+      const data = await response.json()
+      
+      const assistantMessage: Message = {
+        id: (Date.now() + 1).toString(),
+        role: 'assistant',
+        content: data.content || 'Lo siento, no pude procesar tu consulta.'
+      }
+
+      setMessages(prev => [...prev, assistantMessage])
+    } catch {
+      setMessages(prev => [...prev, {
+        id: (Date.now() + 1).toString(),
+        role: 'assistant',
+        content: 'Disculpa, hubo un error. Por favor intenta de nuevo.'
+      }])
+    } finally {
+      setIsLoading(false)
+    }
   }
 
   if (!isOpen) {
@@ -247,43 +307,45 @@ export function WelcomeAIAssistant({ userId, userProfile, isFirstLogin = false }
       {/* Header */}
       <div className="flex items-center justify-between p-3 bg-gradient-to-r from-green-500 to-emerald-600 text-white rounded-t-lg">
         <div className="flex items-center gap-2">
-          <div className="relative w-8 h-8 rounded-full overflow-hidden ring-2 ring-white/30">
+          <div className="relative w-8 h-8 rounded-full overflow-hidden border-2 border-white/30">
             <Image
               src="/lia-avatar.jpg"
-              alt="Lia"
+              alt="LIA"
               fill
               className="object-cover"
             />
           </div>
           <div>
-            <h4 className="font-semibold text-sm">Lia - Asistente Legal</h4>
-            <p className="text-xs text-green-100">En linea</p>
+            <h3 className="font-semibold text-sm">LIA - Asistente Legal</h3>
+            <p className="text-xs text-white/80">
+              {isLoading ? 'Escribiendo...' : 'En linea'}
+            </p>
           </div>
         </div>
         <div className="flex items-center gap-1">
-          <Button
-            variant="ghost"
-            size="icon"
-            className="h-8 w-8 text-white hover:bg-white/20"
+          <Button 
+            variant="ghost" 
+            size="icon" 
+            className="h-7 w-7 text-white hover:bg-white/20"
             onClick={() => setIsMinimized(!isMinimized)}
           >
-            {isMinimized ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+            {isMinimized ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
           </Button>
-          <Button
-            variant="ghost"
-            size="icon"
-            className="h-8 w-8 text-white hover:bg-white/20"
+          <Button 
+            variant="ghost" 
+            size="icon" 
+            className="h-7 w-7 text-white hover:bg-white/20"
             onClick={() => setIsOpen(false)}
           >
-            <X className="w-4 h-4" />
+            <X className="h-4 w-4" />
           </Button>
         </div>
       </div>
 
       {!isMinimized && (
-        <CardContent className="p-0 flex flex-col h-[500px]">
-          {/* Mensajes */}
-          <ScrollArea className="flex-1 p-4">
+        <>
+          {/* Messages */}
+          <ScrollArea className="h-[350px] p-4" ref={scrollRef}>
             <div className="space-y-4">
               {messages.map((message) => (
                 <div
@@ -294,13 +356,13 @@ export function WelcomeAIAssistant({ userId, userProfile, isFirstLogin = false }
                   )}
                 >
                   {message.role === 'assistant' && (
-                    <div className="w-8 h-8 rounded-full bg-gradient-to-br from-green-400 to-emerald-500 flex items-center justify-center flex-shrink-0">
-                      <Bot className="w-4 h-4 text-white" />
+                    <div className="w-6 h-6 rounded-full bg-green-100 flex items-center justify-center flex-shrink-0">
+                      <Bot className="w-4 h-4 text-green-600" />
                     </div>
                   )}
                   <div
                     className={cn(
-                      "max-w-[80%] rounded-lg p-3 text-sm",
+                      "max-w-[80%] rounded-lg px-3 py-2 text-sm",
                       message.role === 'user'
                         ? 'bg-green-500 text-white'
                         : 'bg-gray-100 text-gray-800'
@@ -310,33 +372,32 @@ export function WelcomeAIAssistant({ userId, userProfile, isFirstLogin = false }
                   </div>
                 </div>
               ))}
-              
               {isLoading && (
                 <div className="flex gap-2 justify-start">
-                  <div className="w-8 h-8 rounded-full bg-gradient-to-br from-green-400 to-emerald-500 flex items-center justify-center flex-shrink-0">
-                    <Bot className="w-4 h-4 text-white" />
+                  <div className="w-6 h-6 rounded-full bg-green-100 flex items-center justify-center flex-shrink-0">
+                    <Bot className="w-4 h-4 text-green-600" />
                   </div>
-                  <div className="bg-gray-100 rounded-lg p-3">
-                    <Loader2 className="w-4 h-4 animate-spin text-green-500" />
+                  <div className="bg-gray-100 rounded-lg px-3 py-2">
+                    <Loader2 className="w-4 h-4 animate-spin text-green-600" />
                   </div>
                 </div>
               )}
             </div>
           </ScrollArea>
 
-          {/* Sugerencias */}
-          {messages.length <= 1 && suggestions.length > 0 && (
+          {/* Suggestions */}
+          {suggestions.length > 0 && messages.length <= 1 && (
             <div className="px-4 pb-2">
-              <p className="text-xs text-gray-500 mb-2 flex items-center gap-1">
+              <p className="text-xs text-muted-foreground mb-2 flex items-center gap-1">
                 <Lightbulb className="w-3 h-3" />
-                Sugerencias rapidas:
+                Sugerencias
               </p>
-              <div className="flex flex-wrap gap-2">
-                {suggestions.map((suggestion, index) => (
+              <div className="flex flex-wrap gap-1.5">
+                {suggestions.map((suggestion, idx) => (
                   <Badge
-                    key={index}
+                    key={idx}
                     variant="outline"
-                    className="cursor-pointer hover:bg-green-50 hover:border-green-300 transition-colors text-xs"
+                    className="cursor-pointer hover:bg-green-50 hover:border-green-300 text-xs py-1"
                     onClick={() => handleSuggestionClick(suggestion)}
                   >
                     {suggestion}
@@ -346,49 +407,58 @@ export function WelcomeAIAssistant({ userId, userProfile, isFirstLogin = false }
             </div>
           )}
 
-          {/* Indicadores de contexto */}
-          {(documents.length > 0 || casos.length > 0) && messages.length <= 1 && (
-            <div className="px-4 pb-2 flex items-center gap-2 text-xs text-gray-500">
-              {documents.length > 0 && (
-                <span className="flex items-center gap-1 bg-blue-50 text-blue-600 px-2 py-1 rounded">
-                  <FileText className="w-3 h-3" />
-                  {documents.length} docs
-                </span>
-              )}
-              {casos.length > 0 && (
-                <span className="flex items-center gap-1 bg-amber-50 text-amber-600 px-2 py-1 rounded">
-                  <Sparkles className="w-3 h-3" />
-                  {casos.length} caso(s)
-                </span>
-              )}
-            </div>
-          )}
-
           {/* Input */}
           <form onSubmit={handleSubmit} className="p-3 border-t">
             <div className="flex gap-2">
               <Input
                 value={input}
-                onChange={handleInputChange}
+                onChange={(e) => setInput(e.target.value)}
                 placeholder="Escribe tu pregunta..."
-                className="flex-1"
+                className="flex-1 text-sm"
                 disabled={isLoading}
               />
-              <Button 
-                type="submit" 
+              <Button
+                type="submit"
                 size="icon"
-                disabled={isLoading || !input.trim()}
+                disabled={!input.trim() || isLoading}
                 className="bg-green-500 hover:bg-green-600"
               >
-                {isLoading ? (
-                  <Loader2 className="w-4 h-4 animate-spin" />
-                ) : (
-                  <Send className="w-4 h-4" />
-                )}
+                <Send className="w-4 h-4" />
               </Button>
             </div>
           </form>
-        </CardContent>
+
+          {/* Quick Actions */}
+          <div className="px-3 pb-3 flex gap-2 flex-wrap">
+            <Button
+              variant="outline"
+              size="sm"
+              className="text-xs h-7 gap-1 bg-transparent"
+              onClick={() => handleSuggestionClick('Calcular mi liquidacion')}
+            >
+              <Sparkles className="w-3 h-3" />
+              Calcular
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              className="text-xs h-7 gap-1 bg-transparent"
+              onClick={() => handleSuggestionClick('Revisar mis documentos')}
+            >
+              <FileText className="w-3 h-3" />
+              Documentos
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              className="text-xs h-7 gap-1 bg-transparent"
+              onClick={() => handleSuggestionClick('Necesito un abogado')}
+            >
+              <ArrowRight className="w-3 h-3" />
+              Abogado
+            </Button>
+          </div>
+        </>
       )}
     </Card>
   )
