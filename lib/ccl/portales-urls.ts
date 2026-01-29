@@ -25,6 +25,12 @@ export interface PortalCCL {
   url_buzon: string | null
   // Tipo de sistema (SINACOL estándar, SICON Chiapas, o personalizado)
   tipo_sistema: 'sinacol' | 'sicon' | 'cfcrl' | 'custom'
+  /**
+   * Tipo de autenticación para el buzón electrónico:
+   * - 'email_password': Email + Contraseña (portales estatales SINACOL estándar)
+   * - 'curp_folio': CURP + Folio de expediente (Centro Federal CFCRL)
+   */
+  tipo_autenticacion: 'email_password' | 'curp_folio'
   // Si el portal está verificado y funcional
   verificado: boolean
   // Fecha de última verificación
@@ -44,13 +50,14 @@ export const PORTALES_CCL: PortalCCL[] = [
     clave: 'FED',
     nombre_ccl: 'Centro Federal de Conciliación y Registro Laboral',
     url_portal: 'https://conciliacion.centrolaboral.gob.mx',
-    url_login: 'https://conciliacion.centrolaboral.gob.mx/login',
+    url_login: 'https://conciliacion.centrolaboral.gob.mx/solicitud_buzon',
     url_solicitud_publica: 'https://conciliacion.centrolaboral.gob.mx/asesoria/inicio',
-    url_buzon: 'https://conciliacion.centrolaboral.gob.mx/buzon',
+    url_buzon: 'https://conciliacion.centrolaboral.gob.mx/solicitud_buzon',
     tipo_sistema: 'cfcrl',
+    tipo_autenticacion: 'curp_folio', // CURP + Folio de expediente (ej: XXX/CI/2022/000000)
     verificado: true,
     fecha_verificacion: '2026-01-29',
-    notas: 'Jurisdicción federal para industrias específicas (Art. 527 LFT)'
+    notas: 'VERIFICADO: Buzón usa CURP + Folio de expediente. Jurisdicción federal para industrias específicas (Art. 527 LFT): ferrocarriles, petroquímica, electricidad, etc.'
   },
   
   // ==================== ESTADOS ====================
@@ -63,6 +70,7 @@ export const PORTALES_CCL: PortalCCL[] = [
     url_solicitud_publica: 'https://sinacol.aguascalientes.gob.mx/solicitudes/create-public?solicitud=1',
     url_buzon: 'https://sinacol.aguascalientes.gob.mx/buzon',
     tipo_sistema: 'sinacol',
+    tipo_autenticacion: 'email_password',
     verificado: false,
     fecha_verificacion: '2026-01-29'
   },
@@ -75,6 +83,7 @@ export const PORTALES_CCL: PortalCCL[] = [
     url_solicitud_publica: 'https://sinacol.bajacalifornia.gob.mx/solicitudes/create-public?solicitud=1',
     url_buzon: 'https://sinacol.bajacalifornia.gob.mx/buzon',
     tipo_sistema: 'sinacol',
+    tipo_autenticacion: 'email_password',
     verificado: false,
     fecha_verificacion: '2026-01-29'
   },
@@ -87,6 +96,7 @@ export const PORTALES_CCL: PortalCCL[] = [
     url_solicitud_publica: 'https://sinacol.bcs.gob.mx/solicitudes/create-public?solicitud=1',
     url_buzon: 'https://sinacol.bcs.gob.mx/buzon',
     tipo_sistema: 'sinacol',
+    tipo_autenticacion: 'email_password',
     verificado: false,
     fecha_verificacion: '2026-01-29'
   },
@@ -99,6 +109,7 @@ export const PORTALES_CCL: PortalCCL[] = [
     url_solicitud_publica: 'https://sinacol.campeche.gob.mx/solicitudes/create-public?solicitud=1',
     url_buzon: 'https://sinacol.campeche.gob.mx/buzon',
     tipo_sistema: 'sinacol',
+    tipo_autenticacion: 'email_password',
     verificado: false,
     fecha_verificacion: '2026-01-29'
   },
@@ -111,6 +122,7 @@ export const PORTALES_CCL: PortalCCL[] = [
     url_solicitud_publica: 'https://sicon.conciliacionlaboral.chiapas.gob.mx/solicitudes/create-public?solicitud=1',
     url_buzon: 'https://sicon.conciliacionlaboral.chiapas.gob.mx/buzon',
     tipo_sistema: 'sicon',
+    tipo_autenticacion: 'email_password',
     verificado: true,
     fecha_verificacion: '2026-01-29',
     notas: 'Sistema SICON - Interfaz diferente a SINACOL estándar'
@@ -124,6 +136,7 @@ export const PORTALES_CCL: PortalCCL[] = [
     url_solicitud_publica: 'https://sinacol.chihuahua.gob.mx/solicitudes/create-public?solicitud=1',
     url_buzon: 'https://sinacol.chihuahua.gob.mx/buzon',
     tipo_sistema: 'sinacol',
+    tipo_autenticacion: 'email_password',
     verificado: false,
     fecha_verificacion: '2026-01-29'
   },
@@ -136,6 +149,7 @@ export const PORTALES_CCL: PortalCCL[] = [
     url_solicitud_publica: 'https://conciliacion.cdmx.gob.mx/asesoria/seleccion',
     url_buzon: 'https://conciliacion.cdmx.gob.mx/buzon',
     tipo_sistema: 'sinacol',
+    tipo_autenticacion: 'email_password',
     verificado: true,
     fecha_verificacion: '2026-01-29',
     notas: 'Portal ccl.cdmx.gob.mx redirige a conciliacion.cdmx.gob.mx'
@@ -149,6 +163,7 @@ export const PORTALES_CCL: PortalCCL[] = [
     url_solicitud_publica: 'https://sinacol.coahuila.gob.mx/solicitudes/create-public?solicitud=1',
     url_buzon: 'https://sinacol.coahuila.gob.mx/buzon',
     tipo_sistema: 'sinacol',
+    tipo_autenticacion: 'email_password',
     verificado: false,
     fecha_verificacion: '2026-01-29'
   },
@@ -161,6 +176,7 @@ export const PORTALES_CCL: PortalCCL[] = [
     url_solicitud_publica: 'https://sinacol.colima.gob.mx/solicitudes/create-public?solicitud=1',
     url_buzon: 'https://sinacol.colima.gob.mx/buzon',
     tipo_sistema: 'sinacol',
+    tipo_autenticacion: 'email_password',
     verificado: false,
     fecha_verificacion: '2026-01-29'
   },
@@ -173,6 +189,7 @@ export const PORTALES_CCL: PortalCCL[] = [
     url_solicitud_publica: 'https://sinacol.durango.gob.mx/solicitudes/create-public?solicitud=1',
     url_buzon: 'https://sinacol.durango.gob.mx/buzon',
     tipo_sistema: 'sinacol',
+    tipo_autenticacion: 'email_password',
     verificado: false,
     fecha_verificacion: '2026-01-29'
   },
@@ -185,6 +202,7 @@ export const PORTALES_CCL: PortalCCL[] = [
     url_solicitud_publica: 'https://sinacol.edomex.gob.mx/solicitudes/create-public?solicitud=1',
     url_buzon: 'https://sinacol.edomex.gob.mx/buzon',
     tipo_sistema: 'sinacol',
+    tipo_autenticacion: 'email_password',
     verificado: false,
     fecha_verificacion: '2026-01-29'
   },
@@ -197,6 +215,7 @@ export const PORTALES_CCL: PortalCCL[] = [
     url_solicitud_publica: 'https://sinacol.guanajuato.gob.mx/solicitudes/create-public?solicitud=1',
     url_buzon: 'https://sinacol.guanajuato.gob.mx/buzon',
     tipo_sistema: 'sinacol',
+    tipo_autenticacion: 'email_password',
     verificado: false,
     fecha_verificacion: '2026-01-29'
   },
@@ -209,6 +228,7 @@ export const PORTALES_CCL: PortalCCL[] = [
     url_solicitud_publica: 'https://sinacol.guerrero.gob.mx/solicitudes/create-public?solicitud=1',
     url_buzon: 'https://sinacol.guerrero.gob.mx/buzon',
     tipo_sistema: 'sinacol',
+    tipo_autenticacion: 'email_password',
     verificado: false,
     fecha_verificacion: '2026-01-29'
   },
@@ -221,6 +241,7 @@ export const PORTALES_CCL: PortalCCL[] = [
     url_solicitud_publica: 'https://sinacol.hidalgo.gob.mx/solicitudes/create-public?solicitud=1',
     url_buzon: 'https://sinacol.hidalgo.gob.mx/buzon',
     tipo_sistema: 'sinacol',
+    tipo_autenticacion: 'email_password',
     verificado: false,
     fecha_verificacion: '2026-01-29'
   },
@@ -233,6 +254,7 @@ export const PORTALES_CCL: PortalCCL[] = [
     url_solicitud_publica: 'https://sinacol.ccljalisco.gob.mx/solicitudes/create-public?solicitud=1',
     url_buzon: 'https://sinacol.ccljalisco.gob.mx/buzon',
     tipo_sistema: 'sinacol',
+    tipo_autenticacion: 'email_password',
     verificado: true,
     fecha_verificacion: '2026-01-29',
     notas: 'CCL Jalisco con herramientas avanzadas: citas, conciliación remota, calculadora'
@@ -246,6 +268,7 @@ export const PORTALES_CCL: PortalCCL[] = [
     url_solicitud_publica: 'https://sinacol.michoacan.gob.mx/solicitudes/create-public?solicitud=1',
     url_buzon: 'https://sinacol.michoacan.gob.mx/buzon',
     tipo_sistema: 'sinacol',
+    tipo_autenticacion: 'email_password',
     verificado: false,
     fecha_verificacion: '2026-01-29'
   },
@@ -258,6 +281,7 @@ export const PORTALES_CCL: PortalCCL[] = [
     url_solicitud_publica: 'https://sinacol.morelos.gob.mx/solicitudes/create-public?solicitud=1',
     url_buzon: 'https://sinacol.morelos.gob.mx/buzon',
     tipo_sistema: 'sinacol',
+    tipo_autenticacion: 'email_password',
     verificado: false,
     fecha_verificacion: '2026-01-29'
   },
@@ -270,6 +294,7 @@ export const PORTALES_CCL: PortalCCL[] = [
     url_solicitud_publica: 'https://sinacol.nayarit.gob.mx/solicitudes/create-public?solicitud=1',
     url_buzon: 'https://sinacol.nayarit.gob.mx/buzon',
     tipo_sistema: 'sinacol',
+    tipo_autenticacion: 'email_password',
     verificado: false,
     fecha_verificacion: '2026-01-29'
   },
@@ -282,6 +307,7 @@ export const PORTALES_CCL: PortalCCL[] = [
     url_solicitud_publica: 'https://sinacol.nl.gob.mx/solicitudes/create-public?solicitud=1',
     url_buzon: 'https://sinacol.nl.gob.mx/buzon',
     tipo_sistema: 'sinacol',
+    tipo_autenticacion: 'email_password',
     verificado: true,
     fecha_verificacion: '2026-01-29',
     notas: 'Portal SINACOL estándar confirmado'
@@ -295,6 +321,7 @@ export const PORTALES_CCL: PortalCCL[] = [
     url_solicitud_publica: 'https://sinacol.oaxaca.gob.mx/solicitudes/create-public?solicitud=1',
     url_buzon: 'https://sinacol.oaxaca.gob.mx/buzon',
     tipo_sistema: 'sinacol',
+    tipo_autenticacion: 'email_password',
     verificado: false,
     fecha_verificacion: '2026-01-29'
   },
@@ -307,6 +334,7 @@ export const PORTALES_CCL: PortalCCL[] = [
     url_solicitud_publica: 'https://sinacol.puebla.gob.mx/solicitudes/create-public?solicitud=1',
     url_buzon: 'https://sinacol.puebla.gob.mx/buzon',
     tipo_sistema: 'sinacol',
+    tipo_autenticacion: 'email_password',
     verificado: false,
     fecha_verificacion: '2026-01-29'
   },
@@ -319,6 +347,7 @@ export const PORTALES_CCL: PortalCCL[] = [
     url_solicitud_publica: 'https://sinacol.queretaro.gob.mx/solicitudes/create-public?solicitud=1',
     url_buzon: 'https://sinacol.queretaro.gob.mx/buzon',
     tipo_sistema: 'sinacol',
+    tipo_autenticacion: 'email_password',
     verificado: false,
     fecha_verificacion: '2026-01-29'
   },
@@ -331,6 +360,7 @@ export const PORTALES_CCL: PortalCCL[] = [
     url_solicitud_publica: 'https://cclqroo.qroo.gob.mx/solicitudes/create-public?solicitud=1',
     url_buzon: 'https://conciliacion.cclqroo.gob.mx/buzon',
     tipo_sistema: 'sinacol',
+    tipo_autenticacion: 'email_password',
     verificado: true,
     fecha_verificacion: '2026-01-29',
     notas: 'URL de login VERIFICADA: conciliacion.cclqroo.gob.mx/login - Versión 12.8.2'
@@ -344,6 +374,7 @@ export const PORTALES_CCL: PortalCCL[] = [
     url_solicitud_publica: 'https://sinacol.slp.gob.mx/solicitudes/create-public?solicitud=1',
     url_buzon: 'https://sinacol.slp.gob.mx/buzon',
     tipo_sistema: 'sinacol',
+    tipo_autenticacion: 'email_password',
     verificado: false,
     fecha_verificacion: '2026-01-29'
   },
@@ -356,6 +387,7 @@ export const PORTALES_CCL: PortalCCL[] = [
     url_solicitud_publica: 'https://sinacol.sinaloa.gob.mx/solicitudes/create-public?solicitud=1',
     url_buzon: 'https://sinacol.sinaloa.gob.mx/buzon',
     tipo_sistema: 'sinacol',
+    tipo_autenticacion: 'email_password',
     verificado: false,
     fecha_verificacion: '2026-01-29'
   },
@@ -368,6 +400,7 @@ export const PORTALES_CCL: PortalCCL[] = [
     url_solicitud_publica: 'https://sinacol.sonora.gob.mx/solicitudes/create-public?solicitud=1',
     url_buzon: 'https://sinacol.sonora.gob.mx/buzon',
     tipo_sistema: 'sinacol',
+    tipo_autenticacion: 'email_password',
     verificado: false,
     fecha_verificacion: '2026-01-29'
   },
@@ -380,6 +413,7 @@ export const PORTALES_CCL: PortalCCL[] = [
     url_solicitud_publica: 'https://sinacol.tabasco.gob.mx/solicitudes/create-public?solicitud=1',
     url_buzon: 'https://sinacol.tabasco.gob.mx/buzon',
     tipo_sistema: 'sinacol',
+    tipo_autenticacion: 'email_password',
     verificado: false,
     fecha_verificacion: '2026-01-29'
   },
@@ -392,6 +426,7 @@ export const PORTALES_CCL: PortalCCL[] = [
     url_solicitud_publica: 'https://sinacol.tamaulipas.gob.mx/solicitudes/create-public?solicitud=1',
     url_buzon: 'https://sinacol.tamaulipas.gob.mx/buzon',
     tipo_sistema: 'sinacol',
+    tipo_autenticacion: 'email_password',
     verificado: false,
     fecha_verificacion: '2026-01-29'
   },
@@ -404,6 +439,7 @@ export const PORTALES_CCL: PortalCCL[] = [
     url_solicitud_publica: 'https://sinacol.tlaxcala.gob.mx/solicitudes/create-public?solicitud=1',
     url_buzon: 'https://sinacol.tlaxcala.gob.mx/buzon',
     tipo_sistema: 'sinacol',
+    tipo_autenticacion: 'email_password',
     verificado: false,
     fecha_verificacion: '2026-01-29'
   },
@@ -416,6 +452,7 @@ export const PORTALES_CCL: PortalCCL[] = [
     url_solicitud_publica: 'https://sinacol.veracruz.gob.mx/solicitudes/create-public?solicitud=1',
     url_buzon: 'https://sinacol.veracruz.gob.mx/buzon',
     tipo_sistema: 'sinacol',
+    tipo_autenticacion: 'email_password',
     verificado: true,
     fecha_verificacion: '2026-01-29',
     notas: 'Portal verificado en búsqueda web'
@@ -429,6 +466,7 @@ export const PORTALES_CCL: PortalCCL[] = [
     url_solicitud_publica: 'https://concilialaboral.yucatan.gob.mx/solicitudes/create-public?solicitud=1',
     url_buzon: 'https://concilialaboral.yucatan.gob.mx/buzon',
     tipo_sistema: 'sinacol',
+    tipo_autenticacion: 'email_password',
     verificado: true,
     fecha_verificacion: '2026-01-29',
     notas: 'Portal verificado en búsqueda web'
@@ -442,6 +480,7 @@ export const PORTALES_CCL: PortalCCL[] = [
     url_solicitud_publica: 'https://sinacol.zacatecas.gob.mx/solicitudes/create-public?solicitud=1',
     url_buzon: 'https://sinacol.zacatecas.gob.mx/buzon',
     tipo_sistema: 'sinacol',
+    tipo_autenticacion: 'email_password',
     verificado: false,
     fecha_verificacion: '2026-01-29'
   }

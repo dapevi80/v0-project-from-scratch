@@ -6,14 +6,17 @@ import { Alert, AlertDescription } from '@/components/ui/alert'
 import { 
   Bot, Shield, Key, Mail, Lock, Database, 
   CheckCircle, ArrowRight, User, FileText, 
-  Eye, EyeOff, Zap, Clock, AlertTriangle
+  EyeOff, Zap, AlertTriangle, Building2, Globe
 } from 'lucide-react'
+import { getPortalByEstado, type PortalCCL } from '@/lib/ccl/portales-urls'
 
 interface ProcesoAutomatizadoProps {
   estado?: string
   isAuthorized?: boolean
   emailGenerado?: string
   folioGenerado?: string
+  curp?: string
+  esFederal?: boolean
 }
 
 /**
@@ -24,8 +27,14 @@ export function SinacolProcesoAutomatizado({
   estado = 'Quintana Roo',
   isAuthorized = false,
   emailGenerado,
-  folioGenerado
+  folioGenerado,
+  curp,
+  esFederal = false
 }: ProcesoAutomatizadoProps) {
+  // Obtener información del portal
+  const portal = getPortalByEstado(esFederal ? 'Federal' : estado)
+  const tipoAuth = portal?.tipo_autenticacion || 'email_password'
+  const esAutenticacionCurpFolio = tipoAuth === 'curp_folio'
   return (
     <Card className="border-2 border-blue-200 dark:border-blue-800">
       <CardHeader className="bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-950/50 dark:to-indigo-950/50">
@@ -220,22 +229,65 @@ export function SinacolProcesoAutomatizado({
         {/* Portal de acceso */}
         <div className="p-4 bg-gradient-to-r from-slate-100 to-slate-50 dark:from-slate-900 dark:to-slate-800 rounded-lg border">
           <div className="flex items-center gap-3 mb-3">
-            <div className="p-2 bg-teal-600 rounded">
-              <ArrowRight className="h-4 w-4 text-white" />
+            <div className={`p-2 rounded ${esFederal ? 'bg-red-700' : 'bg-teal-600'}`}>
+              {esFederal ? <Building2 className="h-4 w-4 text-white" /> : <Globe className="h-4 w-4 text-white" />}
             </div>
             <div>
-              <h5 className="font-semibold">Portal de Acceso SINACOL - {estado}</h5>
-              <p className="text-xs text-muted-foreground">URL verificada y funcional</p>
+              <h5 className="font-semibold">
+                {esFederal 
+                  ? 'Centro Federal de Conciliación y Registro Laboral' 
+                  : `Portal SINACOL - ${estado}`
+                }
+              </h5>
+              <p className="text-xs text-muted-foreground">
+                {portal?.verificado ? 'URL verificada y funcional' : 'URL pendiente de verificación'}
+              </p>
             </div>
+            <Badge variant={esFederal ? 'destructive' : 'default'} className="ml-auto">
+              {esFederal ? 'Federal' : 'Estatal'}
+            </Badge>
           </div>
-          <div className="p-3 bg-white dark:bg-slate-950 rounded border font-mono text-sm break-all">
-            {estado === 'Quintana Roo' 
-              ? 'https://conciliacion.cclqroo.gob.mx/login'
-              : `https://sinacol.${estado.toLowerCase().replace(/ /g, '')}.gob.mx/login`
-            }
+          
+          <div className="p-3 bg-white dark:bg-slate-950 rounded border font-mono text-sm break-all mb-3">
+            {portal?.url_login || `https://sinacol.${estado.toLowerCase().replace(/ /g, '')}.gob.mx/login`}
           </div>
-          <p className="text-xs text-muted-foreground mt-2">
-            El agente inteligente accede a este portal para crear la cuenta y gestionar el caso del trabajador.
+
+          {/* Tipo de autenticación */}
+          <div className={`p-3 rounded-lg border ${esAutenticacionCurpFolio ? 'bg-amber-50 dark:bg-amber-950/30 border-amber-200 dark:border-amber-800' : 'bg-blue-50 dark:bg-blue-950/30 border-blue-200 dark:border-blue-800'}`}>
+            <div className="flex items-center gap-2 mb-2">
+              <Key className={`h-4 w-4 ${esAutenticacionCurpFolio ? 'text-amber-600' : 'text-blue-600'}`} />
+              <span className="font-medium text-sm">
+                Tipo de Autenticación: {esAutenticacionCurpFolio ? 'CURP + Folio de Expediente' : 'Email + Contraseña'}
+              </span>
+            </div>
+            
+            {esAutenticacionCurpFolio ? (
+              <div className="text-xs text-muted-foreground space-y-1">
+                <p>El <strong>Portal Federal</strong> requiere:</p>
+                <ul className="list-disc list-inside ml-2 space-y-1">
+                  <li><strong>CURP:</strong> {curp || 'Se obtiene del trabajador'}</li>
+                  <li><strong>Folio de expediente:</strong> Formato XXX/CI/2026/000000</li>
+                </ul>
+                <p className="mt-2 text-amber-700 dark:text-amber-400">
+                  El buzón electrónico del CFCRL no usa contraseña tradicional, sino CURP + Folio.
+                </p>
+              </div>
+            ) : (
+              <div className="text-xs text-muted-foreground space-y-1">
+                <p>Los <strong>Portales Estatales SINACOL</strong> requieren:</p>
+                <ul className="list-disc list-inside ml-2 space-y-1">
+                  <li><strong>Email:</strong> Generado automáticamente por MeCorrieron</li>
+                  <li><strong>Contraseña:</strong> Generada aleatoriamente (solo visible para Superadmin)</li>
+                </ul>
+                <p className="mt-2 text-blue-700 dark:text-blue-400">
+                  El agente crea la cuenta automáticamente con las credenciales generadas.
+                </p>
+              </div>
+            )}
+          </div>
+
+          <p className="text-xs text-muted-foreground mt-3">
+            {portal?.notas || 'El agente inteligente accede a este portal para crear la cuenta y gestionar el caso del trabajador.'}
           </p>
         </div>
 
