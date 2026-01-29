@@ -242,11 +242,12 @@ export default function CasoDetallePage() {
         
         {/* Tabs */}
         <Tabs value={activeTab} onValueChange={setActiveTab}>
-          <TabsList className="w-full grid grid-cols-5">
+          <TabsList className="w-full grid grid-cols-6">
             <TabsTrigger value="resumen">Resumen</TabsTrigger>
             <TabsTrigger value="trabajador">Trabajador</TabsTrigger>
             <TabsTrigger value="conciliacion">Conciliación</TabsTrigger>
             <TabsTrigger value="audiencias">Audiencias</TabsTrigger>
+            <TabsTrigger value="ccl">Portal CCL</TabsTrigger>
             <TabsTrigger value="historial">Historial</TabsTrigger>
           </TabsList>
           

@@ -13,6 +13,44 @@ import { createClient } from '@/lib/supabase/client'
 import { MatrixRain } from '@/components/ui/matrix-rain'
 import { PORTALES_CCL, generarPasswordCCL, generarEmailCCL } from '@/lib/ccl/account-service'
 
+interface DatosTrabajador {
+  nombre_completo: string
+  curp: string
+  rfc: string
+  fecha_nacimiento: string
+  sexo: 'H' | 'M'
+  email_personal: string
+  telefono: string
+  direccion: string
+  ciudad: string
+  codigo_postal: string
+  empresa_nombre: string
+  puesto: string
+  salario_diario: number
+  fecha_ingreso: string
+  fecha_despido: string
+}
+
+// Helper function to call CCL account creation API
+async function crearCuentaCCLAPI(
+  estado: string,
+  datosTrabajador: DatosTrabajador,
+  opciones?: {
+    userId?: string
+    casoId?: string
+    cotizacionId?: string
+    esPrueba?: boolean
+    sesionDiagnosticoId?: string
+  }
+) {
+  const response = await fetch('/api/ccl/create-account', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ estado, datosTrabajador, opciones })
+  })
+  return response.json()
+}
+
 const ESTADOS_MEXICO = [
   // 32 Centros Estatales
   'Aguascalientes', 'Baja California', 'Baja California Sur', 'Campeche', 'Chiapas',
@@ -553,8 +591,85 @@ export default function CCLDiagnosticoPage() {
         }
       }
       
-      // Generar folio si fue exitoso
-      const folio = finalStatus === 'exito' ? generarFolio(estadoActual) : ''
+      // Si fue exitoso, crear cuenta real en la base de datos
+      let cuentaCCLData: Resultado['cuentaCCL'] | undefined = undefined
+      let folio = ''
+      
+      if (finalStatus === 'exito') {
+        // Obtener datos del trabajador ficticio ya generados
+        const resultadoActual = resultados.find(r => r.estado === estadoActual)
+        const datosTrabajadorPrueba: DatosTrabajador = {
+          nombre_completo: resultadoActual?.cuentaCCL?.nombreTrabajador || 'Juan Perez Garcia',
+          curp: resultadoActual?.cuentaCCL?.curp || 'PEGJ800101HDFRRS09',
+          rfc: 'PEGJ800101XXX',
+          fecha_nacimiento: '1980-01-01',
+          sexo: 'H',
+          email_personal: 'prueba@mecorrieron.mx',
+          telefono: '5551234567',
+          direccion: 'Av. Reforma 123',
+          ciudad: estadoActual,
+          codigo_postal: '06600',
+          empresa_nombre: 'Empresa de Prueba SA de CV',
+          puesto: 'Empleado General',
+          salario_diario: 500,
+          fecha_ingreso: '2020-01-15',
+          fecha_despido: '2025-01-15'
+        }
+        
+        try {
+          // Crear cuenta real en el portal CCL (simulada pero guardada en DB)
+          const resultadoCuenta = await crearCuentaCCLAPI(
+            estadoActual,
+            datosTrabajadorPrueba,
+            {
+              esPrueba: true,
+              sesionDiagnosticoId: `diag-${Date.now()}`
+            }
+          )
+          
+          if (resultadoCuenta.exito) {
+            folio = resultadoCuenta.folio || ''
+            cuentaCCLData = {
+              email: resultadoCuenta.email_portal || '',
+              password: resultadoCuenta.password_portal || '',
+              urlLogin: resultadoCuenta.url_login || '',
+              urlBuzon: resultadoCuenta.url_buzon || '',
+              curp: datosTrabajadorPrueba.curp,
+              nombreTrabajador: datosTrabajadorPrueba.nombre_completo
+            }
+          } else if (resultadoCuenta.requiereCaptcha) {
+            // CAPTCHA detectado - marcar como parcial
+            finalStatus = 'parcial'
+            errorData = {
+              errorType: 'captcha',
+              errorMessage: resultadoCuenta.error || 'CAPTCHA detectado',
+              accionSugerida: 'Resolver CAPTCHA manualmente en el portal',
+              errorDetallado: {
+                tipo: 'captcha',
+                codigo: 'CAPTCHA_REQUIRED',
+                descripcion: 'El portal requiere resolver un CAPTCHA para completar el registro',
+                timestamp: new Date().toISOString(),
+                intentos: 1
+              }
+            }
+            cuentaCCLData = {
+              email: resultadoCuenta.email_portal || '',
+              password: resultadoCuenta.password_portal || '',
+              urlLogin: resultadoCuenta.url_login || '',
+              urlBuzon: resultadoCuenta.captchaUrl || '',
+              curp: datosTrabajadorPrueba.curp,
+              nombreTrabajador: datosTrabajadorPrueba.nombre_completo
+            }
+          } else {
+            folio = generarFolio(estadoActual)
+            cuentaCCLData = resultadoActual?.cuentaCCL
+          }
+        } catch (err) {
+          // Error al crear cuenta - usar folio local
+          folio = generarFolio(estadoActual)
+          cuentaCCLData = resultadoActual?.cuentaCCL
+        }
+      }
       
       // Actualizar resultado final del estado
       setResultados(prev => prev.map((r, idx) => 
@@ -571,7 +686,8 @@ export default function CCLDiagnosticoPage() {
           folioGenerado: folio,
           pasoDetenido,
           pasos: pasosActualizados,
-          errorDetallado: errorData?.errorDetallado || null
+          errorDetallado: errorData?.errorDetallado || null,
+          cuentaCCL: cuentaCCLData || r.cuentaCCL
         } : r
       ))
       
@@ -603,6 +719,8 @@ export default function CCLDiagnosticoPage() {
   const reintentarEstado = async (estado: string) => {
     const idx = resultados.findIndex(r => r.estado === estado)
     if (idx === -1) return
+    
+    const resultadoActual = resultados[idx]
 
     // Reiniciar pasos
     const pasosReiniciados = crearPasosIniciales()
@@ -631,7 +749,48 @@ export default function CCLDiagnosticoPage() {
       }
     }
 
-    const folio = exitoso ? generarFolio(estado) : ''
+    let folio = ''
+    let cuentaCCLData = resultadoActual.cuentaCCL
+    
+    if (exitoso && resultadoActual.cuentaCCL) {
+      // Crear cuenta real
+      const datosTrabajador: DatosTrabajador = {
+        nombre_completo: resultadoActual.cuentaCCL.nombreTrabajador,
+        curp: resultadoActual.cuentaCCL.curp,
+        rfc: resultadoActual.cuentaCCL.curp.slice(0, 10) + 'XXX',
+        fecha_nacimiento: '1980-01-01',
+        sexo: 'H',
+        email_personal: 'prueba@mecorrieron.mx',
+        telefono: '5551234567',
+        direccion: 'Av. Reforma 123',
+        ciudad: estado,
+        codigo_postal: '06600',
+        empresa_nombre: 'Empresa de Prueba SA de CV',
+        puesto: 'Empleado General',
+        salario_diario: 500,
+        fecha_ingreso: '2020-01-15',
+        fecha_despido: '2025-01-15'
+      }
+      
+      try {
+          const resultadoCuenta = await crearCuentaCCLAPI(estado, datosTrabajador, { esPrueba: true })
+        if (resultadoCuenta.exito) {
+          folio = resultadoCuenta.folio || generarFolio(estado)
+          cuentaCCLData = {
+            email: resultadoCuenta.email_portal || '',
+            password: resultadoCuenta.password_portal || '',
+            urlLogin: resultadoCuenta.url_login || '',
+            urlBuzon: resultadoCuenta.url_buzon || '',
+            curp: datosTrabajador.curp,
+            nombreTrabajador: datosTrabajador.nombre_completo
+          }
+        } else {
+          folio = generarFolio(estado)
+        }
+      } catch {
+        folio = generarFolio(estado)
+      }
+    }
     
     setResultados(prev => prev.map((r, i) => 
       i === idx ? { 
@@ -642,7 +801,8 @@ export default function CCLDiagnosticoPage() {
         errorMessage: exitoso ? '' : r.errorMessage,
         captchaPendiente: false,
         folioGenerado: folio,
-        pdfUrl: exitoso ? `/api/ccl-pdf/${folio}` : ''
+        pdfUrl: exitoso ? `/api/ccl-pdf/${folio}` : '',
+        cuentaCCL: cuentaCCLData
       } : r
     ))
   }
@@ -846,6 +1006,12 @@ export default function CCLDiagnosticoPage() {
                 {resultado.captchaPendiente && (
                   <Badge className="mt-0.5 sm:mt-1 bg-red-900 text-red-400 text-[6px] sm:text-[7px] px-0.5 sm:px-1">
                     CAP
+                  </Badge>
+                )}
+                {resultado.status === 'exito' && resultado.cuentaCCL && (
+                  <Badge className="mt-0.5 sm:mt-1 bg-yellow-900 text-yellow-300 text-[6px] sm:text-[7px] px-0.5 sm:px-1">
+                    <Key className="w-2 h-2 inline mr-0.5" />
+                    ACC
                   </Badge>
                 )}
               </CardContent>

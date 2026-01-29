@@ -147,7 +147,7 @@ CREATE POLICY "Lawyers can view ccl accounts of their cases" ON ccl_user_account
     EXISTS (
       SELECT 1 FROM casos c 
       WHERE c.id = ccl_user_accounts.caso_id 
-      AND c.abogado_id = auth.uid()
+      AND c.lawyer_id = auth.uid()
     )
   );
 

@@ -1,6 +1,5 @@
-'use server'
-
-import { createClient } from '@/lib/supabase/server'
+// CCL Account Service - Helper functions for CCL portal integration
+// Database operations are handled via API routes at /api/ccl/create-account
 
 // Configuracion de portales CCL por estado
 export const PORTALES_CCL: Record<string, {
@@ -124,6 +123,28 @@ export function generarEmailCCL(curp: string, estado: string): string {
   return `${curpCorto}.${estadoSlug}@mecorrieron.mx`
 }
 
+// Generador de folio CCL
+export function generarFolioCCL(estado: string): string {
+  const prefijos: Record<string, string> = {
+    'Aguascalientes': 'AGU', 'Baja California': 'BAJ', 'Baja California Sur': 'BCS',
+    'Campeche': 'CAM', 'Chiapas': 'CHS', 'Chihuahua': 'CHH', 'Ciudad de Mexico': 'CIU',
+    'Coahuila': 'COA', 'Colima': 'COL', 'Durango': 'DUR', 'Estado de Mexico': 'EST',
+    'Guanajuato': 'GUA', 'Guerrero': 'GUE', 'Hidalgo': 'HID', 'Jalisco': 'JAL',
+    'Michoacan': 'MIC', 'Morelos': 'MOR', 'Nayarit': 'NAY', 'Nuevo Leon': 'NUE',
+    'Oaxaca': 'OAX', 'Puebla': 'PUE', 'Queretaro': 'QUE', 'Quintana Roo': 'QUI',
+    'San Luis Potosi': 'SAN', 'Sinaloa': 'SIN', 'Sonora': 'SON', 'Tabasco': 'TAB',
+    'Tamaulipas': 'TAM', 'Tlaxcala': 'TLA', 'Veracruz': 'VER', 'Yucatan': 'YUC',
+    'Zacatecas': 'ZAC', 'Federal': 'FED'
+  }
+  
+  const prefijo = prefijos[estado] || estado.slice(0, 3).toUpperCase()
+  const fecha = new Date().toISOString().slice(0, 10).replace(/-/g, '')
+  const numero = Math.floor(Math.random() * 9999).toString().padStart(4, '0')
+  
+  return `CCL-${prefijo}-${fecha}-${numero}`
+}
+
+// Type definitions for CCL operations
 export interface DatosTrabajador {
   nombre_completo: string
   curp: string
@@ -156,236 +177,50 @@ export interface ResultadoCreacionCuenta {
   captchaUrl?: string
 }
 
-// Crear cuenta en portal CCL
-export async function crearCuentaCCL(
-  estado: string,
-  datosTrabajador: DatosTrabajador,
-  opciones?: {
-    userId?: string
-    casoId?: string
-    cotizacionId?: string
-    esPrueba?: boolean
-    sesionDiagnosticoId?: string
-  }
-): Promise<ResultadoCreacionCuenta> {
-  const supabase = await createClient()
-  
-  const portal = PORTALES_CCL[estado]
-  if (!portal) {
-    return { exito: false, error: `Portal no configurado para ${estado}` }
-  }
-  
-  if (!portal.tieneRegistroEnLinea) {
-    return { exito: false, error: 'Este CCL no tiene registro en linea' }
-  }
-  
-  // Generar credenciales
-  const emailPortal = generarEmailCCL(datosTrabajador.curp, estado)
-  const passwordPortal = generarPasswordCCL()
-  
-  // Simular proceso de registro en el portal
-  // En produccion, aqui iria la automatizacion real con Puppeteer/Playwright
-  
-  const tiempoSimulado = 2000 + Math.random() * 3000
-  await new Promise(resolve => setTimeout(resolve, tiempoSimulado))
-  
-  // Determinar si tiene CAPTCHA
-  if (portal.requiereCaptcha) {
-    // En modo real, aqui se detectaria el CAPTCHA
-    // Por ahora simulamos que algunos tienen y otros no
-    const tieneCaptchaActivo = Math.random() > 0.4
-    
-    if (tieneCaptchaActivo) {
-      // Guardar cuenta en estado pendiente de CAPTCHA
-      const { data: account, error } = await supabase
-        .from('ccl_user_accounts')
-        .insert({
-          user_id: opciones?.userId,
-          caso_id: opciones?.casoId,
-          cotizacion_id: opciones?.cotizacionId,
-          estado,
-          portal_url: portal.url,
-          portal_nombre: portal.nombre,
-          email_portal: emailPortal,
-          password_portal: passwordPortal,
-          curp_usado: datosTrabajador.curp,
-          rfc_usado: datosTrabajador.rfc,
-          cuenta_creada: false,
-          cuenta_verificada: false,
-          buzon_activo: false,
-          error_ultimo: 'CAPTCHA pendiente de resolver',
-          intentos_creacion: 1,
-          es_prueba: opciones?.esPrueba || false,
-          sesion_diagnostico_id: opciones?.sesionDiagnosticoId,
-          datos_trabajador: datosTrabajador
-        })
-        .select()
-        .single()
-      
-      if (error) {
-        return { exito: false, error: error.message }
-      }
-      
-      return {
-        exito: false,
-        accountId: account.id,
-        email_portal: emailPortal,
-        password_portal: passwordPortal,
-        url_login: portal.urlLogin,
-        requiereCaptcha: true,
-        captchaUrl: portal.urlRegistro,
-        error: 'CAPTCHA detectado - Requiere intervencion manual'
-      }
-    }
-  }
-  
-  // Simular exito en creacion de cuenta
-  const folioGenerado = generarFolioCCL(estado)
-  
-  // Guardar cuenta exitosa
-  const { data: account, error } = await supabase
-    .from('ccl_user_accounts')
-    .insert({
-      user_id: opciones?.userId,
-      caso_id: opciones?.casoId,
-      cotizacion_id: opciones?.cotizacionId,
-      estado,
-      portal_url: portal.url,
-      portal_nombre: portal.nombre,
-      email_portal: emailPortal,
-      password_portal: passwordPortal,
-      curp_usado: datosTrabajador.curp,
-      rfc_usado: datosTrabajador.rfc,
-      cuenta_creada: true,
-      cuenta_verificada: true,
-      buzon_activo: portal.tieneBuzonElectronico,
-      folio_solicitud: folioGenerado,
-      fecha_solicitud: new Date().toISOString(),
-      intentos_creacion: 1,
-      es_prueba: opciones?.esPrueba || false,
-      sesion_diagnostico_id: opciones?.sesionDiagnosticoId,
-      datos_trabajador: datosTrabajador
-    })
-    .select()
-    .single()
-  
-  if (error) {
-    return { exito: false, error: error.message }
-  }
-  
-  // Crear notificacion inicial de solicitud recibida
-  if (account && portal.tieneBuzonElectronico) {
-    await supabase
-      .from('ccl_buzon_notificaciones')
-      .insert({
-        account_id: account.id,
-        tipo: 'solicitud_recibida',
-        titulo: 'Solicitud de Conciliacion Registrada',
-        descripcion: `Su solicitud ha sido registrada con el folio ${folioGenerado}. En breve recibira la fecha de su audiencia de conciliacion.`,
-        fecha_notificacion: new Date().toISOString(),
-        documento_url: `${portal.url}/constancia/${folioGenerado}`,
-        documento_tipo: 'PDF'
-      })
-  }
-  
-  return {
-    exito: true,
-    accountId: account.id,
-    email_portal: emailPortal,
-    password_portal: passwordPortal,
-    folio: folioGenerado,
-    url_login: portal.urlLogin,
-    url_buzon: portal.urlBuzon
-  }
+export interface CCLUserAccount {
+  id: string
+  user_id: string | null
+  caso_id: string | null
+  cotizacion_id: string | null
+  estado: string
+  portal_url: string
+  portal_nombre: string | null
+  email_portal: string
+  password_portal: string
+  curp_usado: string | null
+  rfc_usado: string | null
+  cuenta_creada: boolean
+  cuenta_verificada: boolean
+  buzon_activo: boolean
+  folio_solicitud: string | null
+  fecha_solicitud: string | null
+  pdf_solicitud_url: string | null
+  ultimo_check_buzon: string | null
+  notificaciones_pendientes: number
+  error_ultimo: string | null
+  intentos_creacion: number
+  max_intentos: number
+  es_prueba: boolean
+  sesion_diagnostico_id: string | null
+  datos_trabajador: DatosTrabajador | null
+  created_at: string
+  updated_at: string
 }
 
-// Generar folio de CCL
-function generarFolioCCL(estado: string): string {
-  const prefijos: Record<string, string> = {
-    'Aguascalientes': 'AGU', 'Baja California': 'BAJ', 'Baja California Sur': 'BCS',
-    'Campeche': 'CAM', 'Chiapas': 'CHS', 'Chihuahua': 'CHH', 'Ciudad de Mexico': 'CIU',
-    'Coahuila': 'COA', 'Colima': 'COL', 'Durango': 'DUR', 'Estado de Mexico': 'EST',
-    'Guanajuato': 'GUA', 'Guerrero': 'GUE', 'Hidalgo': 'HID', 'Jalisco': 'JAL',
-    'Michoacan': 'MIC', 'Morelos': 'MOR', 'Nayarit': 'NAY', 'Nuevo Leon': 'NUE',
-    'Oaxaca': 'OAX', 'Puebla': 'PUE', 'Queretaro': 'QUE', 'Quintana Roo': 'QUI',
-    'San Luis Potosi': 'SAN', 'Sinaloa': 'SIN', 'Sonora': 'SON', 'Tabasco': 'TAB',
-    'Tamaulipas': 'TAM', 'Tlaxcala': 'TLA', 'Veracruz': 'VER', 'Yucatan': 'YUC',
-    'Zacatecas': 'ZAC', 'Federal': 'FED'
-  }
-  
-  const prefijo = prefijos[estado] || estado.slice(0, 3).toUpperCase()
-  const fecha = new Date().toISOString().slice(0, 10).replace(/-/g, '')
-  const numero = Math.floor(Math.random() * 9999).toString().padStart(4, '0')
-  
-  return `CCL-${prefijo}-${fecha}-${numero}`
-}
-
-// Obtener cuenta CCL por ID
-export async function obtenerCuentaCCL(accountId: string) {
-  const supabase = await createClient()
-  
-  const { data, error } = await supabase
-    .from('ccl_user_accounts')
-    .select(`
-      *,
-      notificaciones:ccl_buzon_notificaciones(*)
-    `)
-    .eq('id', accountId)
-    .single()
-  
-  if (error) return null
-  return data
-}
-
-// Obtener cuentas CCL de una sesion de diagnostico
-export async function obtenerCuentasDiagnostico(sesionId: string) {
-  const supabase = await createClient()
-  
-  const { data, error } = await supabase
-    .from('ccl_user_accounts')
-    .select('*')
-    .eq('sesion_diagnostico_id', sesionId)
-    .order('created_at', { ascending: true })
-  
-  if (error) return []
-  return data
-}
-
-// Verificar estado del buzon de una cuenta
-export async function verificarBuzonCCL(accountId: string) {
-  const supabase = await createClient()
-  
-  // Obtener cuenta
-  const { data: account } = await supabase
-    .from('ccl_user_accounts')
-    .select('*')
-    .eq('id', accountId)
-    .single()
-  
-  if (!account || !account.buzon_activo) {
-    return { exito: false, error: 'Cuenta no encontrada o buzon inactivo' }
-  }
-  
-  // Simular revision del buzon
-  // En produccion, aqui iria la automatizacion real
-  await new Promise(resolve => setTimeout(resolve, 1500))
-  
-  // Actualizar timestamp de ultimo check
-  await supabase
-    .from('ccl_user_accounts')
-    .update({ ultimo_check_buzon: new Date().toISOString() })
-    .eq('id', accountId)
-  
-  // Obtener notificaciones actuales
-  const { data: notificaciones } = await supabase
-    .from('ccl_buzon_notificaciones')
-    .select('*')
-    .eq('account_id', accountId)
-    .order('fecha_notificacion', { ascending: false })
-  
-  return {
-    exito: true,
-    notificaciones: notificaciones || [],
-    ultimoCheck: new Date().toISOString()
-  }
+export interface CCLBuzonNotificacion {
+  id: string
+  account_id: string
+  tipo: 'solicitud_recibida' | 'citatorio_audiencia' | 'acta_audiencia' | 'convenio' | 'constancia_no_conciliacion' | 'resolucion' | 'otro'
+  titulo: string
+  descripcion: string | null
+  fecha_notificacion: string
+  fecha_evento: string | null
+  documento_url: string | null
+  documento_tipo: string | null
+  documento_descargado: boolean
+  leida: boolean
+  procesada: boolean
+  id_externo: string | null
+  raw_data: unknown
+  created_at: string
 }
