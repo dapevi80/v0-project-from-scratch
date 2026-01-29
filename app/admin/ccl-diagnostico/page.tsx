@@ -118,6 +118,9 @@ interface Resultado {
       direccion: string
     }
   }
+  manualSteps?: string[]
+  manualPortalUrl?: string
+  manualError?: string
 }
 
 // URLs de portales SINACOL reales por estado (verificados enero 2026)
@@ -291,6 +294,9 @@ export default function CCLDiagnosticoPage() {
         pasoDetenido: null,
         pasos: crearPasosIniciales(),
         errorDetallado: null,
+        manualSteps: [],
+        manualPortalUrl: portal?.urlSinacol || obtenerUrlSinacol(estado),
+        manualError: '',
         // Datos para acceso a SINACOL real con datos de prueba del SuperAdmin
         cuentaCCL: {
           email: trabajador.email, // Email aleatorio generado para esta prueba
@@ -644,6 +650,14 @@ export default function CCLDiagnosticoPage() {
             curp: datosTrabajadorPrueba.curp,
             nombreTrabajador: datosTrabajadorPrueba.nombre_completo
           }
+          setResultados(prev => prev.map((r, i) =>
+            i === idx ? {
+              ...r,
+              manualSteps: resultadoCuenta.instrucciones_paso_a_paso || r.manualSteps,
+              manualPortalUrl: resultadoCuenta.url_sinacol || resultadoCuenta.url_login || r.manualPortalUrl,
+              manualError: ''
+            } : r
+          ))
         } else if (resultadoCuenta.requiereCaptcha) {
           finalStatus = 'parcial'
           errorData = {
@@ -666,6 +680,14 @@ export default function CCLDiagnosticoPage() {
             curp: datosTrabajadorPrueba.curp,
             nombreTrabajador: datosTrabajadorPrueba.nombre_completo
           }
+          setResultados(prev => prev.map((r, i) =>
+            i === idx ? {
+              ...r,
+              manualSteps: resultadoCuenta.instrucciones_paso_a_paso || r.manualSteps,
+              manualPortalUrl: resultadoCuenta.url_sinacol || resultadoCuenta.url_login || r.manualPortalUrl,
+              manualError: resultadoCuenta.error || 'CAPTCHA detectado'
+            } : r
+          ))
         } else {
           folio = generarReferenciaInterna(estado)
           cuentaCCLData = resultadoActual?.cuentaCCL
@@ -838,6 +860,14 @@ export default function CCLDiagnosticoPage() {
               curp: datosTrabajadorPrueba.curp,
               nombreTrabajador: datosTrabajadorPrueba.nombre_completo
             }
+            setResultados(prev => prev.map((r, idx) =>
+              idx === i ? {
+                ...r,
+                manualSteps: resultadoCuenta.instrucciones_paso_a_paso || r.manualSteps,
+                manualPortalUrl: resultadoCuenta.url_sinacol || resultadoCuenta.url_login || r.manualPortalUrl,
+                manualError: ''
+              } : r
+            ))
           } else if (resultadoCuenta.requiereCaptcha) {
             // CAPTCHA detectado - marcar como parcial
             finalStatus = 'parcial'
@@ -861,6 +891,14 @@ export default function CCLDiagnosticoPage() {
               curp: datosTrabajadorPrueba.curp,
               nombreTrabajador: datosTrabajadorPrueba.nombre_completo
             }
+            setResultados(prev => prev.map((r, idx) =>
+              idx === i ? {
+                ...r,
+                manualSteps: resultadoCuenta.instrucciones_paso_a_paso || r.manualSteps,
+                manualPortalUrl: resultadoCuenta.url_sinacol || resultadoCuenta.url_login || r.manualPortalUrl,
+                manualError: resultadoCuenta.error || 'CAPTCHA detectado'
+              } : r
+            ))
           } else {
             folio = generarReferenciaInterna(estadoActual)
             cuentaCCLData = resultadoActual?.cuentaCCL
@@ -915,6 +953,53 @@ export default function CCLDiagnosticoPage() {
     setResultados(prev => prev.map(r => 
       r.estado === estado ? { ...r, captchaPendiente: false } : r
     ))
+  }
+
+  const cargarGuiaManual = async (estado: string) => {
+    const idx = resultados.findIndex(r => r.estado === estado)
+    if (idx === -1) return
+
+    const resultadoActual = resultados[idx]
+    const datosTrabajador: DatosTrabajador = {
+      nombre_completo: resultadoActual.cuentaCCL?.nombreTrabajador || 'Juan Perez Garcia',
+      curp: resultadoActual.cuentaCCL?.curp || 'PEGJ800101HDFRRS09',
+      rfc: resultadoActual.cuentaCCL?.curp?.slice(0, 10) + 'XXX' || 'PEGJ800101XXX',
+      fecha_nacimiento: '1980-01-01',
+      sexo: 'H',
+      email_personal: resultadoActual.cuentaCCL?.email || 'prueba@mecorrieron.mx',
+      telefono: resultadoActual.cuentaCCL?.telefono || '5551234567',
+      direccion: 'Av. Reforma 123',
+      ciudad: estado,
+      codigo_postal: '06600',
+      empresa_nombre: 'Empresa de Prueba SA de CV',
+      puesto: 'Empleado General',
+      salario_diario: 500,
+      fecha_ingreso: '2020-01-15',
+      fecha_despido: '2025-01-15'
+    }
+
+    try {
+      const resultadoCuenta = await crearCuentaCCLAPI(estado, datosTrabajador, {
+        esPrueba: true,
+        sesionDiagnosticoId: `manual-${Date.now()}`
+      })
+
+      setResultados(prev => prev.map((r, i) =>
+        i === idx ? {
+          ...r,
+          manualSteps: resultadoCuenta.instrucciones_paso_a_paso || [],
+          manualPortalUrl: resultadoCuenta.url_sinacol || resultadoCuenta.url_login || r.manualPortalUrl,
+          manualError: resultadoCuenta.exito ? '' : (resultadoCuenta.error || 'No se pudo generar la guia manual')
+        } : r
+      ))
+    } catch (error) {
+      setResultados(prev => prev.map((r, i) =>
+        i === idx ? {
+          ...r,
+          manualError: error instanceof Error ? error.message : 'No se pudo generar la guia manual'
+        } : r
+      ))
+    }
   }
 
   const reintentarEstado = async (estado: string) => {
@@ -985,6 +1070,14 @@ export default function CCLDiagnosticoPage() {
             curp: datosTrabajador.curp,
             nombreTrabajador: datosTrabajador.nombre_completo
           }
+          setResultados(prev => prev.map((r, i) =>
+            i === idx ? {
+              ...r,
+              manualSteps: resultadoCuenta.instrucciones_paso_a_paso || r.manualSteps,
+              manualPortalUrl: resultadoCuenta.url_sinacol || resultadoCuenta.url_login || r.manualPortalUrl,
+              manualError: ''
+            } : r
+          ))
         } else {
           folio = generarReferenciaInterna(estado)
         }
@@ -1495,6 +1588,68 @@ export default function CCLDiagnosticoPage() {
                 <span className="text-green-600 text-[10px] sm:text-xs block mb-1">Portal URL:</span>
                 <code className="text-green-400 text-[9px] sm:text-xs break-all">{selectedEstado.url}</code>
               </div>
+
+              {/* Acciones rápidas */}
+              <div className="grid grid-cols-2 gap-2">
+                <Button
+                  size="sm"
+                  className="bg-green-700 hover:bg-green-600 text-white font-mono text-[10px] sm:text-xs"
+                  onClick={async () => {
+                    if (!selectedEstado?.estado) return
+                    setShowDetailDialog(false)
+                    await new Promise(r => setTimeout(r, 100))
+                    iniciarDiagnosticoIndividual(selectedEstado.estado)
+                  }}
+                >
+                  <Play className="w-3 h-3 mr-1" />
+                  GENERAR CON IA
+                </Button>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  className="border-blue-600 text-blue-400 hover:bg-blue-950 font-mono text-[10px] sm:text-xs bg-transparent"
+                  onClick={() => {
+                    if (!selectedEstado?.estado) return
+                    cargarGuiaManual(selectedEstado.estado)
+                  }}
+                >
+                  <FileText className="w-3 h-3 mr-1" />
+                  VER MANUAL
+                </Button>
+              </div>
+
+              {/* Manual de pasos */}
+              {selectedEstado.manualError && (
+                <div className="p-2 sm:p-3 bg-red-950/30 rounded border border-red-800">
+                  <span className="text-red-500 text-[10px] sm:text-xs block mb-1">Error manual:</span>
+                  <p className="text-red-400 text-xs">{selectedEstado.manualError}</p>
+                </div>
+              )}
+
+              {selectedEstado.manualSteps && selectedEstado.manualSteps.length > 0 && (
+                <div className="p-2 sm:p-3 bg-blue-950/40 rounded border border-blue-800">
+                  <div className="flex items-center justify-between mb-2">
+                    <span className="text-blue-400 text-[10px] sm:text-xs font-bold">MANUAL DE LLENADO</span>
+                    {selectedEstado.manualPortalUrl && (
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        className="h-6 px-2 text-blue-300 hover:bg-blue-900/50"
+                        onClick={() => {
+                          window.open(selectedEstado.manualPortalUrl, '_blank')
+                        }}
+                      >
+                        <ExternalLink className="w-3 h-3" />
+                      </Button>
+                    )}
+                  </div>
+                  <ol className="list-decimal ml-4 space-y-1 text-[10px] sm:text-xs text-blue-200">
+                    {selectedEstado.manualSteps.map((paso, index) => (
+                      <li key={`${selectedEstado.estado}-manual-${index}`}>{paso}</li>
+                    ))}
+                  </ol>
+                </div>
+              )}
 
               {/* Pasos del Robot */}
               <div className="p-2 sm:p-3 bg-green-950/50 rounded border border-green-800">
