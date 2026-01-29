@@ -1447,10 +1447,10 @@ export function OCRScanner({ onClose, onComplete, initialImages }: OCRScannerPro
                   <QualityGauge quality={scanQuality} size="lg" />
                 </div>
                 <p className="text-[10px] text-muted-foreground text-center mt-3">
-                  {scanQuality >= 95 
+                  {scanQuality >= 80 
                     ? 'Calidad excelente - puedes obtener un resumen IA'
-                    : scanQuality >= 80
-                    ? 'Calidad aceptable - el documento se guardará correctamente'
+                    : scanQuality >= 50
+                    ? 'Calidad aceptable - puedes obtener resumen IA y guardar documento'
                     : 'Calidad baja - considera volver a escanear con mejor iluminación'}
                 </p>
               </div>
