@@ -339,17 +339,17 @@ export const PORTALES_CCL: Record<string, PortalCCLConfig> = {
   'Quintana Roo': {
     nombre: 'Centro de Conciliación Laboral del Estado de Quintana Roo',
     url: 'https://cclqroo.qroo.gob.mx',
-    urlSinacol: 'https://cclqroo.qroo.gob.mx/solicitudes/create-public?solicitud=1',
-    urlRegistro: 'https://cclqroo.qroo.gob.mx/solicitudes/create-public?solicitud=1',
-    urlLogin: 'https://cclqroo.qroo.gob.mx/solicitudes/create-public?solicitud=1',
-    urlBuzon: 'https://cclqroo.qroo.gob.mx/buzon',
+    urlSinacol: 'https://conciliacion.cclqroo.gob.mx/solicitudes/create-public?solicitud=1',
+    urlRegistro: 'https://conciliacion.cclqroo.gob.mx/register',
+    urlLogin: 'https://conciliacion.cclqroo.gob.mx/login',
+    urlBuzon: 'https://conciliacion.cclqroo.gob.mx/buzon',
     tieneRegistroEnLinea: true,
     tieneBuzonElectronico: true,
-    requiereCaptcha: false,
+    requiereCaptcha: true,
     requiereRatificacionPresencial: true,
     emailContacto: 'buzon_oficial@cclqroo.gob.mx',
     telefonoContacto: '9836883672',
-    notas: 'URL verificada por usuario. Sedes en Chetumal, Cancún, Playa del Carmen y Cozumel. Horario 8:00-16:00 L-V.'
+    notas: 'URL VERIFICADA ENERO 2026: conciliacion.cclqroo.gob.mx/login - Versión SINACOL 12.8.2. Sedes en Chetumal, Cancún, Playa del Carmen y Cozumel. Horario 8:00-16:00 L-V.'
   },
 
   'San Luis Potosi': {
