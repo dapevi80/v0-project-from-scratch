@@ -476,11 +476,18 @@ export async function obtenerEventos(casoId: string) {
 
 // Crear caso (sin calculo vinculado)
 export async function crearCaso(datos: {
+  titulo?: string
   empresa_nombre: string
   empresa_rfc?: string
   ciudad?: string
   estado?: string
   monto_estimado?: number
+  monto_reclamado?: number
+  descripcion?: string
+  fecha_despido?: string
+  // Nuevos campos para SINACOL
+  citado_tipo_persona?: 'fisica' | 'moral'
+  modalidad_conciliacion?: 'presencial' | 'remota'
 }) {
   const supabase = await createClient()
   
@@ -495,12 +502,18 @@ export async function crearCaso(datos: {
       folio,
       worker_id: user.id,
       status: 'draft',
+      titulo: datos.titulo,
       empresa_nombre: datos.empresa_nombre,
       empresa_rfc: datos.empresa_rfc,
       ciudad: datos.ciudad,
       estado: datos.estado,
-      monto_estimado: datos.monto_estimado,
-      prioridad: 'normal'
+      monto_estimado: datos.monto_estimado || datos.monto_reclamado,
+      descripcion: datos.descripcion,
+      fecha_despido: datos.fecha_despido,
+      prioridad: 'normal',
+      // Nuevos campos para SINACOL
+      citado_tipo_persona: datos.citado_tipo_persona || 'moral',
+      modalidad_conciliacion: datos.modalidad_conciliacion || 'remota'
     })
     .select()
     .single()

@@ -6,11 +6,13 @@ import {
   ESTADOS_MEXICO as ESTADOS,
   type DatosCasoSolicitud, 
   type ResultadoSolicitud,
-  type TipoTerminacion 
+  type TipoTerminacion,
+  type TipoPersonaCitado,
+  type ModalidadConciliacionTipo
 } from './solicitud-utils'
 
 // Re-exportar solo tipos (permitido en 'use server')
-export type { TipoTerminacion, DatosCasoSolicitud, ResultadoSolicitud }
+export type { TipoTerminacion, TipoPersonaCitado, ModalidadConciliacionTipo, DatosCasoSolicitud, ResultadoSolicitud }
 
 // Wrapper async para obtener estados (requerido por 'use server')
 export async function getEstadosMexico() {
@@ -89,10 +91,41 @@ export async function generarSolicitudCCL(datos: DatosCasoSolicitud): Promise<Re
     // Por ahora generamos un folio de prueba para demostración
     
     const folioGenerado = `CCL-${portal.codigo}-${Date.now().toString(36).toUpperCase()}`
+    const modalidad = datos.modalidadConciliacion || 'remota'
     
-    // Calcular fecha de cita (3-5 días hábiles después)
+    // Calcular fecha límite de confirmación (3 días hábiles)
+    const fechaLimiteConfirmacion = new Date()
+    fechaLimiteConfirmacion.setDate(fechaLimiteConfirmacion.getDate() + 3)
+    
+    // Calcular fecha de cita (5-7 días hábiles después de confirmar)
     const fechaCita = new Date()
-    fechaCita.setDate(fechaCita.getDate() + 5) // 5 días hábiles aproximado
+    fechaCita.setDate(fechaCita.getDate() + 7) // 7 días hábiles aproximado
+    
+    // Liga única para audiencias remotas (simulación)
+    const ligaUnica = modalidad === 'remota' 
+      ? `https://conciliacion.${portal.codigo.toLowerCase()}.gob.mx/audiencia/${folioGenerado}`
+      : undefined
+    
+    // Generar instrucciones específicas según modalidad
+    const instruccionesConfirmacion = modalidad === 'remota'
+      ? [
+          `1. Llama al CCL de ${datos.empleadorEstado} para agendar tu cita de confirmación por videollamada`,
+          `2. Teléfono: ${portal.telefono || 'Consulta en el acuse de solicitud'}`,
+          `3. Ten a la mano: Folio ${folioGenerado}, tu INE/IFE escaneada, CURP`,
+          `4. En la videollamada confirmarás tu solicitud con el oficial de partes`,
+          `5. Se te asignará fecha y hora de audiencia de conciliación virtual`,
+          `6. Recibirás una liga única para tu audiencia por videollamada`,
+          `7. IMPORTANTE: Tienes 3 días hábiles para confirmar tu solicitud`
+        ]
+      : [
+          `1. Acude personalmente al CCL de ${datos.empleadorEstado}`,
+          `2. Dirección: ${portal.direccion || 'Consulta en el acuse de solicitud'}`,
+          `3. Lleva: Folio ${folioGenerado}, INE/IFE original, comprobante de domicilio`,
+          `4. Horario de atención: ${portal.horario || 'Lunes a Viernes 8:00-15:00'}`,
+          `5. Confirmarás tu solicitud con el oficial de partes`,
+          `6. Se te asignará fecha y hora de audiencia presencial`,
+          `7. IMPORTANTE: Tienes 3 días hábiles para confirmar tu solicitud`
+        ]
     
     // Registrar solicitud en base de datos
     const { error: insertError } = await supabase
@@ -108,8 +141,12 @@ export async function generarSolicitudCCL(datos: DatosCasoSolicitud): Promise<Re
         hora_cita: '10:00',
         sede_ccl: portal.nombre,
         direccion_sede: portal.direccion,
-        estatus: 'generada',
-        datos_solicitud: datos,
+        estatus: 'pendiente_confirmacion', // Nueva: pendiente de confirmar
+        datos_solicitud: {
+          ...datos,
+          modalidad,
+          citadoTipoPersona: datos.citadoTipoPersona || 'moral'
+        },
         prescripcion_dias_restantes: prescripcion.diasRestantes
       })
       .select()
@@ -126,7 +163,11 @@ export async function generarSolicitudCCL(datos: DatosCasoSolicitud): Promise<Re
       .update({
         ccl_folio: folioGenerado,
         ccl_fecha_cita: fechaCita.toISOString().split('T')[0],
-        ccl_estado: 'solicitud_generada',
+        ccl_estado: 'pendiente_confirmacion',
+        modalidad_conciliacion: modalidad,
+        ccl_liga_unica: ligaUnica,
+        ccl_fecha_limite_confirmacion: fechaLimiteConfirmacion.toISOString().split('T')[0],
+        ccl_instrucciones_confirmacion: instruccionesConfirmacion,
         updated_at: new Date().toISOString()
       })
       .eq('id', datos.casoId)
@@ -140,14 +181,20 @@ export async function generarSolicitudCCL(datos: DatosCasoSolicitud): Promise<Re
       direccionSede: portal.direccion,
       urlComprobante: portal.url_portal,
       portalUsado: portal.nombre,
+      modalidad,
+      ligaUnica,
+      fechaLimiteConfirmacion: fechaLimiteConfirmacion.toISOString().split('T')[0],
+      telefonoConfirmacion: portal.telefono,
+      instruccionesConfirmacion,
       instrucciones: [
         `Tu solicitud ha sido registrada con folio ${folioGenerado}`,
-        `Fecha de audiencia de conciliación: ${fechaCita.toLocaleDateString('es-MX', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}`,
-        `Hora: 10:00 AM`,
-        `Sede: ${portal.nombre}`,
-        `Dirección: ${portal.direccion}`,
-        `Presenta tu identificación oficial y comprobante de domicilio`,
-        `Llega 30 minutos antes de tu cita`,
+        `Tipo de persona demandada: ${datos.citadoTipoPersona === 'fisica' ? 'Persona Física' : 'Persona Moral (empresa)'}`,
+        `Modalidad elegida: Conciliación ${modalidad === 'remota' ? 'REMOTA (videollamada)' : 'PRESENCIAL'}`,
+        '',
+        `SIGUIENTE PASO: Confirmar solicitud antes del ${fechaLimiteConfirmacion.toLocaleDateString('es-MX', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}`,
+        '',
+        ...instruccionesConfirmacion,
+        '',
         prescripcion.urgente ? `URGENTE: Solo quedan ${prescripcion.diasRestantes} días antes de que prescriba tu derecho` : ''
       ].filter(Boolean)
     }

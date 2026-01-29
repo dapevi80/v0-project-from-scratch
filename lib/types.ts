@@ -38,6 +38,12 @@ export interface UserWithProfile {
   profile: Profile
 }
 
+// Tipo de persona (física o moral) para el demandado/citado
+export type TipoPersona = 'fisica' | 'moral'
+
+// Modalidad de conciliación (presencial o remota)
+export type ModalidadConciliacion = 'presencial' | 'remota'
+
 // Estados del caso de despido
 export type CaseStatus = 
   | 'draft'           // Borrador - recopilando información

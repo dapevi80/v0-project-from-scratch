@@ -573,3 +573,6 @@ export function generarPasswordSinacol(): string {
   // Mezclar
   return password.split('').sort(() => Math.random() - 0.5).join('')
 }
+
+// Alias para compatibilidad con el agente CCL
+export const PORTALES_CCL_COMPLETOS = PORTALES_CCL
