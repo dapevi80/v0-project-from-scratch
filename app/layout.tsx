@@ -3,6 +3,7 @@ import type { Metadata } from 'next'
 import { Inter, Geist_Mono } from 'next/font/google'
 import { Analytics } from '@vercel/analytics/next'
 import { GlobalAIAssistant } from '@/components/global-ai-assistant'
+import { FloatingBugButton } from '@/components/bug-report/floating-bug-button'
 import { AuthProvider } from '@/lib/auth/auth-provider'
 import './globals.css'
 
@@ -50,6 +51,7 @@ export default function RootLayout({
         <AuthProvider>
           {children}
           <GlobalAIAssistant />
+          <FloatingBugButton />
         </AuthProvider>
         <Analytics />
       </body>

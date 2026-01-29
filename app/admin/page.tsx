@@ -144,6 +144,7 @@ export default function AdminDashboardPage() {
 
   // Herramientas EXCLUSIVAS superadmin
   const superAdminTools = [
+    { name: 'Bug Reports', href: '/admin/bug-reports', emoji: '🐛', description: 'Reportes usuarios' },
     { name: 'Diagnostico CCL', href: '/admin/ccl-diagnostico', emoji: '🔬', description: 'Test 33 portales' },
     { name: 'Cobros', href: '/admin/cobros', emoji: '💳', description: 'Suscripciones' },
     { name: 'Facturacion SAT', href: '/admin/facturacion', emoji: '🧾', description: 'CFDI y facturas' },
