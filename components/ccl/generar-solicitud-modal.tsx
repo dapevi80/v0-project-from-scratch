@@ -17,6 +17,8 @@ import {
 } from 'lucide-react'
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group'
 import { AgentProgressModal } from './agent-progress-modal'
+import { ManualSolicitudGuide } from './manual-solicitud-guide'
+import { SolicitudManualGuide } from './solicitud-manual-guide'
 import { 
   generarSolicitudCCL, 
   calcularPrescripcion, 
@@ -159,71 +161,46 @@ export function GenerarSolicitudModal({ isOpen, onClose, caso, onSuccess }: Gene
   const handleGenerar = async () => {
     if (!caso) return
     
+    // Si NO usa el agente de IA, mostrar guia manual
+    if (!useAgent) {
+      console.log('Mostrar guía manual')
+      return
+    }
+    
     setLoading(true)
     
     // Si usa el agente de IA, iniciar el proceso automatizado
-    if (useAgent) {
-      try {
-        const response = await fetch('/api/ccl/agent/run', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            casoId: caso.id,
-            modalidad: modalidadConciliacion,
-            tipoPersonaCitado: tipoPersonaCitado,
-            estadoEmpleador: estadoEmpleador,
-            tipoTerminacion: tipoTerminacion,
-            fechaTerminacion: fechaTerminacion
-          })
+    try {
+      const response = await fetch('/api/ccl/agent/run', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          casoId: caso.id,
+          modalidad: modalidadConciliacion,
+          tipoPersonaCitado: tipoPersonaCitado,
+          estadoEmpleador: estadoEmpleador,
+          tipoTerminacion: tipoTerminacion,
+          fechaTerminacion: fechaTerminacion
         })
-        
-        const data = await response.json()
-        
-        if (data.jobId) {
-          setAgentJobId(data.jobId)
-          setShowAgentProgress(true)
-          setLoading(false)
-          return
-        } else {
-          throw new Error(data.error || 'Error al iniciar el agente')
-        }
-      } catch (error) {
-        console.error('Error iniciando agente:', error)
-        // Fallback al metodo manual si falla el agente
+      })
+      
+      const data = await response.json()
+      
+      if (data.jobId) {
+        setAgentJobId(data.jobId)
+        setShowAgentProgress(true)
+        setLoading(false)
+        return
+      } else {
+        throw new Error(data.error || 'Error al iniciar el agente')
       }
+    } catch (error) {
+      console.error('Error iniciando agente:', error)
+      // Fallback al metodo manual si falla el agente
+      console.log('Mostrar guía manual')
+      setLoading(false)
+      return
     }
-    
-    // Metodo manual (fallback)
-    const datos: DatosCasoSolicitud = {
-      casoId: caso.id,
-      trabajadorNombre: caso.worker?.full_name || 'Sin nombre',
-      trabajadorCurp: caso.worker?.curp,
-      trabajadorDomicilio: caso.worker?.calle ? `${caso.worker.calle}, ${caso.worker.ciudad}, ${caso.worker.estado}` : undefined,
-      trabajadorTelefono: caso.worker?.phone,
-      trabajadorEmail: caso.worker?.email,
-      empleadorNombre: caso.employer_name,
-      empleadorDomicilio: caso.employer_address,
-      empleadorEstado: estadoEmpleador,
-      fechaIngreso: caso.start_date || '',
-      fechaTerminacion: fechaTerminacion,
-      tipoTerminacion: tipoTerminacion,
-      salarioDiario: caso.salary_daily || 0,
-      puestoTrabajo: caso.job_title,
-      descripcionHechos: descripcionHechos,
-      montoEstimado: montoEstimado ? parseFloat(montoEstimado) : undefined,
-      citadoTipoPersona: tipoPersonaCitado,
-      modalidadConciliacion: modalidadConciliacion
-    }
-    
-    const result = await generarSolicitudCCL(datos)
-    setResultado(result)
-    
-    if (result.success) {
-      setStep(3)
-      onSuccess?.(result)
-    }
-    
-    setLoading(false)
   }
   
   const handleAgentComplete = (job: { resultado?: { folioSolicitud?: string; pdfUrl?: string } }) => {
@@ -254,6 +231,8 @@ export function GenerarSolicitudModal({ isOpen, onClose, caso, onSuccess }: Gene
     setShowAgentProgress(false)
     onClose()
   }
+
+  const [showManualGuide, setShowManualGuide] = useState(false);
 
   if (!caso) return null
 
@@ -515,7 +494,7 @@ export function GenerarSolicitudModal({ isOpen, onClose, caso, onSuccess }: Gene
               </div>
             </div>
 
-{/* Modo de generacion: Agente IA o Manual */}
+            {/* Modo de generacion: Agente IA o Manual */}
             <Card className={useAgent ? 'border-primary bg-primary/5' : 'border-amber-300 bg-amber-50'}>
               <CardContent className="pt-4">
                 <div className="flex items-start justify-between gap-4">
@@ -547,29 +526,20 @@ export function GenerarSolicitudModal({ isOpen, onClose, caso, onSuccess }: Gene
                       </p>
                     </div>
                   </div>
-                  <Button
-                    variant={useAgent ? 'outline' : 'default'}
-                    size="sm"
-                    onClick={() => setUseAgent(!useAgent)}
-                    className="shrink-0"
-                  >
-                    {useAgent ? 'Usar modo manual' : 'Usar Agente IA'}
-                  </Button>
-                </div>
-                {useAgent && (
-                  <Alert className="mt-3 border-blue-200 bg-blue-50">
-                    <Bot className="h-4 w-4 text-blue-600" />
-                    <AlertDescription className="text-blue-700 text-xs">
-                      El agente se ejecutara en segundo plano. Recibiras una notificacion cuando termine con el PDF del acuse listo.
-                    </AlertDescription>
-                  </Alert>
-                )}
+                  {useAgent && (
+                    <Alert className="mt-3 border-blue-200 bg-blue-50">
+                      <Bot className="h-4 w-4 text-blue-600" />
+                      <AlertDescription className="text-blue-700 text-xs">
+                        El agente se ejecutara en segundo plano. Recibiras una notificacion cuando termine con el PDF del acuse listo.
+                      </AlertDescription>
+                    </Alert>
+                  )}
               </CardContent>
             </Card>
 
             {/* Resumen */}
-  <Card className="bg-gray-50">
-  <CardContent className="pt-4">
+            <Card className="bg-gray-50">
+              <CardContent className="pt-4">
                 <h4 className="font-semibold mb-3">Resumen de la Solicitud</h4>
                 <div className="space-y-2 text-sm">
                   <div className="flex justify-between">
@@ -770,6 +740,41 @@ export function GenerarSolicitudModal({ isOpen, onClose, caso, onSuccess }: Gene
           onComplete={handleAgentComplete}
         />
       )}
+      
+      {/* Dialog de Guia Manual */}
+      <Dialog open={showManualGuide} onOpenChange={setShowManualGuide}>
+        <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <FileText className="h-5 w-5" />
+              Guia para Solicitud Manual CCL
+            </DialogTitle>
+            <DialogDescription>
+              Sigue estos pasos para crear la solicitud manualmente en el portal CCL
+            </DialogDescription>
+          </DialogHeader>
+          
+          {caso && portal && (
+            <ManualSolicitudGuide
+              caso={caso}
+              portal={{
+                nombre: portal.nombre,
+                url_portal: portal.url_portal,
+                direccion: portal.direccion,
+                telefono: portal.telefono,
+                horario: portal.horario,
+                codigo: estadoEmpleador.substring(0, 3).toUpperCase()
+              }}
+              estadoEmpleador={estadoEmpleador}
+              tipoTerminacion={tipoTerminacion}
+              tipoPersonaCitado={tipoPersonaCitado}
+              modalidadConciliacion={modalidadConciliacion}
+              fechaTerminacion={fechaTerminacion}
+              descripcionHechos={descripcionHechos}
+            />
+          )}
+        </DialogContent>
+      </Dialog>
     </Dialog>
   )
 }
