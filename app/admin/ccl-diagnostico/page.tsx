@@ -14,6 +14,7 @@ import {
 } from 'lucide-react'
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase/client'
+import { MatrixRain } from '@/components/ui/matrix-rain'
 import { 
   iniciarSesionDiagnostico, 
   generarUsuariosPrueba, 
@@ -253,8 +254,9 @@ export default function CCLDiagnosticoPage() {
   
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
-        <Loader2 className="w-8 h-8 animate-spin text-primary" />
+      <div className="min-h-screen bg-black flex items-center justify-center">
+        <MatrixRain />
+        <div className="text-green-500 font-mono animate-pulse z-10">Iniciando diagnostico CCL...</div>
       </div>
     )
   }
@@ -264,30 +266,32 @@ export default function CCLDiagnosticoPage() {
   }
   
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-black relative">
+      <MatrixRain />
+      
       {/* Header */}
-      <header className="bg-white border-b sticky top-0 z-10">
+      <header className="bg-black/95 border-b border-green-900 sticky top-0 z-40">
         <div className="max-w-7xl mx-auto px-4 py-4 flex items-center justify-between">
           <div className="flex items-center gap-4">
             <Link href="/admin">
-              <Button variant="ghost" size="sm">
+              <Button variant="ghost" size="sm" className="text-green-500 hover:bg-green-950 font-mono">
                 <ArrowLeft className="w-4 h-4 mr-2" />
                 Admin
               </Button>
             </Link>
             <div>
-              <h1 className="text-xl font-bold flex items-center gap-2">
-                <Shield className="w-5 h-5 text-primary" />
-                Diagnóstico CCL
+              <h1 className="text-xl font-bold flex items-center gap-2 text-green-400 font-mono">
+                <Shield className="w-5 h-5 text-green-500" />
+                DIAGNOSTICO CCL
               </h1>
-              <p className="text-sm text-muted-foreground">
-                Prueba automatizada de 33 portales CCL
+              <p className="text-sm text-green-700 font-mono">
+                Test automatizado 33 portales
               </p>
             </div>
           </div>
           
-          <Badge variant="outline" className="bg-purple-50 text-purple-700 border-purple-200">
-            Solo Superadmin
+          <Badge className="bg-green-950 text-green-400 border border-green-600 font-mono">
+            ROOT_ACCESS
           </Badge>
         </div>
       </header>

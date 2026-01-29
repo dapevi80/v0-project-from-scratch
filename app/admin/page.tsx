@@ -8,6 +8,7 @@ import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { LogOut, Terminal } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
+import { MatrixRain } from '@/components/ui/matrix-rain'
 import { useInactivityLogout } from '@/hooks/use-inactivity-logout'
 import { type UserRole } from '@/lib/types'
 
@@ -143,14 +144,19 @@ export default function AdminDashboardPage() {
 
   // Herramientas EXCLUSIVAS superadmin
   const superAdminTools = [
-    { name: 'Diagnostico CCL', href: '/admin/ccl-diagnostico', emoji: '🔬', description: 'Test 33 portales CCL' },
-    { name: 'Config Sistema', href: '/admin/config', emoji: '⚙️', description: 'Ajustes globales' },
-    { name: 'Reportes', href: '/admin/reportes', emoji: '📊', description: 'Metricas y analytics' },
-    { name: 'Base de Datos', href: '/admin/database', emoji: '🗄️', description: 'Explorar tablas' },
+    { name: 'Diagnostico CCL', href: '/admin/ccl-diagnostico', emoji: '🔬', description: 'Test 33 portales' },
+    { name: 'Cobros', href: '/admin/cobros', emoji: '💳', description: 'Suscripciones' },
+    { name: 'Facturacion SAT', href: '/admin/facturacion', emoji: '🧾', description: 'CFDI y facturas' },
+    { name: 'Wallet', href: '/admin/wallet', emoji: '🪙', description: 'Fichas y recargas' },
+    { name: 'Reportes', href: '/admin/reportes', emoji: '📊', description: 'Analytics' },
+    { name: 'Config', href: '/admin/config', emoji: '⚙️', description: 'Sistema' },
   ]
 
   return (
-    <div className={`min-h-screen ${data.isSuperAdmin ? 'bg-black' : 'bg-gradient-to-b from-slate-50 to-white'}`}>
+    <div className={`min-h-screen relative ${data.isSuperAdmin ? 'bg-black' : 'bg-gradient-to-b from-slate-50 to-white'}`}>
+      {/* Matrix Rain Background for SuperAdmin */}
+      {data.isSuperAdmin && <MatrixRain />}
+      
       {/* Header */}
       <header className={`border-b sticky top-0 z-40 ${data.isSuperAdmin ? 'bg-black/95 border-green-900' : 'bg-white'}`}>
         <div className="container mx-auto px-4 py-4">
@@ -301,17 +307,14 @@ export default function AdminDashboardPage() {
             <h2 className="text-sm font-medium mb-3 px-1 text-green-500 font-mono flex items-center gap-2">
               <span className="animate-pulse">{'>'}</span> ROOT_ACCESS
             </h2>
-            <div className="grid grid-cols-2 gap-2">
+            <div className="grid grid-cols-3 gap-2">
               {superAdminTools.map((tool) => (
                 <Link key={tool.name} href={tool.href}>
-                  <Card className="h-full transition-all cursor-pointer bg-green-950/50 border-green-600 hover:border-green-400 hover:bg-green-900/50">
+                  <Card className="h-full transition-all cursor-pointer bg-green-950/50 border-green-600 hover:border-green-400 hover:bg-green-900/50 hover:shadow-[0_0_15px_rgba(0,255,0,0.3)]">
                     <CardContent className="p-3 flex flex-col items-center text-center gap-1">
-                      <span className="text-2xl">{tool.emoji}</span>
-                      <p className="font-mono font-medium text-xs text-green-300">
+                      <span className="text-xl">{tool.emoji}</span>
+                      <p className="font-mono font-medium text-[10px] text-green-300">
                         {tool.name}
-                      </p>
-                      <p className="text-[10px] text-green-600">
-                        {tool.description}
                       </p>
                     </CardContent>
                   </Card>
