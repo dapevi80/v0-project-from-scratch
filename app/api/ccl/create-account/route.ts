@@ -113,8 +113,10 @@ export async function POST(request: NextRequest) {
       exito: true,
       accountId: account.id,
       referencia_interna: referenciaInterna,
+      folio: referenciaInterna,
       // URLs del portal SINACOL real
       url_sinacol: portal.urlSinacol,
+      url_login: portal.urlSinacol,
       url_info: portal.url,
       url_buzon: portal.urlBuzon,
       // Datos para que el trabajador complete en SINACOL
