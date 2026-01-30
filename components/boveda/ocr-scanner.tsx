@@ -1430,7 +1430,7 @@ export function OCRScanner({ onClose, onComplete, initialImages }: OCRScannerPro
           </div>
           
           {/* Vista previa de páginas */}
-          <div className="flex-1 overflow-auto">
+          <div className="flex-1 overflow-hidden">
             <div className="p-3">
               {/* Grid de páginas escaneadas */}
               <div className="grid grid-cols-2 gap-2 mb-4">
@@ -1462,7 +1462,12 @@ export function OCRScanner({ onClose, onComplete, initialImages }: OCRScannerPro
                   {/* Botón de Resumen IA - solo si calidad >= 50% */}
                   {scanQuality >= 50 && (
                 <button
-                  onClick={() => setShowAIAssistant(true)}
+                  onClick={() => {
+                    openAIChatWithDocument(
+                      extractedText,
+                      `Documento escaneado (${pages.length} páginas)`
+                    )
+                  }}
                   className="w-full p-4 bg-gradient-to-r from-blue-500 to-indigo-600 rounded-xl text-white flex items-center justify-center gap-3 hover:from-blue-600 hover:to-indigo-700 transition-all shadow-lg hover:shadow-xl mb-4"
                 >
                   <div className="relative">

@@ -551,13 +551,14 @@ export function AIAssistant({
         body: JSON.stringify({
           messages: [{
             role: "user",
-        content: `Analiza este documento laboral y explica con detalle:
-1. Que tipo de documento es y en que etapa del proceso laboral/CCL aparece.
-2. Para que sirve y que consecuencias tiene (incluye si es solicitud electronica o confirmacion de audiencia).
-3. Puntos clave para el TRABAJADOR (fechas, obligaciones, derechos, documentos faltantes).
-4. Puntos clave para el ABOGADO (riesgos, estrategia, datos que debe verificar).
-5. Plazos o acciones urgentes y donde acudir (CCL, conciliacion, audiencia).
-6. Recomendaciones practicas inmediatas.
+        content: `Explica de forma clara y concisa qué es este documento laboral y para qué sirve.
+Incluye:
+- Tipo de documento y etapa del proceso.
+- Puntos clave (fechas, obligaciones, derechos).
+- Plazos importantes o acciones inmediatas.
+- Siguiente paso recomendado para la persona usuaria.
+
+Responde en bullets y no excedas 8 puntos.
 
 Documento:
 ${docText.slice(0, 4000)}`
