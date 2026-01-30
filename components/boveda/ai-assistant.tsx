@@ -327,6 +327,53 @@ function shouldShowInAppActions(messageId: string, messages: Message[], hasSessi
   return !messageId.includes("error") && !messageId.includes("cta")
 }
 
+type IntentResult = {
+  intent: string | null
+  confidence: number
+}
+
+const INTENT_THRESHOLD = 0.7
+
+const fetchIntent = async (text: string): Promise<IntentResult | null> => {
+  try {
+    const response = await fetch('/api/wit/intent', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ text })
+    })
+
+    if (!response.ok) return null
+    return response.json()
+  } catch {
+    return null
+  }
+}
+
+const getIntentResponse = (intent: string | null, role?: string) => {
+  if (!intent) return null
+
+  const isLawyer = role === 'lawyer' || role === 'admin' || role === 'superadmin' || role === 'webagent' || role === 'guestlawyer'
+
+  switch (intent) {
+    case 'detalles_del_caso':
+      return isLawyer
+        ? `Revisa tus casos desde **Oficina Virtual** y el tablero de **Mis casos**.\n\n[Ir a Mis casos](/oficina-virtual/mis-casos)`
+        : `Puedes ver el estado de tu caso en **Mis Casos**.\n\n[Ir a Mis casos](/casos)`
+    case 'informacion_de_calendario':
+      return `Aquí tienes tu calendario de audiencias y recordatorios.\n\n[Ir a Calendario](/agenda)`
+    case 'subir_archivo_boveda':
+      return `Puedes subir documentos desde **Bóveda** o enviarlos por WhatsApp cuando esté habilitado.\n\n[Ir a Bóveda](/boveda)`
+    case 'contactar_a_mi_abogado':
+      return isLawyer
+        ? `Revisa tus contactos y equipo en **Mi equipo y red**.\n\n[Ir a Mi equipo](/oficina-virtual/mi-equipo)`
+        : `Puedes contactar a tu abogado desde tu caso activo.\n\n[Ir a Mis casos](/casos)`
+    case 'preguntas_sobre_la_app':
+      return `Te llevo a tu dashboard para ver tus herramientas principales.\n\n[Ir al Dashboard](/dashboard)`
+    default:
+      return null
+  }
+}
+
 export function AIAssistant({ 
   isOpen, 
   onClose, 
@@ -664,6 +711,16 @@ Revisa que tengas tu **CURP**, telefono y un calculo guardado.
       setMetrics(prev => ({ ...prev, faqResponses: prev.faqResponses + 1 }))
       setIsLoading(false)
       return
+    }
+
+    const intentResult = await fetchIntent(text)
+    if (intentResult?.intent && intentResult.confidence >= INTENT_THRESHOLD) {
+      const intentResponse = getIntentResponse(intentResult.intent, userProfile?.role)
+      if (intentResponse) {
+        setMessages(prev => [...prev, { id: `assistant-${Date.now()}`, role: "assistant", content: intentResponse }])
+        setMetrics(prev => ({ ...prev, aiResponses: prev.aiResponses + 1 }))
+        return
+      }
     }
     
     // Llamar a Grok AI para preguntas especificas
