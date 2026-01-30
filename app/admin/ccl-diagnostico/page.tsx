@@ -1051,6 +1051,24 @@ export default function CCLDiagnosticoPage() {
     return labels[type]
   }
 
+  const obtenerInsightsError = (resultado: Resultado) => {
+    if (!resultado.errorDetallado) return []
+    const codigo = resultado.errorDetallado.codigo.toLowerCase()
+    const mensaje = resultado.errorMessage.toLowerCase()
+    const es503 = codigo.includes('503') || mensaje.includes('503')
+
+    if (es503) {
+      return [
+        'El portal puede estar en mantenimiento o con sobrecarga temporal.',
+        'El servidor podría estar limitando tráfico automatizado (WAF/rate limit).',
+        'Si ocurre al cargar el portal, no implica CAPTCHA; es indisponibilidad del backend.',
+        'Reintenta con backoff (espera 60-120s) o prueba en horario de menor tráfico.'
+      ]
+    }
+
+    return []
+  }
+
   const stats = {
     exito: resultados.filter(r => r.status === 'exito').length,
     parcial: resultados.filter(r => r.status === 'parcial').length,
@@ -1641,6 +1659,21 @@ export default function CCLDiagnosticoPage() {
                 </div>
               )}
 
+              {/* Insights de error 503 */}
+              {selectedEstado.errorDetallado && obtenerInsightsError(selectedEstado).length > 0 && (
+                <div className="p-3 bg-yellow-950/30 rounded border border-yellow-700">
+                  <div className="flex items-center gap-2 mb-2">
+                    <AlertTriangle className="w-4 h-4 text-yellow-400" />
+                    <span className="text-yellow-400 text-xs font-bold">POSIBLES CAUSAS (HTTP 503)</span>
+                  </div>
+                  <ul className="space-y-1 text-yellow-300 text-[11px] list-disc pl-4">
+                    {obtenerInsightsError(selectedEstado).map((insight, idx) => (
+                      <li key={insight + idx}>{insight}</li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+
               {/* Error Info */}
               {selectedEstado.errorType !== 'ninguno' && (
                 <>
@@ -1691,45 +1724,29 @@ export default function CCLDiagnosticoPage() {
                     </div>
                   )}
 
-                  {/* Screenshot simulado */}
+                  {/* Captura del ultimo paso */}
                   <div className="p-3 bg-green-950/50 rounded border border-green-800">
                     <div className="flex items-center gap-2 mb-2">
                       <Camera className="w-4 h-4 text-green-600" />
-                      <span className="text-green-600 text-xs">Screenshot del Error:</span>
+                      <span className="text-green-600 text-xs">Captura del ultimo paso:</span>
                     </div>
-                    <div className="bg-gray-900 rounded p-4 text-center border border-green-900">
-                      <div className="w-full h-32 bg-gradient-to-br from-gray-800 to-gray-900 rounded flex items-center justify-center">
-                        <div className="text-center">
-                          {selectedEstado.errorType === 'captcha' ? (
-                            <>
-                              <div className="w-16 h-10 bg-white/10 rounded mx-auto mb-2 flex items-center justify-center">
-                                <span className="text-2xl text-white/50">?</span>
-                              </div>
-                              <p className="text-red-400 text-xs">CAPTCHA DETECTADO</p>
-                              <p className="text-gray-500 text-[10px]">Verificacion humana requerida</p>
-                            </>
-                          ) : selectedEstado.errorType === 'timeout' ? (
-                            <>
-                              <Clock className="w-8 h-8 text-yellow-500 mx-auto mb-2" />
-                              <p className="text-yellow-400 text-xs">TIMEOUT 30s</p>
-                              <p className="text-gray-500 text-[10px]">Servidor no responde</p>
-                            </>
-                          ) : selectedEstado.errorType === 'conexion' ? (
-                            <>
-                              <XCircle className="w-8 h-8 text-red-500 mx-auto mb-2" />
-                              <p className="text-red-400 text-xs">ERR_CONNECTION_REFUSED</p>
-                              <p className="text-gray-500 text-[10px]">Portal inaccesible</p>
-                            </>
-                          ) : (
-                            <>
-                              <AlertTriangle className="w-8 h-8 text-yellow-500 mx-auto mb-2" />
-                              <p className="text-yellow-400 text-xs">{selectedEstado.errorType.toUpperCase()}</p>
-                              <p className="text-gray-500 text-[10px]">Ver detalles abajo</p>
-                            </>
-                          )}
+                    {selectedEstado.screenshot ? (
+                      <div className="space-y-2">
+                        <img
+                          src={selectedEstado.screenshot}
+                          alt={`Captura del paso ${selectedEstado.pasoDetenido || ''}`}
+                          className="w-full rounded border border-green-900"
+                        />
+                        <div className="flex items-center justify-between text-[10px] text-green-700">
+                          <span>Estado: {selectedEstado.estado}</span>
+                          <span>Paso: {PASOS_ROBOT.find(p => p.paso === selectedEstado.pasoDetenido)?.nombre || selectedEstado.pasoDetenido}</span>
                         </div>
                       </div>
-                    </div>
+                    ) : (
+                      <div className="bg-gray-900 rounded p-4 text-center border border-green-900">
+                        <p className="text-gray-500 text-[10px]">Sin captura disponible para este paso.</p>
+                      </div>
+                    )}
                   </div>
 
                   {/* Accion sugerida */}
