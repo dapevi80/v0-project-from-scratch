@@ -1,6 +1,6 @@
 'use server'
 
-import { createClient } from '@/lib/supabase/server'
+import { createAdminClient, createClient } from '@/lib/supabase/server'
 import { revalidatePath } from 'next/cache'
 import type { CalculoLiquidacion, Caso } from './helpers'
 import { LIMITES_CUENTA, puedeCrearCaso, puedeCrearCalculo } from '@/lib/lawyer-verification-utils'
@@ -647,6 +647,127 @@ export async function crearCasoDesdeCalculoCompleto(calculoId: string) {
   
   revalidatePath('/casos')
   return { error: null, data: nuevoCaso }
+}
+
+export async function asignarCasoConToken(token: string) {
+  const supabase = await createClient()
+  
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return { error: 'No autenticado', requiresAuth: true }
+  if (!token) return { error: 'Token invalido' }
+  
+  const { data: caso, error: casoError } = await supabase
+    .from('casos')
+    .select('id, worker_id, status, categoria, metadata')
+    .eq('metadata->>assignment_token', token)
+    .single()
+  
+  if (casoError || !caso) {
+    return { error: 'Enlace invalido o expirado' }
+  }
+  
+  if (caso.worker_id && caso.worker_id !== user.id) {
+    return { error: 'Este caso ya fue asignado a otro usuario' }
+  }
+  
+  if (caso.worker_id === user.id) {
+    return { error: null, casoId: caso.id, alreadyAssigned: true }
+  }
+  
+  const metadata = (caso.metadata as Record<string, unknown>) || {}
+  const updatedMetadata = {
+    ...metadata,
+    assignment_token: null,
+    assignment_used_at: new Date().toISOString(),
+    assignment_worker_id: user.id
+  }
+  
+  const { error: updateError } = await supabase
+    .from('casos')
+    .update({
+      worker_id: user.id,
+      status: caso.status || 'pending_review',
+      categoria: caso.categoria || 'nuevo',
+      metadata: updatedMetadata,
+      updated_at: new Date().toISOString()
+    })
+    .eq('id', caso.id)
+  
+  if (updateError) {
+    return { error: updateError.message }
+  }
+  
+  const adminClient = createAdminClient()
+  const calculoDocumentoId = metadata.calculo_documento_id as string | undefined
+  if (adminClient && calculoDocumentoId) {
+    const { data: documento, error: docError } = await adminClient
+      .from('documentos_boveda')
+      .select('id, nombre, nombre_original, descripcion, archivo_path, mime_type, tamanio_bytes, metadata, verificado')
+      .eq('id', calculoDocumentoId)
+      .single()
+    
+    if (docError) {
+      console.error('Error obteniendo documento para asignacion:', docError)
+    } else if (documento) {
+      const timestamp = new Date().toISOString().replace(/[:.]/g, '-')
+      const baseName = documento.archivo_path.split('/').pop() || `calculo-${timestamp}.pdf`
+      const nuevoPath = `${user.id}/calculos/${timestamp}-${baseName}`
+      
+      const { error: copyError } = await adminClient.storage
+        .from('boveda')
+        .copy(documento.archivo_path, nuevoPath)
+      
+      if (copyError) {
+        console.error('Error copiando PDF de calculo:', copyError)
+      } else {
+        const docMetadata = (documento.metadata as Record<string, unknown>) || {}
+        const propuestaPath = (docMetadata.archivo_propuesta_path as string | undefined) || undefined
+        let nuevaPropuestaPath: string | null = null
+        
+        if (propuestaPath) {
+          const propuestaName = propuestaPath.split('/').pop() || `propuesta-${timestamp}.pdf`
+          nuevaPropuestaPath = `${user.id}/calculos/${timestamp}-${propuestaName}`
+          const { error: propuestaCopyError } = await adminClient.storage
+            .from('boveda')
+            .copy(propuestaPath, nuevaPropuestaPath)
+          
+          if (propuestaCopyError) {
+            console.error('Error copiando propuesta de calculo:', propuestaCopyError)
+            nuevaPropuestaPath = null
+          }
+        }
+        
+        const { error: insertError } = await adminClient
+          .from('documentos_boveda')
+          .insert({
+            user_id: user.id,
+            categoria: 'calculo_liquidacion',
+            nombre: documento.nombre,
+            nombre_original: documento.nombre_original,
+            descripcion: documento.descripcion,
+            archivo_path: nuevoPath,
+            mime_type: documento.mime_type,
+            tamanio_bytes: documento.tamanio_bytes,
+            metadata: {
+              ...docMetadata,
+              archivo_propuesta_path: nuevaPropuestaPath || docMetadata.archivo_propuesta_path
+            },
+            estado: 'activo',
+            verificado: documento.verificado
+          })
+        
+        if (insertError) {
+          console.error('Error guardando calculo en boveda del trabajador:', insertError)
+        }
+      }
+    }
+  }
+  
+  revalidatePath('/casos')
+  revalidatePath('/boveda')
+  revalidatePath(`/oficina-virtual/caso/${caso.id}`)
+  
+  return { error: null, casoId: caso.id }
 }
 
 // ============================================

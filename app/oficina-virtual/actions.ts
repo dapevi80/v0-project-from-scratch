@@ -2,6 +2,7 @@
 
 import { createClient } from '@/lib/supabase/server'
 import { revalidatePath } from 'next/cache'
+import { randomUUID } from 'crypto'
 
 // Obtener perfil de abogado con estadísticas
 export async function getLawyerDashboard() {
@@ -962,6 +963,66 @@ export async function asignarCaso(casoId: string, lawyerId: string, datos?: {
   revalidatePath('/oficina-virtual')
   revalidatePath('/oficina-virtual/casos')
   return { error: null }
+}
+
+export async function crearLinkAsignacionTrabajador(casoId: string) {
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return { error: 'No autenticado', link: null }
+  
+  const { data: profile } = await supabase
+    .from('profiles')
+    .select('role')
+    .eq('id', user.id)
+    .single()
+  
+  if (!profile || !['lawyer', 'guestlawyer', 'admin', 'superadmin', 'webagent'].includes(profile.role)) {
+    return { error: 'No autorizado', link: null }
+  }
+  
+  const { data: caso, error: casoError } = await supabase
+    .from('casos')
+    .select('id, lawyer_id, worker_id, metadata')
+    .eq('id', casoId)
+    .single()
+  
+  if (casoError || !caso) {
+    return { error: 'Caso no encontrado', link: null }
+  }
+  
+  if (['lawyer', 'guestlawyer'].includes(profile.role) && caso.lawyer_id !== user.id) {
+    return { error: 'No autorizado', link: null }
+  }
+  
+  if (caso.worker_id) {
+    return { error: 'Este caso ya tiene trabajador asignado', link: null }
+  }
+  
+  const metadata = (caso.metadata as Record<string, unknown>) || {}
+  const token = (metadata.assignment_token as string | undefined) || randomUUID()
+  const updatedMetadata = {
+    ...metadata,
+    assignment_token: token,
+    assignment_created_at: metadata.assignment_created_at || new Date().toISOString(),
+    assignment_created_by: metadata.assignment_created_by || user.id
+  }
+  
+  const { error: updateError } = await supabase
+    .from('casos')
+    .update({
+      metadata: updatedMetadata,
+      updated_at: new Date().toISOString()
+    })
+    .eq('id', casoId)
+  
+  if (updateError) {
+    return { error: updateError.message, link: null }
+  }
+  
+  const baseUrl = process.env.NEXT_PUBLIC_APP_URL?.replace(/\/$/, '')
+  const link = `${baseUrl || ''}/casos/asignar?token=${token}`
+  
+  return { error: null, link }
 }
 
 // Reasignar caso a otro abogado (solo admin/superadmin)
