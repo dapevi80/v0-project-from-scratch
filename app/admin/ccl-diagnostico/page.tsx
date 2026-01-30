@@ -7,100 +7,10 @@ import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Progress } from '@/components/ui/progress'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog'
-import { ArrowLeft, Play, Pause, CheckCircle2, XCircle, AlertTriangle, Clock, Loader2, Eye, Shield, HelpCircle, Send, Camera, RefreshCw, FileText, Download, ExternalLink, User, Key, Mail, Copy, LogIn, Globe } from 'lucide-react'
+import { ArrowLeft, Play, CheckCircle2, XCircle, AlertTriangle, Clock, Loader2, Eye, Shield, HelpCircle, Send, Camera, RefreshCw, FileText, ExternalLink, Copy, Globe } from 'lucide-react'
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase/client'
 import { MatrixRain } from '@/components/ui/matrix-rain'
-import { PORTALES_CCL, obtenerUrlSinacol } from '@/lib/ccl/account-service'
-
-interface DatosTrabajador {
-  nombre_completo: string
-  curp: string
-  rfc: string
-  fecha_nacimiento: string
-  sexo: 'H' | 'M'
-  email_personal: string
-  telefono: string
-  direccion: string
-  ciudad: string
-  codigo_postal: string
-  empresa_nombre: string
-  puesto: string
-  salario_diario: number
-  fecha_ingreso: string
-  fecha_despido: string
-  jornada: 'diurna' | 'nocturna' | 'mixta'
-  salario_semanal: number
-  empresa_direccion: string
-  empresa_coordenadas: string
-  estado: string
-  municipio: string
-  correo_buzon: string
-}
-
-const DATOS_DIAGNOSTICO_REAL: DatosTrabajador = {
-  nombre_completo: 'David Pérez Villaseñor',
-  curp: 'PEVD930106HDFRLV00',
-  rfc: 'PEVD930106XXX',
-  fecha_nacimiento: '1993-01-06',
-  sexo: 'H',
-  email_personal: 'dpvillasenor@gmail.com',
-  telefono: '9985933232',
-  direccion: 'Pulpo 46, SM 49, Benito Juárez, Quintana Roo',
-  ciudad: 'Benito Juárez',
-  codigo_postal: '77509',
-  estado: 'Quintana Roo',
-  municipio: 'Benito Juárez',
-  empresa_nombre: 'EXPERIENCIAS XCARET SAPI DE CV',
-  empresa_direccion: 'Carretera Chetumal - Puerto Juárez Km 282, 77710 Playa del Carmen, Q.R.',
-  empresa_coordenadas: '20.5806, -87.1184',
-  puesto: 'Vendedor',
-  salario_semanal: 10000,
-  salario_diario: 10000 / 7,
-  fecha_ingreso: '2019-05-07',
-  fecha_despido: '2026-01-10',
-  jornada: 'diurna',
-  correo_buzon: ''
-}
-
-const generarDatosTrabajador = (estado: string, correoBuzon: string): DatosTrabajador => ({
-  ...DATOS_DIAGNOSTICO_REAL,
-  correo_buzon: correoBuzon,
-  estado,
-  ciudad: DATOS_DIAGNOSTICO_REAL.ciudad
-})
-
-// Helper function to call CCL account creation API
-async function crearCuentaCCLAPI(
-  estado: string,
-  datosTrabajador: DatosTrabajador,
-  opciones?: {
-    userId?: string
-    casoId?: string
-    cotizacionId?: string
-    esPrueba?: boolean
-    sesionDiagnosticoId?: string
-  }
-) {
-  const response = await fetch('/api/ccl/create-account', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ estado, datosTrabajador, opciones })
-  })
-  return response.json()
-}
-
-const ESTADOS_MEXICO = [
-  // 32 Centros Estatales
-  'Aguascalientes', 'Baja California', 'Baja California Sur', 'Campeche', 'Chiapas',
-  'Chihuahua', 'Ciudad de Mexico', 'Coahuila', 'Colima', 'Durango', 'Guanajuato',
-  'Guerrero', 'Hidalgo', 'Jalisco', 'Estado de Mexico', 'Michoacan', 'Morelos',
-  'Nayarit', 'Nuevo Leon', 'Oaxaca', 'Puebla', 'Queretaro', 'Quintana Roo',
-  'San Luis Potosi', 'Sinaloa', 'Sonora', 'Tabasco', 'Tamaulipas', 'Tlaxcala',
-  'Veracruz', 'Yucatan', 'Zacatecas',
-  // 1 Centro Federal (CFCRL)
-  'Federal'
-]
 
 type TestStatus = 'pendiente' | 'en_progreso' | 'exito' | 'parcial' | 'error'
 type ErrorType = 'captcha' | 'timeout' | 'conexion' | 'formulario' | 'validacion' | 'ninguno'
@@ -130,6 +40,11 @@ interface Resultado {
   accionSugerida: string
   pdfUrl: string
   folioGenerado: string
+  jobId?: string
+  casoId?: string
+  empresaNombre?: string
+  progreso?: number
+  currentStepRaw?: string
   // Nuevos campos para tracking detallado
   pasoActual: PasoRobot
   pasoDetenido: PasoRobot | null
@@ -141,46 +56,22 @@ interface Resultado {
     timestamp: string
     intentos: number
   } | null
-  // Datos para acceso a SINACOL (con datos reales de prueba del SuperAdmin)
+  // Datos para acceso a SINACOL
   cuentaCCL?: {
-    email: string // Email aleatorio generado para la prueba
-    password: string // SINACOL no usa password
-    urlLogin: string // URL de SINACOL para crear solicitud
-    urlBuzon: string // URL del portal CCL informativo
-    urlSinacol?: string // URL directa a formulario SINACOL
-    curp: string // CURP real del usuario de prueba
-    telefono?: string // Telefono real
-    correoPersonal?: string
-    nombreTrabajador: string
-    empresaEjemplo?: {
-      razonSocial: string
-      rfc: string
-      direccion: string
-      coordenadas?: string
-    }
+    urlLogin?: string
+    urlBuzon?: string
+    urlSinacol?: string
   }
-  datosDiagnostico?: DatosTrabajador
+  logs?: Array<{ level: string; message: string; created_at?: string }>
 }
 
-// URLs de portales SINACOL reales por estado (verificados enero 2026)
-// SINACOL es el Sistema Nacional de Conciliación Laboral usado por todos los estados
-const obtenerPortalUrl = (estado: string): string => {
-  const portal = PORTALES_CCL[estado]
-  return portal?.urlSinacol || obtenerUrlSinacol(estado)
-}
-
-const obtenerPortalInfo = (estado: string): string => {
-  const portal = PORTALES_CCL[estado]
-  return portal?.url || `https://ccl.${estado.toLowerCase().replace(/ /g, '')}.gob.mx`
-}
-
-// Configuracion especial para portal Federal
+// Configuración especial para portal Federal
 const PORTAL_FEDERAL_INFO = {
-  nombre: 'Centro Federal de Conciliacion y Registro Laboral (CFCRL)',
-  descripcion: 'Jurisdiccion federal: empresas con actividades de competencia federal',
+  nombre: 'Centro Federal de Conciliación y Registro Laboral (CFCRL)',
+  descripcion: 'Jurisdicción federal: empresas con actividades de competencia federal',
   url: 'https://cfcrl.gob.mx',
   urlSolicitud: 'https://cfcrl.gob.mx/solicitud',
-  tiposCasos: ['Ferrocarriles', 'Aviacion', 'Electricidad', 'Petroleo', 'Banca', 'Seguros']
+  tiposCasos: ['Ferrocarriles', 'Aviación', 'Electricidad', 'Petróleo', 'Banca', 'Seguros']
 }
 
 // Pasos del proceso de automatizacion (a nivel de modulo)
@@ -203,56 +94,23 @@ const CURSOR_POSITIONS = [
   { top: '78%', left: '30%' }
 ]
 
-// Function to generate random error data
-const generarErrorAleatorio = (): { errorType: ErrorType; errorMessage: string; accionSugerida: string } => {
-  const errorTypes = ['captcha', 'timeout', 'conexion', 'formulario', 'validacion', 'ninguno'] as ErrorType[]
-  const randomErrorType = errorTypes[Math.floor(Math.random() * errorTypes.length)]
-  const errorMessages: Record<ErrorType, string> = {
-    captcha: 'CAPTCHA detectado - Requiere intervencion humana',
-    timeout: 'Timeout: Portal tardo mas de 30s en cargar',
-    conexion: 'Error de red: No se pudo establecer conexion',
-    formulario: 'Formulario de login no encontrado',
-    validacion: 'Validacion del formulario fallo',
-    ninguno: ''
-  }
-  const accionSugeridas: Record<ErrorType, string> = {
-    captcha: 'Solicitar a SuperAdmin resolver CAPTCHA manualmente',
-    timeout: 'El portal esta lento, reintentar en horario de menor trafico',
-    conexion: 'Verificar conexion a internet y firewall',
-    formulario: 'La estructura del portal cambio, actualizar selector',
-    validacion: 'Verificar formato de datos de prueba',
-    ninguno: ''
-  }
-
-  return {
-    errorType: randomErrorType,
-    errorMessage: errorMessages[randomErrorType],
-    accionSugerida: accionSugeridas[randomErrorType]
-  }
-}
-
 export default function CCLDiagnosticoPage() {
   const router = useRouter()
   const [loading, setLoading] = useState(true)
   const [isSuperAdmin, setIsSuperAdmin] = useState(false)
-  const [modo, setModo] = useState<'dry_run' | 'live'>('live')
   const [ejecutando, setEjecutando] = useState(false)
   const [progreso, setProgreso] = useState(0)
   const [resultados, setResultados] = useState<Resultado[]>([])
-  const [currentIndex, setCurrentIndex] = useState(0)
   const [selectedEstado, setSelectedEstado] = useState<Resultado | null>(null)
   const [showDetailDialog, setShowDetailDialog] = useState(false)
-  const [showPdfDialog, setShowPdfDialog] = useState(false)
-  const [selectedPdf, setSelectedPdf] = useState<Resultado | null>(null)
   const [captchasSolicitados, setCaptchasSolicitados] = useState<string[]>([])
   const [showPdfViewer, setShowPdfViewer] = useState(false)
   const [selectedPdfUrl, setSelectedPdfUrl] = useState('')
   const [selectedPdfEstado, setSelectedPdfEstado] = useState('')
-  // Nuevo: Selector de estado individual para diagnóstico específico
-  const [estadoSeleccionado, setEstadoSeleccionado] = useState<string>('todos')
-  const [modoDiagnostico, setModoDiagnostico] = useState<'todos' | 'individual'>('todos')
   const [livePreviewIndex, setLivePreviewIndex] = useState(0)
   const [livePreviewPlaying, setLivePreviewPlaying] = useState(true)
+  const [casoIdInput, setCasoIdInput] = useState('')
+  const [jobIdActivo, setJobIdActivo] = useState<string | null>(null)
 
   useEffect(() => {
     async function checkAccess() {
@@ -276,7 +134,7 @@ export default function CCLDiagnosticoPage() {
       }
       
       setIsSuperAdmin(true)
-      initResultados()
+      setResultados([])
       setLoading(false)
     }
     
@@ -293,6 +151,34 @@ export default function CCLDiagnosticoPage() {
     return () => clearInterval(interval)
   }, [showDetailDialog, selectedEstado, livePreviewPlaying])
 
+  useEffect(() => {
+    if (!jobIdActivo) return
+
+    let isMounted = true
+    const fetchStatus = async () => {
+      try {
+        const response = await fetch(`/api/ccl/agent/status/${jobIdActivo}`)
+        if (!response.ok) return
+        const data = await response.json()
+        if (!isMounted) return
+        const nuevoResultado = construirResultadoDesdeJob(data.job, data.logs || [])
+        setResultados([nuevoResultado])
+        setSelectedEstado(nuevoResultado)
+        setProgreso(data.job?.progress || 0)
+        setEjecutando(data.job?.status === 'running' || data.job?.status === 'pending')
+      } catch {
+        // Ignorar errores temporales de red
+      }
+    }
+
+    fetchStatus()
+    const interval = setInterval(fetchStatus, 4000)
+    return () => {
+      isMounted = false
+      clearInterval(interval)
+    }
+  }, [jobIdActivo])
+
   const crearPasosIniciales = (): PasoDetalle[] => {
     return PASOS_ROBOT.map(p => ({
       paso: p.paso,
@@ -305,670 +191,142 @@ export default function CCLDiagnosticoPage() {
     }))
   }
 
-  // Generar email aleatorio para pruebas SINACOL
-  const generarEmailPrueba = (estado: string) => {
-    const timestamp = Date.now().toString(36)
-    const random = Math.random().toString(36).substring(2, 6)
-    const estadoSlug = estado.toLowerCase().replace(/ /g, '').substring(0, 3)
-    return `david.perez.ccl.${estadoSlug}.${timestamp}${random}@gmail.com`
-  }
-  
-  // Datos REALES del usuario de prueba (SuperAdmin: David Pérez Villaseñor)
-  // Cada prueba genera un email aleatorio pero usa CURP real
-  const generarTrabajadorPrueba = (estado: string) => {
-    const emailPrueba = generarEmailPrueba(estado)
-    const datosReales = generarDatosTrabajador(estado, emailPrueba)
-    
-    return { 
-      nombreCompleto: datosReales.nombre_completo,
-      curp: datosReales.curp,
-      telefono: datosReales.telefono,
-      email: emailPrueba,
-      emailPersonal: datosReales.email_personal,
-      empresaEjemplo: {
-        razonSocial: datosReales.empresa_nombre,
-        rfc: datosReales.rfc,
-        direccion: datosReales.empresa_direccion,
-        coordenadas: datosReales.empresa_coordenadas
-      },
-      datosDiagnostico: datosReales
-    }
+  // Mapeo real de pasos y estado del job
+  const mapStepFromJob = (step?: string): PasoRobot => {
+    const normalized = (step || '').toLowerCase()
+    if (normalized.includes('navegando') || normalized.includes('portal')) return 'carga_portal'
+    if (normalized.includes('iniciando') || normalized.includes('browser')) return 'conexion'
+    if (normalized.includes('llenando') || normalized.includes('formulario')) return 'formulario'
+    if (normalized.includes('captcha')) return 'captcha'
+    if (normalized.includes('envi')) return 'envio'
+    if (normalized.includes('confirm')) return 'confirmacion'
+    if (normalized.includes('pdf') || normalized.includes('extrayendo')) return 'descarga_pdf'
+    return 'conexion'
   }
 
-  const initResultados = () => {
-    setResultados(ESTADOS_MEXICO.map(estado => {
-      const portal = PORTALES_CCL[estado]
-      const trabajador = generarTrabajadorPrueba(estado)
-      // SINACOL no requiere email/password - solo CURP del trabajador
-      
+  const detectarCaptcha = (logs: Array<{ level: string; message: string }> = [], error?: string) => {
+    const texto = `${error || ''} ${logs.map((l) => l.message).join(' ')}`.toLowerCase()
+    return texto.includes('captcha')
+  }
+
+  const construirResultadoDesdeJob = (job: any, logs: any[]) => {
+    const pasoActual = mapStepFromJob(job.currentStep)
+    const pasosBase = crearPasosIniciales().map((paso) => {
+      const indexActual = PASOS_ROBOT.findIndex((p) => p.paso === pasoActual)
+      const indexPaso = PASOS_ROBOT.findIndex((p) => p.paso === paso.paso)
+      const completado = indexPaso >= 0 && indexPaso < indexActual
+      const detenido = job.status === 'failed' && paso.paso === pasoActual
       return {
-        estado,
-        status: 'pendiente',
-        tiempo: 0,
-        errorType: 'ninguno',
-        errorMessage: '',
-        screenshot: '',
-        url: portal?.url || `https://ccl.${estado.toLowerCase().replace(/ /g, '')}.gob.mx`,
-        captchaPendiente: false,
-        accionSugerida: '',
-        pdfUrl: '',
-        folioGenerado: '',
-        pasoActual: 'conexion',
-        pasoDetenido: null,
-        pasos: crearPasosIniciales(),
-        errorDetallado: null,
-        // Datos para acceso a SINACOL real con datos de prueba del SuperAdmin
-        cuentaCCL: {
-          email: trabajador.email, // Email aleatorio generado para esta prueba
-          password: '', // SINACOL no usa password - acceso con CURP
-          urlLogin: portal?.urlSinacol || obtenerUrlSinacol(estado), // URL real de SINACOL
-          urlBuzon: portal?.url || obtenerPortalInfo(estado), // Sitio informativo del CCL
-          urlSinacol: portal?.urlSinacol || obtenerUrlSinacol(estado),
-          curp: trabajador.curp, // CURP REAL: PEVD930106HDFRLV00
-          telefono: trabajador.telefono, // Telefono REAL: 9985933232
-          correoPersonal: trabajador.emailPersonal,
-          nombreTrabajador: trabajador.nombreCompleto, // David Pérez Villaseñor
-          empresaEjemplo: trabajador.empresaEjemplo // Xcaret como ejemplo
-        },
-        datosDiagnostico: trabajador.datosDiagnostico
+        ...paso,
+        completado,
+        error: detenido,
+        mensaje: detenido ? 'Error real detectado' : completado ? 'Completado' : 'Pendiente'
       }
-    }))
-  }
+    })
 
-  // Generar referencia interna (NO es folio oficial de SINACOL)
-  const generarReferenciaInterna = (estado: string) => {
-    const prefijo = estado.slice(0, 3).toUpperCase()
-    const fecha = new Date().toISOString().slice(0, 10).replace(/-/g, '')
-    const numero = Math.floor(Math.random() * 9999).toString().padStart(4, '0')
-    return `REF-${prefijo}-${fecha}-${numero}` // REF indica que es referencia interna
-  }
-
-  // Generador de errores detallados con paso especifico
-  const generarErrorDetallado = (pasoFallido: PasoRobot): { 
-    errorType: ErrorType
-    errorMessage: string
-    accionSugerida: string
-    errorDetallado: Resultado['errorDetallado']
-  } => {
-    const erroresPorPaso: Record<PasoRobot, Array<{
-      errorType: ErrorType
-      errorMessage: string
-      accionSugerida: string
-      tipoDetallado: 'red' | 'servidor' | 'captcha' | 'timeout' | 'formulario' | 'desconocido'
-      codigo: string
-      descripcion: string
-    }>> = {
-      'conexion': [
-        {
-          errorType: 'conexion',
-          errorMessage: 'Error de red: No se pudo establecer conexion',
-          accionSugerida: 'Verificar conexion a internet y firewall',
-          tipoDetallado: 'red',
-          codigo: 'NET_ERR_CONNECTION_REFUSED',
-          descripcion: 'El servidor rechazo la conexion. Posible bloqueo de IP o servidor caido.'
-        },
-        {
-          errorType: 'conexion',
-          errorMessage: 'DNS no resuelto',
-          accionSugerida: 'El dominio del portal no responde, puede estar en mantenimiento',
-          tipoDetallado: 'red',
-          codigo: 'NET_ERR_NAME_NOT_RESOLVED',
-          descripcion: 'No se pudo resolver el nombre de dominio. Verificar URL del portal.'
-        }
-      ],
-      'carga_portal': [
-        {
-          errorType: 'timeout',
-          errorMessage: 'Timeout: Portal tardo mas de 30s en cargar',
-          accionSugerida: 'El portal esta lento, reintentar en horario de menor trafico',
-          tipoDetallado: 'timeout',
-          codigo: 'TIMEOUT_EXCEEDED',
-          descripcion: 'El tiempo de espera se agoto esperando respuesta del servidor (30000ms).'
-        },
-        {
-          errorType: 'conexion',
-          errorMessage: 'Error 503: Servicio no disponible',
-          accionSugerida: 'El portal esta en mantenimiento, reintentar mas tarde',
-          tipoDetallado: 'servidor',
-          codigo: 'HTTP_503_SERVICE_UNAVAILABLE',
-          descripcion: 'El servidor devolvio error 503. El servicio no esta disponible temporalmente.'
-        }
-      ],
-      'login': [
-        {
-          errorType: 'formulario',
-          errorMessage: 'Formulario de login no encontrado',
-          accionSugerida: 'La estructura del portal cambio, actualizar selector',
-          tipoDetallado: 'formulario',
-          codigo: 'SELECTOR_NOT_FOUND',
-          descripcion: 'No se encontro el elemento #login-form en la pagina. Posible cambio de estructura.'
-        }
-      ],
-      'formulario': [
-        {
-          errorType: 'formulario',
-          errorMessage: 'Campo requerido no encontrado',
-          accionSugerida: 'Actualizar mapeo de campos del formulario',
-          tipoDetallado: 'formulario',
-          codigo: 'FIELD_NOT_FOUND',
-          descripcion: 'No se encontro el campo "curp" en el formulario. Selector: input[name="curp"]'
-        },
-        {
-          errorType: 'validacion',
-          errorMessage: 'Validacion del formulario fallo',
-          accionSugerida: 'Verificar formato de datos de prueba',
-          tipoDetallado: 'formulario',
-          codigo: 'VALIDATION_ERROR',
-          descripcion: 'El portal rechazo los datos: "CURP invalido". Verificar formato.'
-        }
-      ],
-      'captcha': [
-        {
-          errorType: 'captcha',
-          errorMessage: 'CAPTCHA detectado - Requiere intervencion humana',
-          accionSugerida: 'Solicitar a SuperAdmin resolver CAPTCHA manualmente',
-          tipoDetallado: 'captcha',
-          codigo: 'CAPTCHA_DETECTED',
-          descripcion: 'Se detecto reCAPTCHA v2/v3. El robot no puede resolverlo automaticamente.'
-        },
-        {
-          errorType: 'captcha',
-          errorMessage: 'CAPTCHA de imagen detectado',
-          accionSugerida: 'Solicitar ayuda manual para resolver el CAPTCHA',
-          tipoDetallado: 'captcha',
-          codigo: 'IMAGE_CAPTCHA',
-          descripcion: 'CAPTCHA de seleccion de imagenes detectado. Requiere intervencion humana.'
-        }
-      ],
-      'envio': [
-        {
-          errorType: 'conexion',
-          errorMessage: 'Error al enviar formulario',
-          accionSugerida: 'Reintentar el envio',
-          tipoDetallado: 'servidor',
-          codigo: 'SUBMIT_FAILED',
-          descripcion: 'El servidor devolvio error 500 al procesar la solicitud.'
-        }
-      ],
-      'confirmacion': [
-        {
-          errorType: 'timeout',
-          errorMessage: 'No se recibio confirmacion',
-          accionSugerida: 'Verificar manualmente si la solicitud fue registrada',
-          tipoDetallado: 'timeout',
-          codigo: 'CONFIRMATION_TIMEOUT',
-          descripcion: 'No se recibio pagina de confirmacion despues de 15s.'
-        }
-      ],
-      'descarga_pdf': [
-        {
-          errorType: 'conexion',
-          errorMessage: 'Error al descargar PDF',
-          accionSugerida: 'Reintentar descarga o descargar manualmente',
-          tipoDetallado: 'servidor',
-          codigo: 'PDF_DOWNLOAD_FAILED',
-          descripcion: 'No se pudo descargar el archivo PDF de confirmacion.'
-        }
-      ]
+    const captchaDetectado = detectarCaptcha(logs, job.error)
+    const statusMap: Record<string, TestStatus> = {
+      pending: 'pendiente',
+      running: 'en_progreso',
+      completed: 'exito',
+      failed: 'error',
+      cancelled: 'error'
     }
 
-    const erroresDisponibles = erroresPorPaso[pasoFallido] || erroresPorPaso['conexion']
-    const error = erroresDisponibles[Math.floor(Math.random() * erroresDisponibles.length)]
+    const startedAt = job.startedAt ? new Date(job.startedAt).getTime() : null
+    const completedAt = job.completedAt ? new Date(job.completedAt).getTime() : null
+    const tiempo = startedAt && completedAt ? completedAt - startedAt : 0
 
     return {
-      errorType: error.errorType,
-      errorMessage: error.errorMessage,
-      accionSugerida: error.accionSugerida,
-      errorDetallado: {
-        tipo: error.tipoDetallado,
-        codigo: error.codigo,
-        descripcion: error.descripcion,
+      estado: job.metadata?.jurisdiccion?.estadoRecomendado || job.caso?.empresa_nombre || 'CASO',
+      status: captchaDetectado && job.status !== 'completed' ? 'parcial' : (statusMap[job.status] || 'pendiente'),
+      tiempo,
+      errorType: captchaDetectado ? 'captcha' : job.error ? 'validacion' : 'ninguno',
+      errorMessage: job.error || '',
+      screenshot: '',
+      url: job.metadata?.jurisdiccion?.cclRecomendado?.urlPortal || '',
+      captchaPendiente: captchaDetectado,
+      accionSugerida: captchaDetectado ? 'Resolver CAPTCHA manualmente en el portal.' : '',
+      pdfUrl: job.resultado?.pdfUrl || '',
+      folioGenerado: job.resultado?.folioSolicitud || '',
+      jobId: job.id,
+      casoId: job.casoId,
+      empresaNombre: job.caso?.empresa_nombre || '',
+      progreso: job.progress || 0,
+      currentStepRaw: job.currentStep,
+      pasoActual,
+      pasoDetenido: job.status === 'failed' ? pasoActual : null,
+      pasos: pasosBase,
+      errorDetallado: job.error ? {
+        tipo: captchaDetectado ? 'captcha' : 'desconocido',
+        codigo: captchaDetectado ? 'CAPTCHA_DETECTED' : 'JOB_FAILED',
+        descripcion: job.error,
         timestamp: new Date().toISOString(),
         intentos: 1
-      }
+      } : null,
+      cuentaCCL: {
+        urlLogin: job.metadata?.jurisdiccion?.cclRecomendado?.urlPortal,
+        urlSinacol: job.metadata?.jurisdiccion?.cclRecomendado?.urlPortal
+      },
+      logs: logs || []
     }
   }
 
-  // Simular ejecucion de un paso del robot
-  const ejecutarPaso = async (paso: PasoRobot): Promise<{ exito: boolean; tiempo: number; screenshot: string }> => {
-    const tiempoBase = {
-      'conexion': 200,
-      'carga_portal': 1500,
-      'login': 800,
-      'formulario': 1200,
-      'captcha': 500,
-      'envio': 1000,
-      'confirmacion': 800,
-      'descarga_pdf': 600
-    }
-    
-    const tiempo = tiempoBase[paso] + Math.random() * 500
-    await new Promise(resolve => setTimeout(resolve, tiempo))
-    
-    // Probabilidad de fallo por paso
-    const probFallo = {
-      'conexion': 0.05,
-      'carga_portal': 0.1,
-      'login': 0.08,
-      'formulario': 0.12,
-      'captcha': 0.25, // CAPTCHA tiene mayor probabilidad de fallo
-      'envio': 0.1,
-      'confirmacion': 0.05,
-      'descarga_pdf': 0.08
-    }
-    
-    const fallo = Math.random() < probFallo[paso]
-    
-    return {
-      exito: !fallo,
-      tiempo: Math.round(tiempo),
-      screenshot: `/api/placeholder/800/600?text=${encodeURIComponent(
-        `${fallo ? 'ERROR' : 'OK'} - Paso: ${paso}`
-      )}`
-    }
-  }
+  const iniciarDiagnosticoReal = async () => {
+    if (!casoIdInput.trim()) return
 
-  // NUEVO: Función para diagnóstico de un solo estado
-  const iniciarDiagnosticoIndividual = async (estado: string) => {
     setEjecutando(true)
     setProgreso(0)
-    
-    const idx = ESTADOS_MEXICO.indexOf(estado)
-    if (idx === -1) {
-      setEjecutando(false)
-      return
-    }
-    
-    setCurrentIndex(idx)
-    
-    // Resetear solo este estado
-    setResultados(prev => prev.map((r, i) => 
-      i === idx ? {
-        ...r,
-        status: 'pendiente',
-        pasos: crearPasosIniciales(),
-        pasoDetenido: null,
-        errorDetallado: null,
-        folioGenerado: '',
-        pdfUrl: ''
-      } : r
-    ))
+    setResultados([])
 
-    let tiempoTotal = 0
-    let pasoDetenido: PasoRobot | null = null
-    let errorData: ReturnType<typeof generarErrorDetallado> | null = null
-    let finalStatus: TestStatus = 'exito'
-    const pasosActualizados = crearPasosIniciales()
-    
-    // Marcar como en progreso
-    setResultados(prev => prev.map((r, i) => 
-      i === idx ? { ...r, status: 'en_progreso', pasoActual: 'conexion' } : r
-    ))
-    setProgreso(10)
-
-    // Ejecutar cada paso secuencialmente
     try {
-      for (let p = 0; p < PASOS_ROBOT.length; p++) {
-        const pasoInfo = PASOS_ROBOT[p]
-        
-        // Actualizar paso actual
-        setResultados(prev => prev.map((r, i) => 
-          i === idx ? { ...r, pasoActual: pasoInfo.paso } : r
-        ))
-        setProgreso(10 + Math.round((p / PASOS_ROBOT.length) * 80))
-        
-        // Ejecutar el paso
-        const resultado = await ejecutarPaso(pasoInfo.paso)
-        tiempoTotal += resultado.tiempo
-        
-        // Actualizar el paso en el array
-        pasosActualizados[p] = {
-          ...pasosActualizados[p],
-          completado: resultado.exito,
-          error: !resultado.exito,
-          tiempo: resultado.tiempo,
-          screenshot: resultado.screenshot,
-          mensaje: resultado.exito ? 'Completado' : 'Error detectado'
+      const response = await fetch('/api/ccl/agent/run', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ casoId: casoIdInput.trim() })
+      })
+
+      const data = await response.json()
+      if (!response.ok) {
+        setEjecutando(false)
+        const errorResultado: Resultado = {
+          estado: 'CASO',
+          status: 'error',
+          tiempo: 0,
+          errorType: 'validacion',
+          errorMessage: data.error || 'No se pudo iniciar el diagnóstico',
+          screenshot: '',
+          url: '',
+          captchaPendiente: false,
+          accionSugerida: 'Revisa el ID del caso y los permisos del usuario.',
+          pdfUrl: '',
+          folioGenerado: '',
+          jobId: data.jobId,
+          casoId: casoIdInput.trim(),
+          pasoActual: 'conexion',
+          pasoDetenido: 'conexion',
+          pasos: crearPasosIniciales(),
+          errorDetallado: data.error ? {
+            tipo: 'desconocido',
+            codigo: 'JOB_START_FAILED',
+            descripcion: data.error,
+            timestamp: new Date().toISOString(),
+            intentos: 1
+          } : null
         }
-        
-        // Si fallo, capturar y salir
-        if (!resultado.exito) {
-          pasoDetenido = pasoInfo.paso
-          errorData = generarErrorDetallado(pasoInfo.paso)
-          
-          if (pasoInfo.paso === 'conexion' || pasoInfo.paso === 'carga_portal') {
-            finalStatus = 'error'
-          } else if (pasoInfo.paso === 'captcha') {
-            finalStatus = 'parcial'
-          } else {
-            finalStatus = 'parcial'
-          }
-          
-          pasosActualizados[p].screenshot = `/api/placeholder/800/600?text=${encodeURIComponent(
-            `ROBOT DETENIDO\n${estado}\nPaso: ${pasoInfo.nombre}\nError: ${errorData.errorDetallado?.codigo || 'UNKNOWN'}`
-          )}`
-          
-          break
-        }
+        setResultados([errorResultado])
+        setSelectedEstado(errorResultado)
+        return
       }
-    } catch (err) {
-      finalStatus = 'error'
-      pasoDetenido = 'conexion'
-      errorData = {
-        errorType: 'conexion',
-        errorMessage: 'Error inesperado en la ejecucion',
-        accionSugerida: 'Revisar logs del sistema',
-        errorDetallado: {
-          tipo: 'desconocido',
-          codigo: 'UNEXPECTED_ERROR',
-          descripcion: err instanceof Error ? err.message : 'Error desconocido',
-          timestamp: new Date().toISOString(),
-          intentos: 1
-        }
-      }
+
+      setJobIdActivo(data.jobId)
+    } catch {
+      setEjecutando(false)
     }
-    
-    setProgreso(90)
-    
-    // Si fue exitoso, crear cuenta real
-    let cuentaCCLData: Resultado['cuentaCCL'] | undefined = undefined
-    let folio = ''
-    
-    if (finalStatus === 'exito') {
-      const resultadoActual = resultados.find(r => r.estado === estado)
-      const datosTrabajadorPrueba = generarDatosTrabajador(estado, generarEmailPrueba(estado))
-      
-      try {
-        const resultadoCuenta = await crearCuentaCCLAPI(
-          estado,
-          datosTrabajadorPrueba,
-          {
-            esPrueba: true,
-            sesionDiagnosticoId: `diag-individual-${Date.now()}`
-          }
-        )
-        
-        if (resultadoCuenta.exito) {
-          folio = resultadoCuenta.folio || ''
-          cuentaCCLData = {
-            email: resultadoCuenta.email_portal || '',
-            password: resultadoCuenta.password_portal || '',
-            urlLogin: resultadoCuenta.url_login || '',
-            urlBuzon: resultadoCuenta.url_buzon || '',
-            urlSinacol: resultadoCuenta.url_login || '',
-            curp: datosTrabajadorPrueba.curp,
-            nombreTrabajador: datosTrabajadorPrueba.nombre_completo,
-            correoPersonal: datosTrabajadorPrueba.email_personal,
-            empresaEjemplo: {
-              razonSocial: datosTrabajadorPrueba.empresa_nombre,
-              rfc: datosTrabajadorPrueba.rfc,
-              direccion: datosTrabajadorPrueba.empresa_direccion,
-              coordenadas: datosTrabajadorPrueba.empresa_coordenadas
-            }
-          }
-        } else if (resultadoCuenta.requiereCaptcha) {
-          finalStatus = 'parcial'
-          errorData = {
-            errorType: 'captcha',
-            errorMessage: resultadoCuenta.error || 'CAPTCHA detectado',
-            accionSugerida: 'Resolver CAPTCHA manualmente en el portal',
-            errorDetallado: {
-              tipo: 'captcha',
-              codigo: 'CAPTCHA_REQUIRED',
-              descripcion: 'El portal requiere resolver un CAPTCHA',
-              timestamp: new Date().toISOString(),
-              intentos: 1
-            }
-          }
-          cuentaCCLData = {
-            email: resultadoCuenta.email_portal || '',
-            password: resultadoCuenta.password_portal || '',
-            urlLogin: resultadoCuenta.url_login || '',
-            urlBuzon: resultadoCuenta.captchaUrl || '',
-            urlSinacol: resultadoCuenta.captchaUrl || '',
-            curp: datosTrabajadorPrueba.curp,
-            nombreTrabajador: datosTrabajadorPrueba.nombre_completo,
-            correoPersonal: datosTrabajadorPrueba.email_personal,
-            empresaEjemplo: {
-              razonSocial: datosTrabajadorPrueba.empresa_nombre,
-              rfc: datosTrabajadorPrueba.rfc,
-              direccion: datosTrabajadorPrueba.empresa_direccion,
-              coordenadas: datosTrabajadorPrueba.empresa_coordenadas
-            }
-          }
-        } else {
-          folio = generarReferenciaInterna(estado)
-          cuentaCCLData = resultadoActual?.cuentaCCL
-        }
-      } catch {
-        folio = generarReferenciaInterna(estado)
-        cuentaCCLData = resultados.find(r => r.estado === estado)?.cuentaCCL
-      }
-    }
-    
-    // Actualizar resultado final
-    setResultados(prev => prev.map((r, i) => 
-      i === idx ? { 
-        ...r, 
-        status: finalStatus, 
-        tiempo: tiempoTotal,
-        errorType: errorData?.errorType || 'ninguno',
-        errorMessage: errorData?.errorMessage || '',
-        accionSugerida: errorData?.accionSugerida || '',
-        captchaPendiente: errorData?.errorType === 'captcha',
-        screenshot: pasoDetenido ? pasosActualizados.find(p => p.paso === pasoDetenido)?.screenshot || '' : '',
-        pdfUrl: finalStatus === 'exito' ? `/api/ccl-pdf/${folio}` : '',
-        folioGenerado: folio,
-        pasoDetenido,
-        pasos: pasosActualizados,
-        errorDetallado: errorData?.errorDetallado || null,
-        cuentaCCL: cuentaCCLData || r.cuentaCCL
-      } : r
-    ))
-    
-    setProgreso(100)
-    setEjecutando(false)
   }
 
   const iniciarDiagnostico = async () => {
-    // Si hay un estado seleccionado específico, ejecutar solo ese
-    if (modoDiagnostico === 'individual' && estadoSeleccionado !== 'todos') {
-      await iniciarDiagnosticoIndividual(estadoSeleccionado)
-      return
-    }
-    
-    setEjecutando(true)
-    setProgreso(0)
-    setCurrentIndex(0)
-    initResultados()
-
-    // Continuar con cada estado aunque haya errores (robusto)
-    for (let i = 0; i < ESTADOS_MEXICO.length; i++) {
-      setCurrentIndex(i)
-      const estadoActual = ESTADOS_MEXICO[i]
-      let tiempoTotal = 0
-      let pasoDetenido: PasoRobot | null = null
-      let errorData: ReturnType<typeof generarErrorDetallado> | null = null
-      let finalStatus: TestStatus = 'exito'
-      const pasosActualizados = crearPasosIniciales()
-      
-      // Marcar como en progreso
-      setResultados(prev => prev.map((r, idx) => 
-        idx === i ? { ...r, status: 'en_progreso', pasoActual: 'conexion' } : r
-      ))
-
-      // Ejecutar cada paso secuencialmente
-      try {
-        for (let p = 0; p < PASOS_ROBOT.length; p++) {
-          const pasoInfo = PASOS_ROBOT[p]
-          
-          // Actualizar paso actual
-          setResultados(prev => prev.map((r, idx) => 
-            idx === i ? { ...r, pasoActual: pasoInfo.paso } : r
-          ))
-          
-          // Ejecutar el paso
-          const resultado = await ejecutarPaso(pasoInfo.paso)
-          tiempoTotal += resultado.tiempo
-          
-          // Actualizar el paso en el array
-          pasosActualizados[p] = {
-            ...pasosActualizados[p],
-            completado: resultado.exito,
-            error: !resultado.exito,
-            tiempo: resultado.tiempo,
-            screenshot: resultado.screenshot,
-            mensaje: resultado.exito ? 'Completado' : 'Error detectado'
-          }
-          
-          // Si fallo, capturar screenshot y continuar al siguiente ESTADO (no paso)
-          if (!resultado.exito) {
-            pasoDetenido = pasoInfo.paso
-            errorData = generarErrorDetallado(pasoInfo.paso)
-            
-            // Determinar si es error total o parcial
-            if (pasoInfo.paso === 'conexion' || pasoInfo.paso === 'carga_portal') {
-              finalStatus = 'error' // Error critico
-            } else if (pasoInfo.paso === 'captcha') {
-              finalStatus = 'parcial' // Necesita intervencion
-            } else {
-              finalStatus = 'parcial'
-            }
-            
-            // Capturar screenshot del momento del error
-            pasosActualizados[p].screenshot = `/api/placeholder/800/600?text=${encodeURIComponent(
-              `ROBOT DETENIDO\n${estadoActual}\nPaso: ${pasoInfo.nombre}\nError: ${errorData.errorDetallado?.codigo || 'UNKNOWN'}`
-            )}`
-            
-            // IMPORTANTE: Salir del loop de pasos pero CONTINUAR con el siguiente estado
-            break
-          }
-        }
-      } catch (err) {
-        // Error inesperado - registrar y continuar
-        finalStatus = 'error'
-        pasoDetenido = 'conexion'
-        errorData = {
-          errorType: 'conexion',
-          errorMessage: 'Error inesperado en la ejecucion',
-          accionSugerida: 'Revisar logs del sistema',
-          errorDetallado: {
-            tipo: 'desconocido',
-            codigo: 'UNEXPECTED_ERROR',
-            descripcion: err instanceof Error ? err.message : 'Error desconocido',
-            timestamp: new Date().toISOString(),
-            intentos: 1
-          }
-        }
-      }
-      
-      // Si fue exitoso, crear cuenta real en la base de datos
-      let cuentaCCLData: Resultado['cuentaCCL'] | undefined = undefined
-      let folio = ''
-      
-      if (finalStatus === 'exito') {
-        // Obtener datos del trabajador ficticio ya generados
-        const resultadoActual = resultados.find(r => r.estado === estadoActual)
-        const datosTrabajadorPrueba = generarDatosTrabajador(estadoActual, generarEmailPrueba(estadoActual))
-        
-        try {
-          // Crear cuenta real en el portal CCL (simulada pero guardada en DB)
-          const resultadoCuenta = await crearCuentaCCLAPI(
-            estadoActual,
-            datosTrabajadorPrueba,
-            {
-              esPrueba: true,
-              sesionDiagnosticoId: `diag-${Date.now()}`
-            }
-          )
-          
-          if (resultadoCuenta.exito) {
-            folio = resultadoCuenta.folio || ''
-            cuentaCCLData = {
-              email: resultadoCuenta.email_portal || '',
-              password: resultadoCuenta.password_portal || '',
-              urlLogin: resultadoCuenta.url_login || '',
-              urlBuzon: resultadoCuenta.url_buzon || '',
-              urlSinacol: resultadoCuenta.url_login || '',
-              curp: datosTrabajadorPrueba.curp,
-              nombreTrabajador: datosTrabajadorPrueba.nombre_completo,
-              correoPersonal: datosTrabajadorPrueba.email_personal,
-              empresaEjemplo: {
-                razonSocial: datosTrabajadorPrueba.empresa_nombre,
-                rfc: datosTrabajadorPrueba.rfc,
-                direccion: datosTrabajadorPrueba.empresa_direccion,
-                coordenadas: datosTrabajadorPrueba.empresa_coordenadas
-              }
-            }
-          } else if (resultadoCuenta.requiereCaptcha) {
-            // CAPTCHA detectado - marcar como parcial
-            finalStatus = 'parcial'
-            errorData = {
-              errorType: 'captcha',
-              errorMessage: resultadoCuenta.error || 'CAPTCHA detectado',
-              accionSugerida: 'Resolver CAPTCHA manualmente en el portal',
-              errorDetallado: {
-                tipo: 'captcha',
-                codigo: 'CAPTCHA_REQUIRED',
-                descripcion: 'El portal requiere resolver un CAPTCHA para completar el registro',
-                timestamp: new Date().toISOString(),
-                intentos: 1
-              }
-            }
-            cuentaCCLData = {
-              email: resultadoCuenta.email_portal || '',
-              password: resultadoCuenta.password_portal || '',
-              urlLogin: resultadoCuenta.url_login || '',
-              urlBuzon: resultadoCuenta.captchaUrl || '',
-              urlSinacol: resultadoCuenta.captchaUrl || '',
-              curp: datosTrabajadorPrueba.curp,
-              nombreTrabajador: datosTrabajadorPrueba.nombre_completo,
-              correoPersonal: datosTrabajadorPrueba.email_personal,
-              empresaEjemplo: {
-                razonSocial: datosTrabajadorPrueba.empresa_nombre,
-                rfc: datosTrabajadorPrueba.rfc,
-                direccion: datosTrabajadorPrueba.empresa_direccion,
-                coordenadas: datosTrabajadorPrueba.empresa_coordenadas
-              }
-            }
-          } else {
-            folio = generarReferenciaInterna(estadoActual)
-            cuentaCCLData = resultadoActual?.cuentaCCL
-          }
-        } catch (err) {
-          // Error al crear cuenta - usar folio local
-          folio = generarReferenciaInterna(estadoActual)
-          cuentaCCLData = resultadoActual?.cuentaCCL
-        }
-      }
-      
-      // Actualizar resultado final del estado
-      setResultados(prev => prev.map((r, idx) => 
-        idx === i ? { 
-          ...r, 
-          status: finalStatus, 
-          tiempo: tiempoTotal,
-          errorType: errorData?.errorType || 'ninguno',
-          errorMessage: errorData?.errorMessage || '',
-          accionSugerida: errorData?.accionSugerida || '',
-          captchaPendiente: errorData?.errorType === 'captcha',
-          screenshot: pasoDetenido ? pasosActualizados.find(p => p.paso === pasoDetenido)?.screenshot || '' : '',
-          pdfUrl: finalStatus === 'exito' ? `/api/ccl-pdf/${folio}` : '',
-          folioGenerado: folio,
-          pasoDetenido,
-          pasos: pasosActualizados,
-          errorDetallado: errorData?.errorDetallado || null,
-          cuentaCCL: cuentaCCLData || r.cuentaCCL
-        } : r
-      ))
-      
-      setProgreso(Math.round(((i + 1) / ESTADOS_MEXICO.length) * 100))
-      
-      // Pequeña pausa entre estados para no saturar
-      await new Promise(resolve => setTimeout(resolve, 100))
-    }
-    
-    setEjecutando(false)
+    await iniciarDiagnosticoReal()
   }
 
   const solicitarAyudaCaptcha = async (estado: string) => {
@@ -994,83 +352,11 @@ export default function CCLDiagnosticoPage() {
     ))
   }
 
-  const reintentarEstado = async (estado: string) => {
-    const idx = resultados.findIndex(r => r.estado === estado)
-    if (idx === -1) return
-    
-    const resultadoActual = resultados[idx]
-
-    // Reiniciar pasos
-    const pasosReiniciados = crearPasosIniciales()
-    
-    setResultados(prev => prev.map((r, i) => 
-      i === idx ? { 
-        ...r, 
-        status: 'en_progreso', 
-        pasos: pasosReiniciados,
-        pasoDetenido: null,
-        errorDetallado: null,
-        pdfUrl: '',
-        folioGenerado: ''
-      } : r
-    ))
-
-    // Simular reintento completo
-    let tiempoTotal = 0
-    let exitoso = true
-    
-    for (const pasoInfo of PASOS_ROBOT) {
-      const resultado = await ejecutarPaso(pasoInfo.paso)
-      tiempoTotal += resultado.tiempo
-      
-      if (!resultado.exito) {
-        exitoso = false
-        break
-      }
-    }
-
-    let folio = ''
-    let cuentaCCLData = resultadoActual.cuentaCCL
-    
-    if (exitoso && resultadoActual.cuentaCCL) {
-      // Crear cuenta real
-      const datosTrabajador = generarDatosTrabajador(estado, generarEmailPrueba(estado))
-      
-      try {
-          const resultadoCuenta = await crearCuentaCCLAPI(estado, datosTrabajador, { esPrueba: true })
-        if (resultadoCuenta.exito) {
-          folio = resultadoCuenta.folio || generarReferenciaInterna(estado)
-          cuentaCCLData = {
-            email: resultadoCuenta.email_portal || '',
-            password: resultadoCuenta.password_portal || '',
-            urlLogin: resultadoCuenta.url_login || '',
-            urlBuzon: resultadoCuenta.url_buzon || '',
-            urlSinacol: resultadoCuenta.url_login || '',
-            curp: datosTrabajador.curp,
-            nombreTrabajador: datosTrabajador.nombre_completo
-          }
-        } else {
-          folio = generarReferenciaInterna(estado)
-        }
-      } catch {
-        folio = generarReferenciaInterna(estado)
-      }
-    }
-    
-    setResultados(prev => prev.map((r, i) => 
-      i === idx ? { 
-        ...r, 
-        status: exitoso ? 'exito' : 'parcial',
-        tiempo: tiempoTotal,
-        errorType: exitoso ? 'ninguno' : r.errorType,
-        errorMessage: exitoso ? '' : r.errorMessage,
-        captchaPendiente: false,
-        folioGenerado: folio,
-        pdfUrl: exitoso ? `/api/ccl-pdf/${folio}` : '',
-        cuentaCCL: cuentaCCLData
-      } : r
-    ))
+  const reintentarEstado = async () => {
+    await iniciarDiagnosticoReal()
   }
+
+
 
   const verDetalle = (resultado: Resultado) => {
     setSelectedEstado(resultado)
@@ -1179,7 +465,7 @@ export default function CCLDiagnosticoPage() {
                   <Badge className="bg-red-600 text-white text-[8px] px-1 py-0">DATOS REALES</Badge>
                 </div>
                 <p className="text-[10px] sm:text-xs text-green-700 font-mono hidden sm:block">
-                  32 Centros Estatales + 1 Federal | Usuario de prueba: David Pérez Villaseñor
+                  Diagnóstico con datos reales del caso seleccionado.
                 </p>
               </div>
             </div>
@@ -1202,149 +488,53 @@ export default function CCLDiagnosticoPage() {
         {/* Controles */}
         <Card className="bg-black/80 border-green-800 mb-4 sm:mb-6">
           <CardContent className="p-3 sm:p-4">
-            {/* Selector de modo: Todos vs Individual */}
-            <div className="flex items-center gap-2 mb-3 pb-3 border-b border-green-900">
-              <span className="text-green-500 font-mono text-xs">MODO:</span>
-              <div className="flex rounded overflow-hidden border border-green-700">
-                <button
-                  onClick={() => {
-                    setModoDiagnostico('todos')
-                    setEstadoSeleccionado('todos')
-                  }}
-                  disabled={ejecutando}
-                  className={`px-3 py-1 text-xs font-mono transition-colors ${
-                    modoDiagnostico === 'todos' 
-                      ? 'bg-green-600 text-black font-bold' 
-                      : 'bg-green-950 text-green-400 hover:bg-green-900'
-                  }`}
-                >
-                  TODOS (33)
-                </button>
-                <button
-                  onClick={() => setModoDiagnostico('individual')}
-                  disabled={ejecutando}
-                  className={`px-3 py-1 text-xs font-mono transition-colors ${
-                    modoDiagnostico === 'individual' 
-                      ? 'bg-cyan-600 text-black font-bold' 
-                      : 'bg-green-950 text-green-400 hover:bg-green-900'
-                  }`}
-                >
-                  INDIVIDUAL
-                </button>
-              </div>
-              
-              {/* Selector de estado individual */}
-              {modoDiagnostico === 'individual' && (
-                <select
-                  value={estadoSeleccionado}
-                  onChange={(e) => setEstadoSeleccionado(e.target.value)}
-                  disabled={ejecutando}
-                  className="bg-cyan-950 border border-cyan-700 text-cyan-400 font-mono text-xs rounded px-2 py-1.5 flex-1 max-w-[200px]"
-                >
-                  <option value="todos">-- Seleccionar Estado --</option>
-                  <option value="Federal" className="text-yellow-400">FEDERAL (CFCRL)</option>
-                  <optgroup label="Estados">
-                    {ESTADOS_MEXICO.filter(e => e !== 'Federal').map(estado => (
-                      <option key={estado} value={estado}>{estado}</option>
-                    ))}
-                  </optgroup>
-                </select>
-              )}
-              
-              {modoDiagnostico === 'individual' && estadoSeleccionado !== 'todos' && (
-                <Badge className="bg-cyan-900 text-cyan-300 border border-cyan-600 font-mono text-[10px]">
-                  {estadoSeleccionado === 'Federal' ? 'CFCRL' : estadoSeleccionado}
-                </Badge>
-              )}
-            </div>
-            
-            {/* Stats mobile - arriba */}
-            <div className="flex flex-wrap items-center justify-center gap-2 sm:gap-4 font-mono text-xs sm:text-sm mb-3 sm:hidden">
-              <span className="text-green-400">OK:{stats.exito}</span>
-              <span className="text-yellow-400">PARC:{stats.parcial}</span>
-              <span className="text-red-400">ERR:{stats.error}</span>
-              <span className="text-gray-500">PEND:{stats.pendiente}</span>
-            </div>
-            
-            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 sm:gap-4">
-              <div className="flex flex-wrap items-center gap-2 sm:gap-3">
-                <select 
-                  value={modo}
-                  onChange={(e) => setModo(e.target.value as 'dry_run' | 'live')}
-                  disabled={ejecutando}
-                  className="bg-green-950 border border-green-700 text-green-400 font-mono text-xs sm:text-sm rounded px-2 sm:px-3 py-1.5 sm:py-2 flex-1 sm:flex-none"
-                >
-                  <option value="live">LIVE TEST (DATOS REALES)</option>
-                </select>
-                
+            <div className="flex flex-col gap-3">
+              <div className="flex flex-col sm:flex-row sm:items-center gap-2">
+                <div className="flex-1">
+                  <label className="text-green-500 font-mono text-xs block mb-1">CASO ID (REAL)</label>
+                  <input
+                    value={casoIdInput}
+                    onChange={(e) => setCasoIdInput(e.target.value)}
+                    placeholder="Pega aquí el ID del caso real"
+                    className="w-full bg-green-950 border border-green-700 text-green-300 font-mono text-xs rounded px-3 py-2"
+                  />
+                </div>
                 <Button
                   onClick={iniciarDiagnostico}
-                  disabled={ejecutando || (modoDiagnostico === 'individual' && estadoSeleccionado === 'todos')}
+                  disabled={ejecutando || !casoIdInput.trim()}
                   size="sm"
-                  className={`font-mono font-bold text-xs sm:text-sm flex-1 sm:flex-none ${
-                    modoDiagnostico === 'individual' 
-                      ? 'bg-cyan-600 hover:bg-cyan-500 text-black' 
-                      : 'bg-green-600 hover:bg-green-500 text-black'
-                  }`}
+                  className="font-mono font-bold text-xs sm:text-sm bg-cyan-600 hover:bg-cyan-500 text-black"
                 >
                   {ejecutando ? (
                     <>
                       <Loader2 className="w-3 h-3 sm:w-4 sm:h-4 mr-1 sm:mr-2 animate-spin" />
-                      <span className="hidden sm:inline">EJECUTANDO {modoDiagnostico === 'individual' ? estadoSeleccionado.toUpperCase() : ''}...</span>
+                      <span className="hidden sm:inline">EJECUTANDO...</span>
                       <span className="sm:hidden">RUN...</span>
                     </>
                   ) : (
                     <>
                       <Play className="w-3 h-3 sm:w-4 sm:h-4 mr-1 sm:mr-2" />
-                      {modoDiagnostico === 'individual' ? 'PROBAR ESTADO' : 'INICIAR TODOS'}
+                      INICIAR DIAGNÓSTICO REAL
                     </>
                   )}
                 </Button>
-                
-                {ejecutando && (
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => setEjecutando(false)}
-                    className="border-yellow-600 text-yellow-500 hover:bg-yellow-950 font-mono text-xs sm:text-sm"
-                  >
-                    <Pause className="w-3 h-3 sm:w-4 sm:h-4" />
-                    <span className="hidden sm:inline ml-1">PAUSAR</span>
-                  </Button>
-                )}
               </div>
-              
-              {/* Stats desktop */}
-              <div className="hidden sm:flex items-center gap-4 font-mono text-sm">
-                <span className="text-green-400">OK: {stats.exito}</span>
-                <span className="text-yellow-400">PARCIAL: {stats.parcial}</span>
-                <span className="text-red-400">ERROR: {stats.error}</span>
-                <span className="text-gray-500">PENDING: {stats.pendiente}</span>
+
+              <div className="flex flex-wrap items-center gap-2 text-xs font-mono text-green-500">
+                <span>Job activo: {jobIdActivo || '—'}</span>
+                <span>Progreso: {progreso}%</span>
               </div>
-            </div>
-            
-            {ejecutando && (
-              <div className="mt-4">
-                <div className="flex justify-between text-xs font-mono text-green-600 mb-1">
-                  <span>
-                    {modoDiagnostico === 'individual' 
-                      ? `Probando: ${estadoSeleccionado} - ${progreso}%` 
-                      : `Progreso: ${progreso}%`
-                    }
-                  </span>
-                  <span>
-                    {modoDiagnostico === 'individual' 
-                      ? `Estado: ${estadoSeleccionado}` 
-                      : `${currentIndex + 1} / ${ESTADOS_MEXICO.length}`
-                    }
-                  </span>
+
+              {ejecutando && (
+                <div>
+                  <div className="flex justify-between text-xs font-mono text-green-600 mb-1">
+                    <span>Progreso real: {progreso}%</span>
+                    <span>Estado: {resultados[0]?.status || 'pendiente'}</span>
+                  </div>
+                  <Progress value={progreso} className="h-2 bg-green-950" />
                 </div>
-                <Progress 
-                  value={progreso} 
-                  className={`h-2 ${modoDiagnostico === 'individual' ? 'bg-cyan-950' : 'bg-green-950'}`} 
-                />
-              </div>
-            )}
+              )}
+            </div>
           </CardContent>
         </Card>
 
@@ -1474,47 +664,6 @@ export default function CCLDiagnosticoPage() {
           </CardContent>
         </Card>
 
-        {/* Mensaje cuando modo individual está activo */}
-        {modoDiagnostico === 'individual' && (
-          <Card className={`mb-4 ${estadoSeleccionado !== 'todos' ? 'bg-cyan-950/50 border-cyan-700' : 'bg-yellow-950/50 border-yellow-700'}`}>
-            <CardContent className="p-3 flex items-center justify-between">
-              <div className="flex items-center gap-3">
-                <div className={`p-2 rounded-full ${estadoSeleccionado !== 'todos' ? 'bg-cyan-900' : 'bg-yellow-900'}`}>
-                  {estadoSeleccionado !== 'todos' ? (
-                    <Play className="w-4 h-4 text-cyan-400" />
-                  ) : (
-                    <HelpCircle className="w-4 h-4 text-yellow-400" />
-                  )}
-                </div>
-                <div>
-                  <p className={`font-mono text-sm font-bold ${estadoSeleccionado !== 'todos' ? 'text-cyan-400' : 'text-yellow-400'}`}>
-                    {estadoSeleccionado !== 'todos' 
-                      ? `Diagnóstico individual: ${estadoSeleccionado}` 
-                      : 'Selecciona un estado del grid para probar'
-                    }
-                  </p>
-                  <p className="text-xs text-muted-foreground font-mono">
-                    {estadoSeleccionado !== 'todos' 
-                      ? `Se probará el portal CCL de ${estadoSeleccionado} con tus datos personales (CURP: ${DATOS_DIAGNOSTICO_REAL.curp})`
-                      : 'Haz clic en cualquier estado del grid o usa el selector para elegir cuál probar'
-                    }
-                  </p>
-                </div>
-              </div>
-              {estadoSeleccionado !== 'todos' && !ejecutando && (
-                <Button
-                  onClick={() => iniciarDiagnosticoIndividual(estadoSeleccionado)}
-                  size="sm"
-                  className="bg-cyan-600 hover:bg-cyan-500 text-black font-mono font-bold"
-                >
-                  <Play className="w-4 h-4 mr-1" />
-                  PROBAR {estadoSeleccionado === 'Federal' ? 'CFCRL' : estadoSeleccionado.slice(0, 6).toUpperCase()}
-                </Button>
-              )}
-            </CardContent>
-          </Card>
-        )}
-
         {/* Panel de intervención humana */}
         <Card className="bg-black/80 border-green-800 mb-4 sm:mb-6">
           <CardHeader className="pb-2 px-3 sm:px-4">
@@ -1554,7 +703,7 @@ export default function CCLDiagnosticoPage() {
                           className="h-7 px-2 bg-green-600 hover:bg-green-500 text-black"
                           onClick={() => {
                             marcarCaptchaResuelto(r.estado)
-                            reintentarEstado(r.estado)
+                            reintentarEstado()
                           }}
                         >
                           <RefreshCw className="w-3 h-3 mr-1" />
@@ -1569,63 +718,35 @@ export default function CCLDiagnosticoPage() {
           </CardContent>
         </Card>
 
-        {/* Grid de Estados */}
-        <div className="grid grid-cols-4 sm:grid-cols-5 md:grid-cols-6 lg:grid-cols-8 gap-1.5 sm:gap-2 mb-4 sm:mb-6">
-          {resultados.map((resultado) => (
-            <Card 
-              key={resultado.estado}
-              className={`${getStatusColor(resultado.status)} border transition-all cursor-pointer active:scale-95 sm:hover:scale-105 ${
-                resultado.estado === 'Federal' ? 'ring-1 sm:ring-2 ring-blue-500 col-span-2' : ''
-              } ${estadoSeleccionado === resultado.estado ? 'ring-2 ring-cyan-400' : ''}`}
-              onClick={() => {
-                if (resultado.status === 'pendiente') {
-                  // Si está pendiente, seleccionar para prueba individual
-                  setModoDiagnostico('individual')
-                  setEstadoSeleccionado(resultado.estado)
-                } else if (resultado.status !== 'en_progreso') {
-                  // Si ya tiene resultado, mostrar detalle
-                  verDetalle(resultado)
-                }
-              }}
-            >
-              <CardContent className="p-1.5 sm:p-2 text-center">
-                {resultado.estado === 'Federal' && (
-                  <Badge className="bg-blue-900 text-blue-300 text-[6px] sm:text-[7px] mb-0.5 sm:mb-1 px-1">CFCRL</Badge>
-                )}
-                <div className="flex justify-center mb-0.5 sm:mb-1">
-                  {getStatusIcon(resultado.status)}
-                </div>
-                <p className={`text-[7px] sm:text-[9px] font-mono truncate ${
-                  resultado.estado === 'Federal' ? 'text-blue-300' : 'text-green-300'
-                }`} title={resultado.estado}>
-                  {resultado.estado === 'Federal' ? 'FED' : resultado.estado.slice(0, 8)}
-                </p>
-                {resultado.tiempo > 0 && (
-                  <p className="text-[6px] sm:text-[8px] text-green-700 font-mono">
-                    {resultado.tiempo}ms
+        {/* Resultados */}
+        {resultados.length > 0 && (
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-2 mb-4 sm:mb-6">
+            {resultados.map((resultado) => (
+              <Card
+                key={resultado.jobId || resultado.estado}
+                className={`${getStatusColor(resultado.status)} border transition-all cursor-pointer active:scale-95 sm:hover:scale-105`}
+                onClick={() => verDetalle(resultado)}
+              >
+                <CardContent className="p-2 text-center">
+                  <div className="flex justify-center mb-1">
+                    {getStatusIcon(resultado.status)}
+                  </div>
+                  <p className="text-[9px] font-mono text-green-300 truncate" title={resultado.estado}>
+                    {resultado.estado}
                   </p>
-                )}
-                {resultado.captchaPendiente && (
-                  <Badge className="mt-0.5 sm:mt-1 bg-red-900 text-red-400 text-[6px] sm:text-[7px] px-0.5 sm:px-1">
-                    CAP
-                  </Badge>
-                )}
-                {resultado.status === 'exito' && resultado.cuentaCCL && (
-                  <Badge className="mt-0.5 sm:mt-1 bg-yellow-900 text-yellow-300 text-[6px] sm:text-[7px] px-0.5 sm:px-1">
-                    <Key className="w-2 h-2 inline mr-0.5" />
-                    ACC
-                  </Badge>
-                )}
-                {/* Indicador de estado seleccionado para prueba individual */}
-                {estadoSeleccionado === resultado.estado && resultado.status === 'pendiente' && (
-                  <Badge className="mt-0.5 sm:mt-1 bg-cyan-900 text-cyan-300 text-[6px] sm:text-[7px] px-0.5 sm:px-1 animate-pulse">
-                    PROBAR
-                  </Badge>
-                )}
-              </CardContent>
-            </Card>
-          ))}
-        </div>
+                  {resultado.tiempo > 0 && (
+                    <p className="text-[8px] text-green-700 font-mono">{resultado.tiempo}ms</p>
+                  )}
+                  {resultado.captchaPendiente && (
+                    <Badge className="mt-1 bg-red-900 text-red-400 text-[7px] px-1">
+                      CAPTCHA
+                    </Badge>
+                  )}
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+        )}
 
         {/* Tabla de resultados con errores */}
         {stats.exito + stats.parcial + stats.error > 0 && (
@@ -1684,7 +805,7 @@ export default function CCLDiagnosticoPage() {
                                 size="sm"
                                 variant="ghost"
                                 className="h-6 px-2 text-yellow-500 hover:bg-yellow-950"
-                                onClick={() => reintentarEstado(r.estado)}
+                                onClick={() => reintentarEstado()}
                               >
                                 <RefreshCw className="w-3 h-3" />
                               </Button>
@@ -1713,7 +834,7 @@ export default function CCLDiagnosticoPage() {
         {/* Footer */}
         <div className="mt-6 text-center">
           <p className="text-green-800 font-mono text-xs">
-            root@mandu-ccl:~$ diagnostico --portales=33 --modo={modo}_
+            root@mandu-ccl:~$ diagnostico --caso={casoIdInput || 'ID'}_
           </p>
         </div>
       </main>
@@ -1762,36 +883,6 @@ export default function CCLDiagnosticoPage() {
                   {selectedEstado.status.toUpperCase()}
                 </Badge>
               </div>
-
-              {/* Datos reales usados */}
-              {selectedEstado.datosDiagnostico && (
-                <div className="p-3 bg-blue-950/30 rounded border border-blue-800">
-                  <div className="flex items-center gap-2 mb-2">
-                    <User className="w-4 h-4 text-blue-400" />
-                    <span className="text-blue-400 text-xs font-bold">DATOS REALES USADOS</span>
-                  </div>
-                  <div className="grid gap-2 text-[11px] text-blue-200">
-                    <div className="space-y-1">
-                      <p><span className="text-blue-400">Trabajador:</span> {selectedEstado.datosDiagnostico.nombre_completo}</p>
-                      <p><span className="text-blue-400">CURP:</span> {selectedEstado.datosDiagnostico.curp}</p>
-                      <p><span className="text-blue-400">Correo personal:</span> {selectedEstado.datosDiagnostico.email_personal}</p>
-                      <p><span className="text-blue-400">Correo buzón:</span> {selectedEstado.datosDiagnostico.correo_buzon || 'Por generar'}</p>
-                      <p><span className="text-blue-400">Teléfono:</span> {selectedEstado.datosDiagnostico.telefono}</p>
-                      <p><span className="text-blue-400">Domicilio:</span> {selectedEstado.datosDiagnostico.direccion}, {selectedEstado.datosDiagnostico.municipio}, {selectedEstado.datosDiagnostico.estado}, CP {selectedEstado.datosDiagnostico.codigo_postal}</p>
-                    </div>
-                    <div className="space-y-1">
-                      <p><span className="text-blue-400">Empresa:</span> {selectedEstado.datosDiagnostico.empresa_nombre}</p>
-                      <p><span className="text-blue-400">Dirección empresa:</span> {selectedEstado.datosDiagnostico.empresa_direccion}</p>
-                      <p><span className="text-blue-400">Coordenadas:</span> {selectedEstado.datosDiagnostico.empresa_coordenadas}</p>
-                      <p><span className="text-blue-400">Puesto:</span> {selectedEstado.datosDiagnostico.puesto}</p>
-                      <p><span className="text-blue-400">Jornada:</span> {selectedEstado.datosDiagnostico.jornada}</p>
-                      <p><span className="text-blue-400">Salario:</span> ${selectedEstado.datosDiagnostico.salario_semanal} semanal (${Math.round(selectedEstado.datosDiagnostico.salario_diario)} diario)</p>
-                      <p><span className="text-blue-400">Ingreso:</span> {selectedEstado.datosDiagnostico.fecha_ingreso}</p>
-                      <p><span className="text-blue-400">Despido:</span> {selectedEstado.datosDiagnostico.fecha_despido}</p>
-                    </div>
-                  </div>
-                </div>
-              )}
 
               {/* URL */}
               <div className="p-2 sm:p-3 bg-green-950/50 rounded border border-green-800">
@@ -1982,7 +1073,7 @@ export default function CCLDiagnosticoPage() {
                             marcarCaptchaResuelto(selectedEstado.estado)
                             setShowDetailDialog(false)
                             await new Promise(r => setTimeout(r, 100))
-                            reintentarEstado(selectedEstado.estado)
+                            reintentarEstado()
                           }}
                         >
                           <RefreshCw className="w-3 h-3 mr-1" />
@@ -2032,7 +1123,7 @@ export default function CCLDiagnosticoPage() {
                         setShowDetailDialog(false)
                         // Esperar a que cierre el dialog
                         await new Promise(r => setTimeout(r, 100))
-                        reintentarEstado(selectedEstado.estado)
+                        reintentarEstado()
                       }}
                     >
                       <RefreshCw className="w-4 h-4 mr-2" />
@@ -2061,152 +1152,56 @@ export default function CCLDiagnosticoPage() {
                 </>
               )}
 
-              {/* Success state - CUENTA CCL CREADA con credenciales */}
-              {selectedEstado.status === 'exito' && selectedEstado.cuentaCCL && (
+              {/* Resultado exitoso */}
+              {selectedEstado.status === 'exito' && (
                 <div className="space-y-3">
                   <div className="p-3 bg-green-950/30 rounded border border-green-600 text-center">
                     <CheckCircle2 className="w-8 h-8 text-green-400 mx-auto mb-2" />
-                    <p className="text-green-400 text-sm font-bold">Cuenta CCL Creada Exitosamente</p>
+                    <p className="text-green-400 text-sm font-bold">Solicitud enviada exitosamente</p>
                     <p className="text-green-600 text-xs mt-1">Tiempo: {selectedEstado.tiempo}ms</p>
                   </div>
-                  
-                  {/* Datos del trabajador de prueba */}
-                  <div className="p-3 bg-blue-950/50 rounded border border-blue-800">
-                    <div className="flex items-center gap-2 mb-2">
-                      <User className="w-4 h-4 text-blue-400" />
-                      <span className="text-blue-400 text-xs font-bold">TRABAJADOR DE PRUEBA</span>
-                    </div>
-                    <p className="text-blue-300 text-sm font-mono">{selectedEstado.cuentaCCL.nombreTrabajador}</p>
-                    <p className="text-blue-500 text-xs font-mono mt-1">CURP: {selectedEstado.cuentaCCL.curp}</p>
-                  </div>
-                  
-                  {/* Folio generado */}
                   <div className="p-3 bg-green-950/50 rounded border border-green-800">
-                    <span className="text-green-600 text-xs block mb-1">Folio de Solicitud:</span>
-                    <code className="text-green-300 text-lg font-bold">{selectedEstado.folioGenerado}</code>
+                    <span className="text-green-600 text-xs block mb-1">Folio oficial:</span>
+                    <code className="text-green-300 text-lg font-bold">
+                      {selectedEstado.folioGenerado || 'Pendiente'}
+                    </code>
                     <p className="text-green-700 text-[10px] mt-1">Portal: {selectedEstado.url}</p>
                   </div>
-                  
-                  {/* CREDENCIALES DE ACCESO AL PORTAL CCL */}
-                  <div className="p-4 bg-yellow-950/50 rounded border-2 border-yellow-600">
-                    <div className="flex items-center justify-between mb-3">
-                      <div className="flex items-center gap-2">
-                        <Key className="w-5 h-5 text-yellow-400" />
-                        <span className="text-yellow-400 text-sm font-bold">CREDENCIALES DE ACCESO</span>
-                      </div>
-                      <Badge className="bg-yellow-600 text-black text-[9px]">PORTAL CCL</Badge>
-                    </div>
-                    
-                    {/* Email */}
-                    <div className="bg-black/50 rounded p-3 mb-2">
-                      <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-2">
-                          <Mail className="w-4 h-4 text-yellow-500" />
-                          <span className="text-yellow-600 text-xs">Email:</span>
-                        </div>
-                        <Button
-                          size="sm"
-                          variant="ghost"
-                          className="h-6 px-2 text-yellow-400 hover:bg-yellow-900/50"
-                          onClick={() => {
-                            navigator.clipboard.writeText(selectedEstado.cuentaCCL?.email || '')
-                          }}
-                        >
-                          <Copy className="w-3 h-3" />
-                        </Button>
-                      </div>
-                      <code className="text-yellow-300 text-sm font-bold block mt-1 select-all">
-                        {selectedEstado.cuentaCCL.email}
-                      </code>
-                    </div>
-                    
-                    {/* Password */}
-                    <div className="bg-black/50 rounded p-3">
-                      <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-2">
-                          <Key className="w-4 h-4 text-yellow-500" />
-                          <span className="text-yellow-600 text-xs">Password:</span>
-                        </div>
-                        <Button
-                          size="sm"
-                          variant="ghost"
-                          className="h-6 px-2 text-yellow-400 hover:bg-yellow-900/50"
-                          onClick={() => {
-                            navigator.clipboard.writeText(selectedEstado.cuentaCCL?.password || '')
-                          }}
-                        >
-                          <Copy className="w-3 h-3" />
-                        </Button>
-                      </div>
-                      <code className="text-yellow-300 text-lg font-bold block mt-1 select-all">
-                        {selectedEstado.cuentaCCL.password}
-                      </code>
-                    </div>
-                    
-                    {/* Aviso importante */}
-                    <div className="mt-3 p-2 bg-yellow-900/30 rounded border border-yellow-700">
-                      <p className="text-yellow-400 text-[10px] text-center">
-                        Use estas credenciales para acceder al portal oficial del CCL y descargar el PDF de solicitud.
-                        El sistema CCL enviara notificaciones al buzon electronico.
-                      </p>
-                    </div>
-                  </div>
-                  
-                  {/* Botones de accion */}
-                  <div className="flex gap-2">
-                    <Button
-                      size="sm"
-                      className="flex-1 bg-green-700 hover:bg-green-600 text-white font-mono text-xs"
-                      onClick={() => {
-                        window.open(selectedEstado.cuentaCCL?.urlLogin, '_blank')
-                      }}
-                    >
-                      <LogIn className="w-3 h-3 mr-1" />
-                      ENTRAR AL PORTAL CCL
-                    </Button>
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      className="flex-1 border-blue-600 text-blue-400 hover:bg-blue-950 font-mono text-xs bg-transparent"
-                      onClick={() => {
-                        window.open(selectedEstado.cuentaCCL?.urlBuzon, '_blank')
-                      }}
-                    >
-                      <Mail className="w-3 h-3 mr-1" />
-                      VER BUZON
-                    </Button>
-                  </div>
-
-                  {selectedEstado.pdfUrl && (
-                    <Button
-                      size="sm"
-                      className="w-full bg-cyan-600 hover:bg-cyan-500 text-black font-mono text-xs"
-                      onClick={() => {
-                        setSelectedPdfUrl(selectedEstado.pdfUrl)
-                        setSelectedPdfEstado(selectedEstado.estado)
-                        setShowPdfViewer(true)
-                      }}
-                    >
-                      <FileText className="w-3 h-3 mr-1" />
-                      VER PDF DE SOLICITUD
-                    </Button>
-                  )}
-                  
-                  {/* Info adicional */}
-                  <div className="p-2 bg-green-950/30 rounded border border-green-900">
-                    <p className="text-green-600 text-[10px]">
-                      <strong>Pasos en SINACOL:</strong> 1) Ingresa tu CURP en el formulario. 
-                      2) Completa los datos de tu relacion laboral. 
-                      3) Agenda tu cita de ratificacion presencial.
-                      4) Acude al CCL con identificacion oficial vigente.
+                  <div className="p-3 bg-blue-950/30 rounded border border-blue-800">
+                    <span className="text-blue-400 text-xs block mb-2">PDF del acuse:</span>
+                    <p className="text-blue-300 text-xs">
+                      {selectedEstado.pdfUrl ? 'Disponible para abrir en visor.' : 'Aún no se detecta PDF en el portal.'}
                     </p>
                   </div>
                 </div>
               )}
 
+              {selectedEstado.pdfUrl && (
+                <Button
+                  size="sm"
+                  className="w-full bg-cyan-600 hover:bg-cyan-500 text-black font-mono text-xs"
+                  onClick={() => {
+                    setSelectedPdfUrl(selectedEstado.pdfUrl)
+                    setSelectedPdfEstado(selectedEstado.estado)
+                    setShowPdfViewer(true)
+                  }}
+                >
+                  <FileText className="w-3 h-3 mr-1" />
+                  VER PDF DE SOLICITUD
+                </Button>
+              )}
+              
+              {/* Info adicional */}
+              <div className="p-2 bg-green-950/30 rounded border border-green-900">
+                <p className="text-green-600 text-[10px]">
+                  <strong>Pasos en SINACOL:</strong> Completa el formulario oficial, confirma el envío y descarga el acuse
+                  desde el portal cuando esté disponible.
+                </p>
+              </div>
+
               {/* Tiempo */}
               <div className="flex justify-between text-xs text-green-700 pt-2 border-t border-green-900">
-                <span>Tiempo de prueba:</span>
+                <span>Tiempo de ejecución:</span>
                 <span>{selectedEstado.tiempo}ms</span>
               </div>
             </div>
@@ -2215,156 +1210,6 @@ export default function CCLDiagnosticoPage() {
       </Dialog>
 
       {/* Dialog de Acceso a SINACOL */}
-      <Dialog open={showPdfDialog} onOpenChange={setShowPdfDialog}>
-        <DialogContent className="bg-gray-900 text-white max-w-2xl max-h-[95vh] overflow-auto border border-green-600">
-          <DialogHeader>
-            <DialogTitle className="flex items-center gap-2 text-green-400">
-              <ExternalLink className="w-5 h-5" />
-              Portal SINACOL - {selectedPdf?.estado}
-            </DialogTitle>
-            <DialogDescription className="text-green-600">
-              Enlace al portal oficial para crear solicitud de conciliacion laboral
-            </DialogDescription>
-          </DialogHeader>
-          
-          {selectedPdf && selectedPdf.cuentaCCL && (
-            <div className="space-y-4">
-              {/* Aviso importante */}
-              <div className="bg-yellow-900/30 border border-yellow-600 rounded-lg p-3">
-                <div className="flex items-center gap-2 mb-2">
-                  <Shield className="w-5 h-5 text-yellow-400" />
-                  <span className="text-yellow-400 font-bold text-sm">PORTAL SINACOL OFICIAL</span>
-                </div>
-                <p className="text-yellow-300 text-xs">
-                  El enlace te llevara al portal SINACOL oficial del gobierno. 
-                  Ahi podras iniciar tu solicitud de conciliacion laboral con tu CURP.
-                  <strong className="block mt-1 text-yellow-200">Nota: Mecorrieron.mx NO crea cuentas automaticamente. Solo te guiamos al portal oficial.</strong>
-                </p>
-              </div>
-              
-              {/* Trabajador de prueba - DATOS REALES SuperAdmin */}
-              <div className="bg-blue-950/50 rounded-lg p-4 border border-blue-700">
-                <div className="flex items-center gap-2 mb-2">
-                  <User className="w-4 h-4 text-blue-400" />
-                  <span className="text-blue-400 text-xs font-bold">DATOS DEL TRABAJADOR (SuperAdmin Pruebas)</span>
-                </div>
-                <p className="text-blue-300 text-base font-mono font-bold">{selectedPdf.cuentaCCL.nombreTrabajador}</p>
-                <p className="text-blue-500 text-xs font-mono mt-1">CURP: {selectedPdf.cuentaCCL.curp}</p>
-                <p className="text-blue-500 text-xs font-mono">Tel: {selectedPdf.cuentaCCL.telefono}</p>
-                <p className="text-blue-500 text-xs font-mono">Email Prueba: {selectedPdf.cuentaCCL.email}</p>
-              </div>
-              
-              {/* Empresa ejemplo para demanda */}
-              {selectedPdf.cuentaCCL.empresaEjemplo && (
-                <div className="bg-red-950/50 rounded-lg p-4 border border-red-700">
-                  <div className="flex items-center gap-2 mb-2">
-                    <FileText className="w-4 h-4 text-red-400" />
-                    <span className="text-red-400 text-xs font-bold">EMPRESA EJEMPLO (Demandado)</span>
-                  </div>
-                  <p className="text-red-300 text-sm font-bold">{selectedPdf.cuentaCCL.empresaEjemplo.razonSocial}</p>
-                  <p className="text-red-500 text-xs font-mono mt-1">RFC: {selectedPdf.cuentaCCL.empresaEjemplo.rfc}</p>
-                  <p className="text-red-500 text-xs mt-1">{selectedPdf.cuentaCCL.empresaEjemplo.direccion}</p>
-                </div>
-              )}
-              
-              {/* CURP para iniciar solicitud */}
-              <div className="bg-black rounded-lg p-4 border-2 border-yellow-500">
-                <p className="text-yellow-500 text-xs text-center mb-4">DATOS PARA INICIAR SOLICITUD EN SINACOL</p>
-                
-                {/* CURP */}
-                <div className="bg-yellow-950/30 rounded p-3">
-                  <div className="flex items-center justify-between mb-1">
-                    <span className="text-yellow-600 text-xs flex items-center gap-1">
-                      <User className="w-3 h-3" /> CURP del trabajador:
-                    </span>
-                    <Button
-                      size="sm"
-                      variant="ghost"
-                      className="h-6 px-2 text-yellow-400 hover:bg-yellow-900/50"
-                      onClick={() => {
-                        navigator.clipboard.writeText(selectedPdf.cuentaCCL?.curp || '')
-                      }}
-                    >
-                      <Copy className="w-3 h-3 mr-1" />
-                      <span className="text-xs">Copiar</span>
-                    </Button>
-                  </div>
-                  <code className="text-yellow-300 text-xl font-bold block select-all bg-black/50 p-2 rounded text-center tracking-wider">
-                    {selectedPdf.cuentaCCL.curp}
-                  </code>
-                  <p className="text-yellow-600 text-xs mt-2 text-center">
-                    El sistema SINACOL cargara tus datos automaticamente con tu CURP
-                  </p>
-                </div>
-              </div>
-              
-              {/* URLs del portal */}
-              <div className="bg-green-950/50 rounded-lg p-3 border border-green-800">
-                <div className="grid grid-cols-1 gap-2 text-xs">
-                  <div>
-                    <span className="text-green-600">Portal SINACOL (Solicitud):</span>
-                    <p className="font-mono text-green-300 truncate">{selectedPdf.cuentaCCL.urlLogin}</p>
-                  </div>
-                  <div>
-                    <span className="text-green-600">Sitio CCL Informativo:</span>
-                    <p className="font-mono text-green-300 truncate">{selectedPdf.cuentaCCL.urlBuzon}</p>
-                  </div>
-                  <div>
-                    <span className="text-green-600">Referencia Interna (MeCorrieron.mx):</span>
-                    <p className="font-mono text-green-300 font-bold text-xs">{selectedPdf.folioGenerado}</p>
-                    <p className="text-green-700 text-[10px]">El folio oficial lo genera SINACOL al completar la solicitud</p>
-                  </div>
-                </div>
-              </div>
-              
-              {/* Instrucciones */}
-              <div className="bg-blue-900/30 border border-blue-600 rounded-lg p-3">
-                <p className="text-blue-400 text-xs">
-                  <strong>COMO CREAR TU SOLICITUD EN SINACOL:</strong><br/>
-                  1. Haz clic en "IR A SINACOL" abajo<br/>
-                  2. Ingresa tu CURP: <span className="text-blue-300 font-mono">{selectedPdf.cuentaCCL.curp}</span><br/>
-                  3. Completa el formulario con tus datos laborales<br/>
-                  4. Agenda tu cita de ratificacion presencial<br/>
-                  5. Acude al CCL con tu identificacion oficial
-                </p>
-              </div>
-            </div>
-          )}
-          
-          {/* Botones principales */}
-          <div className="flex gap-2 mt-4">
-            <Button 
-              className="flex-1 bg-green-600 hover:bg-green-500 text-white font-bold"
-              onClick={() => {
-                if (!selectedPdf?.cuentaCCL?.urlLogin) return
-                window.open(selectedPdf.cuentaCCL.urlLogin, '_blank')
-              }}
-            >
-              <ExternalLink className="w-4 h-4 mr-2" />
-              IR A SINACOL
-            </Button>
-            <Button 
-              variant="outline" 
-              className="flex-1 bg-transparent border-blue-600 text-blue-400 hover:bg-blue-950"
-              onClick={() => {
-                if (!selectedPdf?.cuentaCCL?.urlBuzon) return
-                window.open(selectedPdf.cuentaCCL.urlBuzon, '_blank')
-              }}
-            >
-              <HelpCircle className="w-4 h-4 mr-2" />
-              INFO CCL
-            </Button>
-          </div>
-          <Button 
-            variant="ghost" 
-            className="w-full text-gray-500 hover:text-gray-300"
-            onClick={() => setShowPdfDialog(false)}
-          >
-            Cerrar
-          </Button>
-        </DialogContent>
-      </Dialog>
-
       {/* Visor PDF diagnóstico */}
       <Dialog open={showPdfViewer} onOpenChange={setShowPdfViewer}>
         <DialogContent className="bg-black text-green-400 max-w-4xl max-h-[95vh] overflow-hidden border border-cyan-700">
