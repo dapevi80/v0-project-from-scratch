@@ -357,7 +357,7 @@ const getIntentResponse = (intent: string | null, role?: string) => {
   switch (intent) {
     case 'detalles_del_caso':
       return isLawyer
-        ? `Revisa tus casos desde **Oficina Virtual** y el tablero de **Mis casos**.\n\n[Ir a Mis casos](/oficina-virtual/mis-casos)`
+        ? `Por seguridad, los detalles del caso se muestran solo dentro de la app.\n\n[Ir a Mis casos](/oficina-virtual/mis-casos)`
         : `Puedes ver el estado de tu caso en **Mis Casos**.\n\n[Ir a Mis casos](/casos)`
     case 'informacion_de_calendario':
       return `Aquí tienes tu calendario de audiencias y recordatorios.\n\n[Ir a Calendario](/agenda)`
