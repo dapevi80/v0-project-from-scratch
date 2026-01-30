@@ -358,8 +358,8 @@ export const PORTALES_CCL: Record<string, PortalCCLConfig> = {
   'Quintana Roo': {
     nombre: 'Centro de Conciliación Laboral del Estado de Quintana Roo',
     url: 'https://cclqroo.qroo.gob.mx',
-    urlSinacol: 'https://conciliacion.cclqroo.gob.mx/solicitudes/create-public?solicitud=1',
-    urlRegistro: 'https://conciliacion.cclqroo.gob.mx/solicitudes/create-public?solicitud=1', // El registro se hace dentro del flujo de solicitud
+    urlSinacol: 'https://conciliacion.cclqroo.gob.mx/asesoria/seleccion',
+    urlRegistro: 'https://conciliacion.cclqroo.gob.mx/asesoria/seleccion', // El registro se hace dentro del flujo de solicitud
     urlLogin: 'https://conciliacion.cclqroo.gob.mx/login',
     urlBuzon: 'https://conciliacion.cclqroo.gob.mx/buzon',
     tieneRegistroEnLinea: true,
@@ -370,7 +370,7 @@ export const PORTALES_CCL: Record<string, PortalCCLConfig> = {
     flujoEnvio: 'guardar_crear_cuenta', // IMPORTANTE: Elegir "Guardar" abre creación de cuenta buzón
     emailContacto: 'buzon_oficial@cclqroo.gob.mx',
     telefonoContacto: '9836883672',
-    notas: 'VERIFICADO ENERO 2026: Flujo de solicitud en conciliacion.cclqroo.gob.mx/solicitudes/create-public?solicitud=1. IMPORTANTE: Al final del formulario aparecen opciones "Enviar" o "Guardar". Elegir "GUARDAR" abre formulario para crear cuenta de buzón electrónico - este paso es CRUCIAL porque registra la solicitud. Versión SINACOL 12.8.2. Sedes: Chetumal, Cancún, Playa del Carmen, Cozumel. Horario 8:00-16:00 L-V.'
+    notas: 'VERIFICADO ENERO 2026: Flujo de solicitud en conciliacion.cclqroo.gob.mx/asesoria/seleccion. La jurisdicción cambia al estado del domicilio del primer citado, por lo que se puede iniciar desde Quintana Roo y dirigir la solicitud al estado correspondiente. IMPORTANTE: Al final del formulario aparecen opciones "Enviar" o "Guardar". Elegir "GUARDAR" abre formulario para crear cuenta de buzón electrónico - este paso es CRUCIAL porque registra la solicitud. Versión SINACOL 12.8.2. Sedes: Chetumal, Cancún, Playa del Carmen, Cozumel. Horario 8:00-16:00 L-V.'
   },
 
   'San Luis Potosi': {

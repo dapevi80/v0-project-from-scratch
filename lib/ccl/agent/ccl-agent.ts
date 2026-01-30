@@ -361,7 +361,7 @@ function obtenerPortalCCL(estado: string): { nombre: string; url: string } | nul
   if (portal) {
     return {
       nombre: portal.nombre,
-      url: portal.url_portal
+      url: portal.url_solicitud_publica || portal.url_portal
     }
   }
   
