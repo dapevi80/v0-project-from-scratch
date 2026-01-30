@@ -528,6 +528,29 @@ export function AIAssistant({
     setMessages([systemMessage])
     
     try {
+      const creditResponse = await fetch('/api/ai-credits/consume', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          costo: 1,
+          source: 'document',
+          assistant: currentAssistant
+        })
+      })
+
+      if (!creditResponse.ok) {
+        const creditData = await creditResponse.json()
+        setMessages(prev => [
+          ...prev,
+          {
+            id: `assistant-${Date.now()}`,
+            role: 'assistant',
+            content: creditData.error || 'No tienes monedas IA disponibles para analizar documentos.'
+          }
+        ])
+        return
+      }
+
       const response = await fetch(assistant.api, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -620,6 +643,29 @@ ${docText.slice(0, 4000)}`
     // Llamar a Grok AI para preguntas especificas
     setIsLoading(true)
     try {
+      const creditResponse = await fetch('/api/ai-credits/consume', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          costo: 1,
+          source: 'chat',
+          assistant: currentAssistant
+        })
+      })
+
+      if (!creditResponse.ok) {
+        const creditData = await creditResponse.json()
+        setMessages(prev => [
+          ...prev,
+          {
+            id: `assistant-${Date.now()}`,
+            role: 'assistant',
+            content: creditData.error || 'No tienes monedas IA disponibles. Revisa tu plan o cupones.'
+          }
+        ])
+        return
+      }
+
       const response = await fetch(assistant.api, {
         method: "POST",
         headers: { "Content-Type": "application/json" },

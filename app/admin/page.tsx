@@ -149,6 +149,7 @@ export default function AdminDashboardPage() {
     { name: 'Cobros', href: '/admin/cobros', emoji: '💳', description: 'Suscripciones' },
     { name: 'Facturacion SAT', href: '/admin/facturacion', emoji: '🧾', description: 'CFDI y facturas' },
     { name: 'Cartera', href: '/admin/wallet', emoji: '🪙', description: 'Monedas y recompensas' },
+    { name: 'IA Credits', href: '/admin/ia-credits', emoji: '🤖', description: 'Consumo y planes IA' },
     { name: 'Reportes', href: '/admin/reportes', emoji: '📊', description: 'Analytics' },
     { name: 'Config', href: '/admin/config', emoji: '⚙️', description: 'Sistema' },
     { name: 'C:/', href: '/admin/terminal', symbol: true, description: 'Terminal modo' },
