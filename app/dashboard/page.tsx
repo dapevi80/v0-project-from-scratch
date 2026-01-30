@@ -74,7 +74,8 @@ export default function DashboardPage() {
   const freeTools = [
     { name: 'Calculadora', href: '/calculadora', description: 'Calcula tu liquidación', icon: '🧮', available: true },
     { name: 'Buró de Empresas', href: '/buro', description: 'Conoce a tu empleador', icon: '🏢', available: false, badge: 'Próximamente' },
-    { name: 'Bóveda de Evidencias', href: '/boveda', description: 'Guarda tus pruebas', icon: '🔐', available: true }
+    { name: 'Bóveda de Evidencias', href: '/boveda', description: 'Guarda tus pruebas', icon: '🔐', available: true },
+    { name: 'Biblioteca Legal', href: '/biblioteca-legal', description: 'Guía simplificada', icon: '📚', available: true }
   ]
 
   // Herramientas exclusivas para trabajadores verificados

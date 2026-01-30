@@ -101,7 +101,8 @@ export default function AbogadoDashboardPage() {
   const freeTools = [
     { name: 'Calculadora', href: '/calculadora', emoji: '🧮', description: 'Calcula liquidaciones', available: true },
     { name: 'Boveda', href: '/boveda', emoji: '🔐', description: 'Guarda documentos', available: true },
-    { name: 'Guia LFT', href: '/guia-lft', emoji: '📖', description: 'Ley Federal del Trabajo', available: true }
+    { name: 'Guia LFT', href: '/guia-lft', emoji: '📖', description: 'Ley Federal del Trabajo', available: true },
+    { name: 'Biblioteca Legal', href: '/biblioteca-legal', emoji: '📚', description: 'Guia simplificada', available: true }
   ]
 
   const isAdmin = role === 'admin' || role === 'superadmin'
