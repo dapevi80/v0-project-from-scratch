@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
+import { useSearchParams } from 'next/navigation'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
@@ -25,7 +26,11 @@ import {
   KeyRound,
   ChevronRight,
   ChevronLeft,
-  Info
+  Info,
+  Coins,
+  Ticket,
+  IdCard,
+  FileText
 } from 'lucide-react'
 import { QRCodeSVG } from 'qrcode.react'
 import { ProVCard, ProVCardMini } from './pro-vcard'
@@ -49,6 +54,7 @@ interface CryptoWalletProps {
     email?: string
     phone?: string
     role: string
+    codigo_usuario?: string
   }
   lawyerProfile?: {
     cedula_profesional?: string
@@ -120,6 +126,7 @@ export function CryptoWallet({ userId, isVerified, onWalletCreated, userRole, pr
   const balanceNumber = Number.parseFloat(balance) || 0
   const mxnRate = 17.5
   const mxnBalance = balanceNumber * mxnRate
+  const searchParams = useSearchParams()
 
   const nftAssets = [
     {
@@ -138,19 +145,62 @@ export function CryptoWallet({ userId, isVerified, onWalletCreated, userRole, pr
       requiresVerification: false
     },
     {
+      title: 'Identificacion oficial',
+      description: 'INE o pasaporte resguardado en tu cartera.',
+      requiresVerification: false
+    },
+    {
       title: 'Llave digital SAT',
-      description: 'Certificados y llaves firmadas por el SAT.',
+      description: 'Certificados SAT para firma electronica oficial.',
       requiresVerification: false
     },
     {
       title: 'Firma digital',
-      description: 'Autenticacion de documentos legales.',
+      description: 'Firma electronica con archivos del SAT.',
       requiresVerification: true
     },
     {
       title: 'Contraseñas seguras',
       description: 'Vault cifrado para credenciales.',
       requiresVerification: false
+    },
+    {
+      title: 'Documentos CCL',
+      description: 'PDFs y acuses generados por el sistema.',
+      requiresVerification: false
+    }
+  ]
+
+  const walletCards = [
+    {
+      title: 'Dinero',
+      subtitle: 'USDT + MXN',
+      icon: Wallet,
+      color: 'from-emerald-500/15 to-teal-500/5'
+    },
+    {
+      title: 'Monedas IA',
+      subtitle: 'Consumo inteligente',
+      icon: Coins,
+      color: 'from-blue-500/15 to-indigo-500/5'
+    },
+    {
+      title: 'Cupones',
+      subtitle: 'NFTs intercambiables',
+      icon: Ticket,
+      color: 'from-amber-500/15 to-orange-500/5'
+    },
+    {
+      title: 'Identificación',
+      subtitle: 'INE/Pasaporte',
+      icon: IdCard,
+      color: 'from-slate-500/15 to-slate-400/5'
+    },
+    {
+      title: 'Firma digital',
+      subtitle: 'e.firma SAT',
+      icon: FileText,
+      color: 'from-purple-500/15 to-fuchsia-500/5'
     }
   ]
 
@@ -172,6 +222,12 @@ export function CryptoWallet({ userId, isVerified, onWalletCreated, userRole, pr
       if (hideBalancePref === 'true') setHideBalance(true)
     }
   }, [userId])
+
+  useEffect(() => {
+    if (searchParams?.get('vcard') === '1' && isVCardEligible) {
+      setCurrentView('vcard')
+    }
+  }, [searchParams, isVCardEligible])
 
   // Fetch balance when wallet is loaded
   useEffect(() => {
@@ -805,6 +861,12 @@ export function CryptoWallet({ userId, isVerified, onWalletCreated, userRole, pr
                 ))}
               </div>
             </div>
+            <div className="rounded-lg border border-red-200 bg-red-50/80 p-3">
+              <p className="text-xs text-red-800">
+                <strong>Importante:</strong> No respaldamos tu frase semilla ni contraseñas. 
+                Si la pierdes, no podremos recuperar tus USDT u otras criptos.
+              </p>
+            </div>
           </div>
 
           {/* Cerrar sesion */}
@@ -896,9 +958,32 @@ export function CryptoWallet({ userId, isVerified, onWalletCreated, userRole, pr
           </div>
         </div>
       </CardHeader>
-      <CardContent className="space-y-3 sm:space-y-4 px-4 sm:px-6">
+      <CardContent className="space-y-4 sm:space-y-5 px-4 sm:px-6">
+        {/* Tarjetas principales */}
+        <div className="grid gap-2 sm:grid-cols-2">
+          {walletCards.map((card) => {
+            const Icon = card.icon
+            return (
+              <div
+                key={card.title}
+                className={`rounded-2xl border border-emerald-100 bg-gradient-to-br ${card.color} p-4 shadow-sm`}
+              >
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-xs text-emerald-900/80">{card.title}</p>
+                    <p className="text-sm font-semibold text-emerald-900">{card.subtitle}</p>
+                  </div>
+                  <div className="h-10 w-10 rounded-xl bg-white/70 flex items-center justify-center">
+                    <Icon className="w-5 h-5 text-emerald-600" />
+                  </div>
+                </div>
+              </div>
+            )
+          })}
+        </div>
+
         {/* Balance */}
-        <div className="bg-white/70 rounded-xl p-4 sm:p-5 border border-emerald-100">
+        <div className="bg-gradient-to-br from-white/90 via-emerald-50 to-white rounded-2xl p-4 sm:p-5 border border-emerald-100 shadow-sm">
           <div className="flex items-center justify-between mb-1">
             <p className="text-[10px] sm:text-xs text-muted-foreground">Saldo disponible en MXN</p>
             <Button
@@ -953,7 +1038,7 @@ export function CryptoWallet({ userId, isVerified, onWalletCreated, userRole, pr
           </Button>
         </div>
 
-        <div className="space-y-3 pt-2 border-t border-emerald-200">
+        <div className="space-y-3 pt-3 border-t border-emerald-200">
           <div>
             <p className="text-xs sm:text-sm font-semibold text-emerald-900">NFTs en tu Cartera</p>
             <p className="text-[10px] sm:text-xs text-muted-foreground">
@@ -962,7 +1047,7 @@ export function CryptoWallet({ userId, isVerified, onWalletCreated, userRole, pr
           </div>
           <div className="grid gap-2 sm:grid-cols-2">
             {nftAssets.map((asset) => (
-              <div key={asset.title} className="rounded-lg border border-emerald-100 bg-white/70 p-3">
+              <div key={asset.title} className="rounded-2xl border border-emerald-100 bg-white/80 p-3 shadow-sm">
                 <div className="flex items-center justify-between">
                   <p className="text-xs sm:text-sm font-medium text-emerald-900">{asset.title}</p>
                   <Badge variant="outline" className="text-[9px] sm:text-[10px]">

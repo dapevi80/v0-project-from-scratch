@@ -1,6 +1,7 @@
 'use client'
 
 import { useState } from 'react'
+import Link from 'next/link'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -91,6 +92,18 @@ export function EfirmaConfig({ userId, hasEfirma, efirmaStatus, onUpdate }: Efir
             <Badge variant="outline" className="border-green-300 text-green-700">
               Activa
             </Badge>
+          </div>
+          <div className="mt-4 flex flex-col sm:flex-row gap-2">
+            <Button asChild variant="outline" className="bg-transparent border-green-300 text-green-700">
+              <Link href="/dashboard?vcard=1">
+                Ver VCard profesional
+              </Link>
+            </Button>
+            <Button asChild variant="outline" className="bg-transparent border-green-300 text-green-700">
+              <Link href="/dashboard">
+                Ir a Cartera
+              </Link>
+            </Button>
           </div>
         </CardContent>
       </Card>
@@ -188,8 +201,8 @@ export function EfirmaConfig({ userId, hasEfirma, efirmaStatus, onUpdate }: Efir
         
         <div className="p-3 rounded-lg bg-amber-50 border border-amber-200">
           <p className="text-xs text-amber-700">
-            <strong>Seguridad:</strong> Tus archivos se almacenan encriptados y nunca se comparten. 
-            Solo se usan para firmar documentos que tu autorices.
+            <strong>Seguridad:</strong> La contraseña de tu llave es privada y nunca se comparte con otros usuarios.
+            Los archivos se almacenan encriptados y solo se usan para firmar documentos que autorices.
           </p>
         </div>
         

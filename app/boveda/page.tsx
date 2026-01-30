@@ -16,9 +16,6 @@ import {
   Calculator, 
   FileText, 
   ImageIcon, 
-  Video, 
-  Music2, 
-  Mic,
   Upload,
   CreditCard,
   MapPin,
@@ -43,7 +40,6 @@ import {
   ChevronRight,
   Scale
 } from 'lucide-react'
-import { AudioRecorder } from '@/components/boveda/audio-recorder'
 import { DocumentUploader } from '@/components/boveda/document-uploader'
 import { CalculoPDFViewer } from '@/components/boveda/calculo-pdf-viewer'
 import { DocumentoCard } from '@/components/boveda/documento-card'
@@ -69,7 +65,32 @@ import { LogoutButton } from '@/app/dashboard/logout-button'
 import { openAIChatWithDocument } from '@/components/global-ai-assistant'
 
 // Declare types
-type CategoriaDocumento = 'calculo_liquidacion' | 'propuesta_empresa' | 'evidencia_foto' | 'evidencia_video' | 'evidencia_audio' | 'grabacion_audio' | 'contrato_laboral' | 'hoja_renuncia' | 'ine_frente' | 'ine_reverso' | 'pasaporte' | 'comprobante_domicilio' | 'cedula_profesional' | 'credencial_elector' | 'otro'
+type CategoriaDocumento = 
+  | 'calculo_liquidacion'
+  | 'propuesta_empresa'
+  | 'contrato_laboral'
+  | 'hoja_renuncia'
+  | 'hojas_firmadas'
+  | 'recibo_nomina'
+  | 'recibo_dinero'
+  | 'ine_frente'
+  | 'ine_reverso'
+  | 'pasaporte'
+  | 'credencial_elector'
+  | 'cedula_profesional'
+  | 'solicitud_conciliacion'
+  | 'notificacion'
+  | 'acuse'
+  | 'expediente'
+  | 'acta_audiencia'
+  | 'acta_conciliacion'
+  | 'constancia_no_conciliacion'
+  | 'convenio'
+  | 'sentencia'
+  | 'comprobante_domicilio'
+  | 'testigos'
+  | 'documento_escaneado'
+  | 'otro'
 type DocumentoBoveda = {
   id: string
   nombre: string
@@ -102,13 +123,8 @@ const CATEGORIAS_CONFIG: Record<CategoriaDocumento, { label: string; icon: typeo
   hojas_firmadas: { label: 'Hojas en blanco firmadas', icon: FileText, color: 'text-amber-600' },
   recibo_nomina: { label: 'Recibos de Nómina', icon: FileText, color: 'text-green-600' },
   recibo_dinero: { label: 'Recibos de Dinero', icon: FileText, color: 'text-emerald-600' },
-  // Evidencias multimedia
-  evidencia_foto: { label: 'Fotos / Capturas', icon: ImageIcon, color: 'text-green-600' },
-  evidencia_video: { label: 'Videos', icon: Video, color: 'text-purple-600' },
-  video_despido: { label: 'Video del Despido', icon: Video, color: 'text-red-600' },
-  evidencia_audio: { label: 'Audios', icon: Music2, color: 'text-orange-600' },
-  grabacion_audio: { label: 'Grabaciones', icon: Mic, color: 'text-destructive' },
-  grabacion_llamada: { label: 'Grabación de Llamada', icon: Mic, color: 'text-cyan-600' },
+  // Documentos escaneados
+  documento_escaneado: { label: 'Documentos Escaneados', icon: ScanLine, color: 'text-purple-600' },
   // Identificaciones
   ine_frente: { label: 'INE Frente', icon: CreditCard, color: 'text-slate-600' },
   ine_reverso: { label: 'INE Reverso', icon: CreditCard, color: 'text-slate-600' },
@@ -121,7 +137,6 @@ const CATEGORIAS_CONFIG: Record<CategoriaDocumento, { label: string; icon: typeo
   acuse: { label: 'Acuse de Recibo', icon: FileText, color: 'text-teal-600' },
   expediente: { label: 'Expediente del Caso', icon: FileText, color: 'text-gray-600' },
   // Audiencia y conciliación
-  foto_lugar: { label: 'Ubicación del Trabajo', icon: MapPin, color: 'text-orange-600' },
   acta_audiencia: { label: 'Acta de Audiencia', icon: FileText, color: 'text-amber-700' },
   acta_conciliacion: { label: 'Acta de Conciliación', icon: FileText, color: 'text-green-700' },
   constancia_no_conciliacion: { label: 'Constancia No Conciliación', icon: FileText, color: 'text-red-700' },
@@ -131,8 +146,6 @@ const CATEGORIAS_CONFIG: Record<CategoriaDocumento, { label: string; icon: typeo
   // Domicilio y testigos
   comprobante_domicilio: { label: 'Comprobante Domicilio', icon: MapPin, color: 'text-teal-600' },
   testigos: { label: 'Datos de Testigos', icon: FileText, color: 'text-blue-700' },
-  // Documentos escaneados
-  documento_escaneado: { label: 'Documentos Escaneados', icon: ScanLine, color: 'text-purple-600' },
   // Otro
   otro: { label: 'Otros', icon: FileText, color: 'text-muted-foreground' },
 }
@@ -171,7 +184,6 @@ export default function BovedaPage() {
   const [verificationStatus, setVerificationStatus] = useState<string | null>(null)
   
   // Estados para modales
-  const [showRecorder, setShowRecorder] = useState(false)
   const [showUploader, setShowUploader] = useState(false)
   const [showScanner, setShowScanner] = useState(false)
   const [showINEScanner, setShowINEScanner] = useState<'frente' | 'reverso' | null>(null)
@@ -383,7 +395,10 @@ export default function BovedaPage() {
               Mi Bóveda Digital
             </h1>
             <p className="text-muted-foreground text-xs sm:text-sm mt-1">
-              Tus documentos, evidencias y cálculos seguros
+              Documentos, identificaciones y archivos CCL en un solo lugar
+            </p>
+            <p className="text-[10px] sm:text-xs text-muted-foreground">
+              La identificación también se muestra en tu Cartera.
             </p>
           </div>
           
@@ -400,15 +415,7 @@ export default function BovedaPage() {
         </div>
         
         {/* Acciones rápidas - PRIMERO */}
-        <div className="grid grid-cols-4 gap-1.5 sm:gap-2 mb-4">
-          <Button
-            onClick={() => setShowRecorder(true)}
-            variant="outline"
-            className="h-auto py-2.5 sm:py-3 flex-col gap-1 bg-destructive/5 border-destructive/20 hover:bg-destructive/10"
-          >
-            <Mic className="w-4 h-4 sm:w-5 sm:h-5 text-destructive" />
-            <span className="text-[10px] sm:text-xs font-medium">Grabar</span>
-          </Button>
+        <div className="grid grid-cols-3 gap-1.5 sm:gap-2 mb-4">
           <Button
             onClick={() => setShowScanner(true)}
             variant="outline"
@@ -449,7 +456,7 @@ export default function BovedaPage() {
         
         {/* Estadísticas rápidas - DESPUÉS */}
         {estadisticas && (
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 sm:gap-3 mb-6">
+          <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 sm:gap-3 mb-6">
             <Card className="p-3 sm:p-4">
               <div className="flex items-center gap-2 sm:gap-3">
                 <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0">
@@ -469,17 +476,6 @@ export default function BovedaPage() {
                 <div className="min-w-0">
                   <p className="text-xl sm:text-2xl font-bold">{estadisticas.totalDocumentos}</p>
                   <p className="text-xs text-muted-foreground truncate">Docs</p>
-                </div>
-              </div>
-            </Card>
-            <Card className="p-3 sm:p-4">
-              <div className="flex items-center gap-2 sm:gap-3">
-                <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-full bg-destructive/10 flex items-center justify-center flex-shrink-0">
-                  <Mic className="w-4 h-4 sm:w-5 sm:h-5 text-destructive" />
-                </div>
-                <div className="min-w-0">
-                  <p className="text-xl sm:text-2xl font-bold">{estadisticas.porCategoria?.grabacion_audio || 0}</p>
-                  <p className="text-xs text-muted-foreground truncate">Audios</p>
                 </div>
               </div>
             </Card>
@@ -1093,19 +1089,6 @@ export default function BovedaPage() {
           </TabsContent>
         </Tabs>
         
-        {/* Modal: Grabador de audio */}
-        <Dialog open={showRecorder} onOpenChange={setShowRecorder}>
-          <DialogContent className="max-w-md">
-            <AudioRecorder 
-              onSaved={() => {
-                setShowRecorder(false)
-                loadData()
-              }}
-              onCancel={() => setShowRecorder(false)}
-            />
-          </DialogContent>
-        </Dialog>
-        
   {/* Modal: Subidor de documentos */}
   <Dialog open={showUploader} onOpenChange={(open) => {
   setShowUploader(open)
@@ -1232,16 +1215,6 @@ export default function BovedaPage() {
                     alt="Documento"
                     className="w-full h-[calc(90vh-80px)] object-contain"
                   />
-                ) : visorTipo?.startsWith('video/') ? (
-                  <video 
-                    src={visorUrl}
-                    controls
-                    className="w-full h-[calc(90vh-80px)]"
-                  />
-                ) : visorTipo?.startsWith('audio/') ? (
-                  <div className="flex items-center justify-center h-[calc(90vh-80px)]">
-                    <audio src={visorUrl} controls className="w-full max-w-md" />
-                  </div>
                 ) : (
                   <iframe
                     src={visorUrl}

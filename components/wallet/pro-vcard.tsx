@@ -35,6 +35,7 @@ interface ProVCardProps {
     email?: string
     phone?: string
     role: string
+    codigo_usuario?: string
   }
   lawyerProfile?: {
     cedula_profesional?: string
@@ -57,6 +58,7 @@ type VCardView = 'card' | 'qr' | 'share'
 export function ProVCard({ profile, lawyerProfile, onClose }: ProVCardProps) {
   const [currentView, setCurrentView] = useState<VCardView>('card')
   const [copied, setCopied] = useState(false)
+  const [copiedCode, setCopiedCode] = useState(false)
   const [downloading, setDownloading] = useState(false)
 
   const isVerified = (profile.role === 'lawyer' || profile.role === 'admin' || profile.role === 'superadmin') 
@@ -68,6 +70,13 @@ export function ProVCard({ profile, lawyerProfile, onClose }: ProVCardProps) {
     await navigator.clipboard.writeText(profileUrl)
     setCopied(true)
     setTimeout(() => setCopied(false), 2000)
+  }
+
+  const handleCopyCode = async () => {
+    if (!profile.codigo_usuario) return
+    await navigator.clipboard.writeText(profile.codigo_usuario)
+    setCopiedCode(true)
+    setTimeout(() => setCopiedCode(false), 2000)
   }
 
   const handleDownloadVCard = async () => {
@@ -314,6 +323,28 @@ export function ProVCard({ profile, lawyerProfile, onClose }: ProVCardProps) {
           </div>
         )}
 
+        {/* Codigo de referido */}
+        {profile.codigo_usuario && (
+          <div className="bg-gradient-to-r from-emerald-900/30 to-emerald-800/20 rounded-xl p-3 border border-emerald-700/30">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-[10px] text-emerald-300 uppercase tracking-wider">Codigo de referido</p>
+                <p className="font-mono text-lg font-bold text-white tracking-wider mt-0.5">
+                  {profile.codigo_usuario}
+                </p>
+              </div>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={handleCopyCode}
+                className="h-8 w-8 p-0 text-white/70 hover:text-white hover:bg-white/10"
+              >
+                {copiedCode ? <Check className="w-4 h-4 text-emerald-400" /> : <Copy className="w-4 h-4" />}
+              </Button>
+            </div>
+          </div>
+        )}
+
         {/* Digital Signature Status */}
         {hasDigitalSignature && (
           <div className="bg-gradient-to-r from-blue-900/30 to-indigo-900/30 rounded-xl p-3 border border-blue-800/30">
@@ -346,6 +377,14 @@ export function ProVCard({ profile, lawyerProfile, onClose }: ProVCardProps) {
                 <Mail className="w-4 h-4 text-slate-400" />
               </div>
               <span className="text-slate-300 truncate">{profile.email}</span>
+            </div>
+          )}
+          {lawyerProfile?.firm_name && (
+            <div className="flex items-center gap-3 text-sm">
+              <div className="w-8 h-8 rounded-lg bg-slate-800 flex items-center justify-center">
+                <Building2 className="w-4 h-4 text-slate-400" />
+              </div>
+              <span className="text-slate-300 truncate">{lawyerProfile.firm_name}</span>
             </div>
           )}
           {lawyerProfile?.direccion_oficina && (

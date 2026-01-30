@@ -254,13 +254,6 @@ export type CategoriaDocumento =
   | 'hojas_firmadas'
   | 'recibo_nomina'
   | 'recibo_dinero'
-  // Evidencias multimedia
-  | 'evidencia_foto'
-  | 'evidencia_video'
-  | 'video_despido'
-  | 'evidencia_audio'
-  | 'grabacion_audio'
-  | 'grabacion_llamada'
   // Identificaciones
   | 'ine_frente'
   | 'ine_reverso'
@@ -336,6 +329,9 @@ export interface CalculoLiquidacion {
 // Obtener todos los documentos del usuario
 export async function obtenerDocumentos(categoria?: CategoriaDocumento) {
   const supabase = await createClient()
+  if (!supabase) {
+    return { success: false, error: 'Supabase no configurado', requiresAuth: true }
+  }
   
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) {
@@ -366,6 +362,9 @@ export async function obtenerDocumentos(categoria?: CategoriaDocumento) {
 // Obtener historial de cálculos (desde documentos_boveda con categoría calculo_liquidacion)
 export async function obtenerCalculos() {
   const supabase = await createClient()
+  if (!supabase) {
+    return { success: false, error: 'Supabase no configurado', requiresAuth: true }
+  }
   
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) {
@@ -425,6 +424,9 @@ export async function subirDocumento(params: {
   metadata?: Record<string, unknown>
 }) {
   const supabase = await createClient()
+  if (!supabase) {
+    return { success: false, error: 'Supabase no configurado', requiresAuth: true }
+  }
   
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) {
@@ -435,6 +437,17 @@ export async function subirDocumento(params: {
     // Validar que el archivo tenga contenido
     if (!params.archivo || params.archivo.length === 0) {
       return { success: false, error: 'No se recibió archivo para guardar' }
+    }
+
+    const mimePermitidos = [
+      'application/pdf',
+      'image/jpeg',
+      'image/png',
+      'image/webp'
+    ]
+
+    if (!mimePermitidos.includes(params.mimeType)) {
+      return { success: false, error: 'Solo se permiten PDFs o imagenes escaneadas' }
     }
     
     // Limpiar el base64 si tiene el prefijo data:
@@ -527,104 +540,13 @@ export async function subirDocumento(params: {
   }
 }
 
-// Guardar grabación de audio
-export async function guardarGrabacionAudio(params: {
-  audioBlob: string // Base64
-  duracionSegundos: number
-  descripcion?: string
-}) {
-  const supabase = await createClient()
-  
-  const { data: { user } } = await supabase.auth.getUser()
-  if (!user) {
-    return { success: false, error: 'No autenticado', requiresAuth: true }
-  }
-  
-  try {
-    // Validar que el audioBlob tenga contenido
-    if (!params.audioBlob || params.audioBlob.length === 0) {
-      return { success: false, error: 'No se recibió audio para guardar' }
-    }
-    
-    // Limpiar el base64 si tiene el prefijo data:
-    let base64Data = params.audioBlob
-    if (base64Data.includes(',')) {
-      base64Data = base64Data.split(',')[1]
-    }
-    
-    // Convertir base64 a Buffer y luego a Blob
-    const buffer = Buffer.from(base64Data, 'base64')
-    
-    if (buffer.length === 0) {
-      return { success: false, error: 'El audio está vacío' }
-    }
-    
-    // Crear Blob desde el buffer (Node.js 18+ tiene Blob nativo)
-    const blob = new Blob([buffer], { type: 'audio/webm' })
-    
-    // Generar path único
-    const timestamp = Date.now()
-    const fecha = new Date().toISOString().split('T')[0]
-    const filename = `grabacion_audio/${fecha}-${timestamp}.webm`
-    const filePath = `${user.id}/${filename}`
-    
-    // Subir a Storage usando Blob
-    const { error: uploadError } = await supabase.storage
-      .from('boveda')
-      .upload(filePath, blob, {
-        contentType: 'audio/webm',
-        upsert: false
-      })
-    
-    if (uploadError) {
-      console.error('Error subiendo audio:', uploadError)
-      return { success: false, error: uploadError.message }
-    }
-    
-    // Obtener URL
-    const { data: urlData } = await supabase.storage
-      .from('boveda')
-      .createSignedUrl(filePath, 60 * 60 * 24 * 7)
-    
-    // Insertar en base de datos
-    const { data: docData, error: docError } = await supabase
-      .from('documentos_boveda')
-      .insert({
-        user_id: user.id,
-        categoria: 'grabacion_audio',
-        nombre: `Grabación ${new Date().toLocaleDateString('es-MX')}`,
-        nombre_original: `grabacion-${timestamp}.webm`,
-        descripcion: params.descripcion,
-        archivo_path: filePath,
-        archivo_url: urlData?.signedUrl,
-        mime_type: 'audio/webm',
-        tamanio_bytes: buffer.length,
-        metadata: {
-          duracion_segundos: params.duracionSegundos
-        },
-        estado: 'activo',
-        verificado: false
-      })
-      .select()
-      .single()
-    
-    if (docError) {
-      console.error('Error insertando audio:', docError)
-      return { success: false, error: docError.message }
-    }
-    
-    revalidatePath('/boveda')
-    return { success: true }
-    
-  } catch (error) {
-    console.error('Error en guardarGrabacionAudio:', error)
-    return { success: false, error: 'Error al procesar la grabación' }
-  }
-}
 
 // Eliminar documento
 export async function eliminarDocumento(documentoId: string) {
   const supabase = await createClient()
+  if (!supabase) {
+    return { success: false, error: 'Supabase no configurado', requiresAuth: true }
+  }
   
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) {
@@ -781,6 +703,9 @@ export async function obtenerTextoOCRDocumento(documentoId: string) {
 // Obtener URL firmada por path directo (útil para cálculos)
 export async function obtenerUrlPorPath(archivoPath: string) {
   const supabase = await createClient()
+  if (!supabase) {
+    return { success: false, error: 'Supabase no configurado', requiresAuth: true }
+  }
   
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) {
@@ -819,6 +744,9 @@ export async function obtenerUrlPorPath(archivoPath: string) {
 // Obtener estadísticas de la bóveda
 export async function obtenerEstadisticas() {
   const supabase = await createClient()
+  if (!supabase) {
+    return { success: false, error: 'Supabase no configurado', requiresAuth: true }
+  }
   
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) {
