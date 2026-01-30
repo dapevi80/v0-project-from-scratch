@@ -309,11 +309,9 @@ export function GlobalAIAssistant() {
           aria-label="Abrir Lía - arrastra para mover"
         >
           {/* Avatar */}
-          <img 
-            src="/lia-avatar.jpg" 
-            alt="Lía - Asistente Legal IA" 
-            className="w-full h-full object-cover pointer-events-none"
-            draggable={false}
+          <span
+            aria-hidden="true"
+            className="absolute inset-0 bg-[url('/lia-avatar.jpg')] bg-cover bg-center pointer-events-none"
           />
           
           {/* Indicador de estrellas IA */}
