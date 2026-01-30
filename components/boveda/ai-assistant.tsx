@@ -551,12 +551,9 @@ export function AIAssistant({
         body: JSON.stringify({
           messages: [{
             role: "user",
-        content: `Explica de forma clara y concisa qué es este documento laboral y para qué sirve.
-Incluye:
-- Tipo de documento y etapa del proceso.
-- Puntos clave (fechas, obligaciones, derechos).
-- Plazos importantes o acciones inmediatas.
-- Siguiente paso recomendado para la persona usuaria.
+        content: `Analiza el texto extraido del PDF para brindar un resumen claro, con certeza y firme, de lo que dice el documento.
+El resumen debe explicarse sin rodeos, analizando y recomendando siguientes pasos referentes a los casos activos del usuario.
+Debe estar totalmente dentro del marco legal mexicano y siempre recomendar leerlo con algun abogado.
 
 Responde en bullets y no excedas 8 puntos.
 
@@ -786,17 +783,15 @@ Revisa que tengas tu **CURP**, telefono y un calculo guardado.
   if (!isOpen) return null
 
   return (
-    <div className="fixed inset-0 z-[70] flex items-end sm:items-center justify-center">
-      <div className="absolute inset-0 bg-black/40" onClick={onClose} />
-      
-      <div 
+    <div className="fixed bottom-4 right-4 z-[70] w-[92vw] max-w-sm">
+      <div
         ref={containerRef}
-        className="relative w-full max-w-sm bg-white rounded-t-2xl sm:rounded-2xl shadow-2xl flex flex-col overflow-hidden"
-        style={{ 
-          height: keyboardHeight > 0 
-            ? `calc(100vh - ${keyboardHeight}px - env(safe-area-inset-top, 0px))` 
-            : '75vh',
-          maxHeight: keyboardHeight > 0 ? 'none' : '75vh',
+        className="relative w-full bg-white rounded-2xl shadow-2xl flex flex-col overflow-hidden border"
+        style={{
+          height: keyboardHeight > 0
+            ? `calc(100vh - ${keyboardHeight}px - env(safe-area-inset-top, 0px))`
+            : '70vh',
+          maxHeight: keyboardHeight > 0 ? 'none' : '70vh',
           transition: 'height 0.15s ease-out'
         }}
       >
