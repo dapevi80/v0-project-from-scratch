@@ -367,6 +367,10 @@ const getIntentResponse = (intent: string | null, role?: string) => {
       return isLawyer
         ? `Revisa tus contactos y equipo en **Mi equipo y red**.\n\n[Ir a Mi equipo](/oficina-virtual/mi-equipo)`
         : `Puedes contactar a tu abogado desde tu caso activo.\n\n[Ir a Mis casos](/casos)`
+    case 'asesoria_legal':
+      return isLawyer
+        ? `¿Quieres asesorar a un cliente? Inicia un caso nuevo desde la calculadora.\n\n[Ir a Calculadora](/calculadora)`
+        : `Puedo ayudarte a iniciar tu asesoría. Primero genera tu cálculo y deja tus datos.\n\n[Ir a Calculadora](/calculadora)`
     case 'preguntas_sobre_la_app':
       return `Te llevo a tu dashboard para ver tus herramientas principales.\n\n[Ir al Dashboard](/dashboard)`
     default:
