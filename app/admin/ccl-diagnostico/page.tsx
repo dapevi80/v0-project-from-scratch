@@ -29,44 +29,46 @@ interface DatosTrabajador {
   salario_diario: number
   fecha_ingreso: string
   fecha_despido: string
+  jornada: 'diurna' | 'nocturna' | 'mixta'
+  salario_semanal: number
+  empresa_direccion: string
+  empresa_coordenadas: string
+  estado: string
+  municipio: string
+  correo_buzon: string
 }
 
-const EMPRESAS_PRUEBA = [
-  { nombre: 'Experiencias Xcaret SAPI de CV', direccion: 'Av. Bonampak 251' },
-  { nombre: 'Hotel Caribe Azul SA de CV', direccion: 'Blvd. Kukulkán 12' },
-  { nombre: 'Servicios Industriales del Sureste SA de CV', direccion: 'Av. Nichupté 55' }
-]
-
-const PUESTOS_PRUEBA = ['Empleado General', 'Supervisor de Turno', 'Auxiliar Administrativo']
-const MOTIVOS_DESPIDO = [
-  { ingreso: '2019-06-01', despido: '2026-02-15' },
-  { ingreso: '2021-02-12', despido: '2026-01-30' },
-  { ingreso: '2020-09-20', despido: '2026-03-05' }
-]
-
-const generarDatosTrabajador = (estado: string, seed: number): DatosTrabajador => {
-  const empresa = EMPRESAS_PRUEBA[seed % EMPRESAS_PRUEBA.length]
-  const puesto = PUESTOS_PRUEBA[seed % PUESTOS_PRUEBA.length]
-  const fechas = MOTIVOS_DESPIDO[seed % MOTIVOS_DESPIDO.length]
-
-  return {
-    nombre_completo: 'David Perez Villasenor',
-    curp: 'PEVD930106HDFRLV00',
-    rfc: 'PEVD930106XXX',
-    fecha_nacimiento: '1993-01-06',
-    sexo: 'H',
-    email_personal: 'david.perez@mecorrieron.mx',
-    telefono: '9985933232',
-    direccion: empresa.direccion,
-    ciudad: estado,
-    codigo_postal: '77500',
-    empresa_nombre: empresa.nombre,
-    puesto,
-    salario_diario: 450 + (seed % 4) * 75,
-    fecha_ingreso: fechas.ingreso,
-    fecha_despido: fechas.despido
-  }
+const DATOS_DIAGNOSTICO_REAL: DatosTrabajador = {
+  nombre_completo: 'David Pérez Villaseñor',
+  curp: 'PEVD930106HDFRLV00',
+  rfc: 'PEVD930106XXX',
+  fecha_nacimiento: '1993-01-06',
+  sexo: 'H',
+  email_personal: 'dpvillasenor@gmail.com',
+  telefono: '9985933232',
+  direccion: 'Pulpo 46, SM 49, Benito Juárez, Quintana Roo',
+  ciudad: 'Benito Juárez',
+  codigo_postal: '77509',
+  estado: 'Quintana Roo',
+  municipio: 'Benito Juárez',
+  empresa_nombre: 'EXPERIENCIAS XCARET SAPI DE CV',
+  empresa_direccion: 'Carretera Chetumal - Puerto Juárez Km 282, 77710 Playa del Carmen, Q.R.',
+  empresa_coordenadas: '20.5806, -87.1184',
+  puesto: 'Vendedor',
+  salario_semanal: 10000,
+  salario_diario: 10000 / 7,
+  fecha_ingreso: '2019-05-07',
+  fecha_despido: '2026-01-10',
+  jornada: 'diurna',
+  correo_buzon: ''
 }
+
+const generarDatosTrabajador = (estado: string, correoBuzon: string): DatosTrabajador => ({
+  ...DATOS_DIAGNOSTICO_REAL,
+  correo_buzon: correoBuzon,
+  estado,
+  ciudad: DATOS_DIAGNOSTICO_REAL.ciudad
+})
 
 // Helper function to call CCL account creation API
 async function crearCuentaCCLAPI(
@@ -148,13 +150,16 @@ interface Resultado {
     urlSinacol?: string // URL directa a formulario SINACOL
     curp: string // CURP real del usuario de prueba
     telefono?: string // Telefono real
+    correoPersonal?: string
     nombreTrabajador: string
     empresaEjemplo?: {
       razonSocial: string
       rfc: string
       direccion: string
+      coordenadas?: string
     }
   }
+  datosDiagnostico?: DatosTrabajador
 }
 
 // URLs de portales SINACOL reales por estado (verificados enero 2026)
@@ -190,6 +195,14 @@ const PASOS_ROBOT: { paso: PasoRobot; nombre: string }[] = [
   { paso: 'descarga_pdf', nombre: 'Descarga PDF' }
 ]
 
+const CURSOR_POSITIONS = [
+  { top: '18%', left: '24%' },
+  { top: '32%', left: '58%' },
+  { top: '48%', left: '36%' },
+  { top: '64%', left: '62%' },
+  { top: '78%', left: '30%' }
+]
+
 // Function to generate random error data
 const generarErrorAleatorio = (): { errorType: ErrorType; errorMessage: string; accionSugerida: string } => {
   const errorTypes = ['captcha', 'timeout', 'conexion', 'formulario', 'validacion', 'ninguno'] as ErrorType[]
@@ -222,7 +235,7 @@ export default function CCLDiagnosticoPage() {
   const router = useRouter()
   const [loading, setLoading] = useState(true)
   const [isSuperAdmin, setIsSuperAdmin] = useState(false)
-  const [modo, setModo] = useState<'dry_run' | 'live'>('dry_run')
+  const [modo, setModo] = useState<'dry_run' | 'live'>('live')
   const [ejecutando, setEjecutando] = useState(false)
   const [progreso, setProgreso] = useState(0)
   const [resultados, setResultados] = useState<Resultado[]>([])
@@ -238,6 +251,8 @@ export default function CCLDiagnosticoPage() {
   // Nuevo: Selector de estado individual para diagnóstico específico
   const [estadoSeleccionado, setEstadoSeleccionado] = useState<string>('todos')
   const [modoDiagnostico, setModoDiagnostico] = useState<'todos' | 'individual'>('todos')
+  const [livePreviewIndex, setLivePreviewIndex] = useState(0)
+  const [livePreviewPlaying, setLivePreviewPlaying] = useState(true)
 
   useEffect(() => {
     async function checkAccess() {
@@ -268,6 +283,16 @@ export default function CCLDiagnosticoPage() {
     checkAccess()
   }, [router])
 
+  useEffect(() => {
+    if (!showDetailDialog || !selectedEstado) return
+    const frames = selectedEstado.pasos.filter(p => p.screenshot)
+    if (frames.length === 0 || !livePreviewPlaying) return
+    const interval = setInterval(() => {
+      setLivePreviewIndex((prev) => (prev + 1) % frames.length)
+    }, 1200)
+    return () => clearInterval(interval)
+  }, [showDetailDialog, selectedEstado, livePreviewPlaying])
+
   const crearPasosIniciales = (): PasoDetalle[] => {
     return PASOS_ROBOT.map(p => ({
       paso: p.paso,
@@ -288,24 +313,25 @@ export default function CCLDiagnosticoPage() {
     return `david.perez.ccl.${estadoSlug}.${timestamp}${random}@gmail.com`
   }
   
-  // Datos REALES del usuario de prueba (SuperAdmin: David Perez Villasenor)
+  // Datos REALES del usuario de prueba (SuperAdmin: David Pérez Villaseñor)
   // Cada prueba genera un email aleatorio pero usa CURP real
   const generarTrabajadorPrueba = (estado: string) => {
     const emailPrueba = generarEmailPrueba(estado)
+    const datosReales = generarDatosTrabajador(estado, emailPrueba)
     
-    // DATOS REALES del SuperAdmin para pruebas SINACOL
-    // El CURP es real - el email es aleatorio para cada prueba
     return { 
-      nombreCompleto: 'David Perez Villasenor',
-      curp: 'PEVD930106HDFRLV00', // CURP REAL
-      telefono: '9985933232', // Telefono REAL
-      email: emailPrueba, // Email aleatorio para esta prueba
-      // Datos de empresa ejemplo para pruebas
+      nombreCompleto: datosReales.nombre_completo,
+      curp: datosReales.curp,
+      telefono: datosReales.telefono,
+      email: emailPrueba,
+      emailPersonal: datosReales.email_personal,
       empresaEjemplo: {
-        razonSocial: 'Experiencias Xcaret SAPI de CV',
-        rfc: 'EXC030627NY6',
-        direccion: 'Carretera Chetumal - Puerto Juarez Km 282, Solidaridad, Quintana Roo'
-      }
+        razonSocial: datosReales.empresa_nombre,
+        rfc: datosReales.rfc,
+        direccion: datosReales.empresa_direccion,
+        coordenadas: datosReales.empresa_coordenadas
+      },
+      datosDiagnostico: datosReales
     }
   }
 
@@ -340,9 +366,11 @@ export default function CCLDiagnosticoPage() {
           urlSinacol: portal?.urlSinacol || obtenerUrlSinacol(estado),
           curp: trabajador.curp, // CURP REAL: PEVD930106HDFRLV00
           telefono: trabajador.telefono, // Telefono REAL: 9985933232
-          nombreTrabajador: trabajador.nombreCompleto, // David Perez Villasenor
+          correoPersonal: trabajador.emailPersonal,
+          nombreTrabajador: trabajador.nombreCompleto, // David Pérez Villaseñor
           empresaEjemplo: trabajador.empresaEjemplo // Xcaret como ejemplo
-        }
+        },
+        datosDiagnostico: trabajador.datosDiagnostico
       }
     }))
   }
@@ -534,7 +562,9 @@ export default function CCLDiagnosticoPage() {
     return {
       exito: !fallo,
       tiempo: Math.round(tiempo),
-      screenshot: fallo ? `/api/placeholder/800/600?text=${encodeURIComponent(`Error en: ${paso}`)}` : ''
+      screenshot: `/api/placeholder/800/600?text=${encodeURIComponent(
+        `${fallo ? 'ERROR' : 'OK'} - Paso: ${paso}`
+      )}`
     }
   }
 
@@ -646,7 +676,7 @@ export default function CCLDiagnosticoPage() {
     
     if (finalStatus === 'exito') {
       const resultadoActual = resultados.find(r => r.estado === estado)
-      const datosTrabajadorPrueba = generarDatosTrabajador(estado, Date.now())
+      const datosTrabajadorPrueba = generarDatosTrabajador(estado, generarEmailPrueba(estado))
       
       try {
         const resultadoCuenta = await crearCuentaCCLAPI(
@@ -667,7 +697,14 @@ export default function CCLDiagnosticoPage() {
             urlBuzon: resultadoCuenta.url_buzon || '',
             urlSinacol: resultadoCuenta.url_login || '',
             curp: datosTrabajadorPrueba.curp,
-            nombreTrabajador: datosTrabajadorPrueba.nombre_completo
+            nombreTrabajador: datosTrabajadorPrueba.nombre_completo,
+            correoPersonal: datosTrabajadorPrueba.email_personal,
+            empresaEjemplo: {
+              razonSocial: datosTrabajadorPrueba.empresa_nombre,
+              rfc: datosTrabajadorPrueba.rfc,
+              direccion: datosTrabajadorPrueba.empresa_direccion,
+              coordenadas: datosTrabajadorPrueba.empresa_coordenadas
+            }
           }
         } else if (resultadoCuenta.requiereCaptcha) {
           finalStatus = 'parcial'
@@ -690,7 +727,14 @@ export default function CCLDiagnosticoPage() {
             urlBuzon: resultadoCuenta.captchaUrl || '',
             urlSinacol: resultadoCuenta.captchaUrl || '',
             curp: datosTrabajadorPrueba.curp,
-            nombreTrabajador: datosTrabajadorPrueba.nombre_completo
+            nombreTrabajador: datosTrabajadorPrueba.nombre_completo,
+            correoPersonal: datosTrabajadorPrueba.email_personal,
+            empresaEjemplo: {
+              razonSocial: datosTrabajadorPrueba.empresa_nombre,
+              rfc: datosTrabajadorPrueba.rfc,
+              direccion: datosTrabajadorPrueba.empresa_direccion,
+              coordenadas: datosTrabajadorPrueba.empresa_coordenadas
+            }
           }
         } else {
           folio = generarReferenciaInterna(estado)
@@ -825,7 +869,7 @@ export default function CCLDiagnosticoPage() {
       if (finalStatus === 'exito') {
         // Obtener datos del trabajador ficticio ya generados
         const resultadoActual = resultados.find(r => r.estado === estadoActual)
-        const datosTrabajadorPrueba = generarDatosTrabajador(estadoActual, Date.now() + i)
+        const datosTrabajadorPrueba = generarDatosTrabajador(estadoActual, generarEmailPrueba(estadoActual))
         
         try {
           // Crear cuenta real en el portal CCL (simulada pero guardada en DB)
@@ -847,7 +891,14 @@ export default function CCLDiagnosticoPage() {
               urlBuzon: resultadoCuenta.url_buzon || '',
               urlSinacol: resultadoCuenta.url_login || '',
               curp: datosTrabajadorPrueba.curp,
-              nombreTrabajador: datosTrabajadorPrueba.nombre_completo
+              nombreTrabajador: datosTrabajadorPrueba.nombre_completo,
+              correoPersonal: datosTrabajadorPrueba.email_personal,
+              empresaEjemplo: {
+                razonSocial: datosTrabajadorPrueba.empresa_nombre,
+                rfc: datosTrabajadorPrueba.rfc,
+                direccion: datosTrabajadorPrueba.empresa_direccion,
+                coordenadas: datosTrabajadorPrueba.empresa_coordenadas
+              }
             }
           } else if (resultadoCuenta.requiereCaptcha) {
             // CAPTCHA detectado - marcar como parcial
@@ -871,7 +922,14 @@ export default function CCLDiagnosticoPage() {
               urlBuzon: resultadoCuenta.captchaUrl || '',
               urlSinacol: resultadoCuenta.captchaUrl || '',
               curp: datosTrabajadorPrueba.curp,
-              nombreTrabajador: datosTrabajadorPrueba.nombre_completo
+              nombreTrabajador: datosTrabajadorPrueba.nombre_completo,
+              correoPersonal: datosTrabajadorPrueba.email_personal,
+              empresaEjemplo: {
+                razonSocial: datosTrabajadorPrueba.empresa_nombre,
+                rfc: datosTrabajadorPrueba.rfc,
+                direccion: datosTrabajadorPrueba.empresa_direccion,
+                coordenadas: datosTrabajadorPrueba.empresa_coordenadas
+              }
             }
           } else {
             folio = generarReferenciaInterna(estadoActual)
@@ -976,7 +1034,7 @@ export default function CCLDiagnosticoPage() {
     
     if (exitoso && resultadoActual.cuentaCCL) {
       // Crear cuenta real
-      const datosTrabajador = generarDatosTrabajador(estado, Date.now() + idx)
+      const datosTrabajador = generarDatosTrabajador(estado, generarEmailPrueba(estado))
       
       try {
           const resultadoCuenta = await crearCuentaCCLAPI(estado, datosTrabajador, { esPrueba: true })
@@ -1016,6 +1074,8 @@ export default function CCLDiagnosticoPage() {
 
   const verDetalle = (resultado: Resultado) => {
     setSelectedEstado(resultado)
+    setLivePreviewIndex(0)
+    setLivePreviewPlaying(true)
     setShowDetailDialog(true)
   }
 
@@ -1077,6 +1137,10 @@ export default function CCLDiagnosticoPage() {
     captchasPendientes: resultados.filter(r => r.captchaPendiente).length
   }
 
+  const liveFrames = selectedEstado?.pasos.filter(p => p.screenshot) || []
+  const liveFrame = liveFrames[livePreviewIndex] || null
+  const cursorPos = CURSOR_POSITIONS[livePreviewIndex % CURSOR_POSITIONS.length]
+
   if (loading) {
     return (
       <div className="min-h-screen bg-black flex items-center justify-center">
@@ -1103,15 +1167,15 @@ export default function CCLDiagnosticoPage() {
                   <span className="hidden sm:inline ml-1">ADMIN</span>
                 </Button>
               </Link>
-  <div>
-  <div className="flex items-center gap-2">
-    <h1 className="text-sm sm:text-lg font-bold text-green-400 font-mono">DIAGNOSTICO CCL</h1>
-    <Badge className="bg-red-600 text-white text-[8px] px-1 py-0">DATOS REALES</Badge>
-  </div>
-  <p className="text-[10px] sm:text-xs text-green-700 font-mono hidden sm:block">
-    32 Centros Estatales + 1 Federal | Usuario Prueba: David Perez Villasenor
-  </p>
-  </div>
+              <div>
+                <div className="flex items-center gap-2">
+                  <h1 className="text-sm sm:text-lg font-bold text-green-400 font-mono">DIAGNÓSTICO CCL</h1>
+                  <Badge className="bg-red-600 text-white text-[8px] px-1 py-0">DATOS REALES</Badge>
+                </div>
+                <p className="text-[10px] sm:text-xs text-green-700 font-mono hidden sm:block">
+                  32 Centros Estatales + 1 Federal | Usuario de prueba: David Pérez Villaseñor
+                </p>
+              </div>
             </div>
             
             <div className="flex items-center gap-1 sm:gap-2">
@@ -1204,8 +1268,7 @@ export default function CCLDiagnosticoPage() {
                   disabled={ejecutando}
                   className="bg-green-950 border border-green-700 text-green-400 font-mono text-xs sm:text-sm rounded px-2 sm:px-3 py-1.5 sm:py-2 flex-1 sm:flex-none"
                 >
-                  <option value="dry_run">DRY RUN</option>
-                  <option value="live">LIVE TEST</option>
+                  <option value="live">LIVE TEST (DATOS REALES)</option>
                 </select>
                 
                 <Button
@@ -1294,14 +1357,14 @@ export default function CCLDiagnosticoPage() {
                 <div>
                   <p className={`font-mono text-sm font-bold ${estadoSeleccionado !== 'todos' ? 'text-cyan-400' : 'text-yellow-400'}`}>
                     {estadoSeleccionado !== 'todos' 
-                      ? `Diagnostico Individual: ${estadoSeleccionado}` 
+                      ? `Diagnóstico individual: ${estadoSeleccionado}` 
                       : 'Selecciona un estado del grid para probar'
                     }
                   </p>
                   <p className="text-xs text-muted-foreground font-mono">
                     {estadoSeleccionado !== 'todos' 
-                      ? `Se probara el portal CCL de ${estadoSeleccionado} con tus datos personales (CURP: PEVD930106HDFRLV00)`
-                      : 'Haz clic en cualquier estado del grid o usa el selector para elegir cual probar'
+                      ? `Se probará el portal CCL de ${estadoSeleccionado} con tus datos personales (CURP: ${DATOS_DIAGNOSTICO_REAL.curp})`
+                      : 'Haz clic en cualquier estado del grid o usa el selector para elegir cuál probar'
                     }
                   </p>
                 </div>
@@ -1568,6 +1631,36 @@ export default function CCLDiagnosticoPage() {
                 </Badge>
               </div>
 
+              {/* Datos reales usados */}
+              {selectedEstado.datosDiagnostico && (
+                <div className="p-3 bg-blue-950/30 rounded border border-blue-800">
+                  <div className="flex items-center gap-2 mb-2">
+                    <User className="w-4 h-4 text-blue-400" />
+                    <span className="text-blue-400 text-xs font-bold">DATOS REALES USADOS</span>
+                  </div>
+                  <div className="grid gap-2 text-[11px] text-blue-200">
+                    <div className="space-y-1">
+                      <p><span className="text-blue-400">Trabajador:</span> {selectedEstado.datosDiagnostico.nombre_completo}</p>
+                      <p><span className="text-blue-400">CURP:</span> {selectedEstado.datosDiagnostico.curp}</p>
+                      <p><span className="text-blue-400">Correo personal:</span> {selectedEstado.datosDiagnostico.email_personal}</p>
+                      <p><span className="text-blue-400">Correo buzón:</span> {selectedEstado.datosDiagnostico.correo_buzon || 'Por generar'}</p>
+                      <p><span className="text-blue-400">Teléfono:</span> {selectedEstado.datosDiagnostico.telefono}</p>
+                      <p><span className="text-blue-400">Domicilio:</span> {selectedEstado.datosDiagnostico.direccion}, {selectedEstado.datosDiagnostico.municipio}, {selectedEstado.datosDiagnostico.estado}, CP {selectedEstado.datosDiagnostico.codigo_postal}</p>
+                    </div>
+                    <div className="space-y-1">
+                      <p><span className="text-blue-400">Empresa:</span> {selectedEstado.datosDiagnostico.empresa_nombre}</p>
+                      <p><span className="text-blue-400">Dirección empresa:</span> {selectedEstado.datosDiagnostico.empresa_direccion}</p>
+                      <p><span className="text-blue-400">Coordenadas:</span> {selectedEstado.datosDiagnostico.empresa_coordenadas}</p>
+                      <p><span className="text-blue-400">Puesto:</span> {selectedEstado.datosDiagnostico.puesto}</p>
+                      <p><span className="text-blue-400">Jornada:</span> {selectedEstado.datosDiagnostico.jornada}</p>
+                      <p><span className="text-blue-400">Salario:</span> ${selectedEstado.datosDiagnostico.salario_semanal} semanal (${Math.round(selectedEstado.datosDiagnostico.salario_diario)} diario)</p>
+                      <p><span className="text-blue-400">Ingreso:</span> {selectedEstado.datosDiagnostico.fecha_ingreso}</p>
+                      <p><span className="text-blue-400">Despido:</span> {selectedEstado.datosDiagnostico.fecha_despido}</p>
+                    </div>
+                  </div>
+                </div>
+              )}
+
               {/* URL */}
               <div className="p-2 sm:p-3 bg-green-950/50 rounded border border-green-800">
                 <span className="text-green-600 text-[10px] sm:text-xs block mb-1">Portal URL:</span>
@@ -1612,6 +1705,49 @@ export default function CCLDiagnosticoPage() {
                       )}
                     </div>
                   ))}
+                </div>
+              </div>
+
+              {/* Vista en vivo */}
+              <div className="p-3 bg-black/60 rounded border border-green-800">
+                <div className="flex items-center justify-between gap-2 mb-2">
+                  <div className="flex items-center gap-2">
+                    <Camera className="w-4 h-4 text-green-500" />
+                    <span className="text-green-500 text-xs font-bold">VISTA EN VIVO (AGENTE IA)</span>
+                  </div>
+                  <div className="flex gap-2">
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      className="h-7 px-2 border-green-700 text-green-300 hover:bg-green-950"
+                      onClick={() => setLivePreviewPlaying((prev) => !prev)}
+                    >
+                      {livePreviewPlaying ? 'Pausar' : 'Reproducir'}
+                    </Button>
+                  </div>
+                </div>
+                <div className="relative rounded border border-green-900 bg-black">
+                  {liveFrame ? (
+                    <img
+                      src={liveFrame.screenshot}
+                      alt={`Vista en vivo - ${liveFrame.nombre}`}
+                      className="w-full rounded"
+                    />
+                  ) : (
+                    <div className="p-6 text-center text-xs text-green-700">
+                      Sin frames disponibles aún. Ejecuta un diagnóstico para ver la captura en vivo.
+                    </div>
+                  )}
+                  {liveFrame && (
+                    <div
+                      className="absolute w-3 h-3 border-2 border-white rounded-full bg-black/40 shadow-[0_0_10px_rgba(255,255,255,0.6)] animate-pulse"
+                      style={{ top: cursorPos.top, left: cursorPos.left }}
+                    />
+                  )}
+                </div>
+                <div className="mt-2 flex items-center justify-between text-[10px] text-green-600">
+                  <span>Paso actual: {liveFrame?.nombre || 'Esperando...'}</span>
+                  <span>Frame {liveFrames.length ? livePreviewIndex + 1 : 0}/{liveFrames.length || 0}</span>
                 </div>
               </div>
 
