@@ -11,7 +11,7 @@ import { ArrowLeft, Play, Pause, CheckCircle2, XCircle, AlertTriangle, Clock, Lo
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase/client'
 import { MatrixRain } from '@/components/ui/matrix-rain'
-import { PORTALES_CCL, obtenerUrlSinacol } from '@/lib/ccl/account-service'
+import { PORTALES_CCL, generarEmailCCL, generarPasswordCCL, obtenerUrlSinacol } from '@/lib/ccl/account-service'
 
 interface DatosTrabajador {
   nombre_completo: string
@@ -41,6 +41,7 @@ async function crearCuentaCCLAPI(
     cotizacionId?: string
     esPrueba?: boolean
     sesionDiagnosticoId?: string
+    includeCredentials?: boolean
   }
 ) {
   const response = await fetch('/api/ccl/create-account', {
@@ -240,18 +241,16 @@ export default function CCLDiagnosticoPage() {
     }))
   }
 
-  // Generar email aleatorio para pruebas SINACOL
-  const generarEmailPrueba = (estado: string) => {
-    const timestamp = Date.now().toString(36)
-    const random = Math.random().toString(36).substring(2, 6)
-    const estadoSlug = estado.toLowerCase().replace(/ /g, '').substring(0, 3)
-    return `david.perez.ccl.${estadoSlug}.${timestamp}${random}@gmail.com`
+  // Generar email de buzón para pruebas SINACOL (dominio @mecorrieron.mx)
+  const generarEmailPrueba = (estado: string, curp: string) => {
+    return generarEmailCCL(curp, estado)
   }
   
   // Datos REALES del usuario de prueba (SuperAdmin: David Perez Villasenor)
   // Cada prueba genera un email aleatorio pero usa CURP real
   const generarTrabajadorPrueba = (estado: string) => {
-    const emailPrueba = generarEmailPrueba(estado)
+    const emailPrueba = generarEmailPrueba(estado, 'PEVD930106HDFRLV00')
+    const passwordPrueba = generarPasswordCCL()
     
     // DATOS REALES del SuperAdmin para pruebas SINACOL
     // El CURP es real - el email es aleatorio para cada prueba
@@ -260,6 +259,7 @@ export default function CCLDiagnosticoPage() {
       curp: 'PEVD930106HDFRLV00', // CURP REAL
       telefono: '9985933232', // Telefono REAL
       email: emailPrueba, // Email aleatorio para esta prueba
+      password: passwordPrueba,
       // Datos de empresa ejemplo para pruebas
       empresaEjemplo: {
         razonSocial: 'Experiencias Xcaret SAPI de CV',
@@ -294,7 +294,7 @@ export default function CCLDiagnosticoPage() {
         // Datos para acceso a SINACOL real con datos de prueba del SuperAdmin
         cuentaCCL: {
           email: trabajador.email, // Email aleatorio generado para esta prueba
-          password: '', // SINACOL no usa password - acceso con CURP
+          password: trabajador.password || '',
           urlLogin: portal?.urlSinacol || obtenerUrlSinacol(estado), // URL real de SINACOL
           urlBuzon: portal?.url || obtenerPortalInfo(estado), // Sitio informativo del CCL
           urlSinacol: portal?.urlSinacol || obtenerUrlSinacol(estado),
@@ -630,7 +630,8 @@ export default function CCLDiagnosticoPage() {
           datosTrabajadorPrueba,
           {
             esPrueba: true,
-            sesionDiagnosticoId: `diag-individual-${Date.now()}`
+            sesionDiagnosticoId: `diag-individual-${Date.now()}`,
+            includeCredentials: true
           }
         )
         

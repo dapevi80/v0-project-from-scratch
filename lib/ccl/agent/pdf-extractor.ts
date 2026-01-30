@@ -69,10 +69,11 @@ export async function extraerPDFAcuse(
         // Guardar en Supabase Storage
         const supabase = await createClient()
         const filename = `solicitudes/${casoId}/acuse-${Date.now()}.pdf`
+        const pdfBlob = Buffer.from(pdfBuffer)
         
         await supabase.storage
           .from('ccl-documents')
-          .upload(filename, Buffer.from(pdfBuffer), {
+          .upload(filename, pdfBlob, {
             contentType: 'application/pdf',
             upsert: true
           })
@@ -80,6 +81,48 @@ export async function extraerPDFAcuse(
         const { data: urlData } = supabase.storage
           .from('ccl-documents')
           .getPublicUrl(filename)
+
+        // Guardar copia en Bóveda del trabajador
+        try {
+          const { data: caso } = await supabase
+            .from('casos')
+            .select('worker_id, folio')
+            .eq('id', casoId)
+            .single()
+
+          if (caso?.worker_id) {
+            const bovedaFilename = `acuse/${casoId}/acuse-${Date.now()}.pdf`
+            const bovedaPath = `${caso.worker_id}/${bovedaFilename}`
+            const uploadBoveda = await supabase.storage
+              .from('boveda')
+              .upload(bovedaPath, pdfBlob, {
+                contentType: 'application/pdf',
+                upsert: true
+              })
+
+            if (!uploadBoveda.error) {
+              await supabase
+                .from('documentos_boveda')
+                .insert({
+                  user_id: caso.worker_id,
+                  categoria: 'acuse',
+                  nombre: `Acuse CCL ${caso.folio || ''}`.trim(),
+                  nombre_original: `acuse-${casoId}.pdf`,
+                  archivo_path: bovedaPath,
+                  mime_type: 'application/pdf',
+                  tamanio_bytes: pdfBlob.length,
+                  estado: 'activo',
+                  verificado: false,
+                  metadata: {
+                    caso_id: casoId,
+                    origen: 'ccl'
+                  }
+                })
+            }
+          }
+        } catch {
+          // Ignorar errores al guardar en bóveda
+        }
         
         return {
           success: true,

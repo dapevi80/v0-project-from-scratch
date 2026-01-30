@@ -251,7 +251,8 @@ export function SinacolAuthorization({
                   <a href="/privacidad" target="_blank" className="text-blue-600 underline">
                     Aviso de Privacidad
                   </a>{' '}
-                  de MeCorrieron.mx. Entiendo que esta autorizacion tiene efectos legales.
+                  de MeCorrieron.mx. Autorizo la creacion de un buzon electronico con dominio @mecorrieron.mx
+                  para tramites ante el CCL y reconozco que la contrasena sera resguardada solo por Superadmin.
                 </p>
               </div>
               {authorizations.terminos_aceptados && (
@@ -272,9 +273,14 @@ export function SinacolAuthorization({
             </p>
             <p>
               <strong>Proceso Automatizado:</strong> El sistema generara automaticamente: (1) Un folio unico 
-              de referencia interna, (2) Su usuario y contrasena en el portal SINACOL oficial, (3) Su solicitud 
+              de referencia interna, (2) Un buzon electronico @mecorrieron.mx y su contrasena (resguardada solo por Superadmin),
+              (3) Su solicitud 
               de conciliacion prellenada con sus datos. El folio oficial de SINACOL se obtiene al completar 
               el proceso en el portal gubernamental.
+            </p>
+            <p>
+              <strong>Acceso al buzón:</strong> La activacion del buzon electronico la realiza el CCL en oficialia de partes
+              o via videollamada. El usuario no recibe la contrasena; se resguarda para confirmar y dar seguimiento cuando el CCL lo habilite.
             </p>
             <p>
               Esta autorizacion se registra con firma electronica conforme a la legislacion mexicana vigente. 

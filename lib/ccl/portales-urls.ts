@@ -529,7 +529,7 @@ export function getUrlLogin(estado: string): string {
 
 /**
  * Genera el email para la cuenta SINACOL
- * Formato: nombre.apellido.ccl.clave.random@gmail.com
+ * Formato: nombre.apellido.ccl.clave.random@mecorrieron.mx
  * Este email es asignado por MeCorrieron y usado para el registro automatizado
  */
 export function generarEmailSinacol(nombre: string, apellido: string, clave: string): string {
@@ -543,7 +543,7 @@ export function generarEmailSinacol(nombre: string, apellido: string, clave: str
     .slice(0, 10)
   const random = Math.random().toString(36).substring(2, 12)
   
-  return `${nombreLimpio}.${apellidoLimpio}.ccl.${clave.toLowerCase()}.${random}@gmail.com`
+  return `${nombreLimpio}.${apellidoLimpio}.ccl.${clave.toLowerCase()}.${random}@mecorrieron.mx`
 }
 
 /**
