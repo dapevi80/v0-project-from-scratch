@@ -34,28 +34,28 @@ export function SinacolAutomationInfo({
   const automationSteps: AutomationStep[] = [
     {
       id: 'auth',
-      title: 'Autorizacion del Trabajador',
-      description: 'El trabajador firma electronicamente la autorizacion para que MeCorrieron.mx y el abogado gestionen su caso ante SINACOL',
+      title: 'Autorización del trabajador',
+      description: 'El trabajador firma electrónicamente la autorización para que MeCorrieron.mx y el abogado gestionen su caso ante SINACOL',
       icon: Shield,
       status: isAuthorized ? 'completed' : currentStep === 0 ? 'active' : 'pending'
     },
     {
       id: 'agent',
-      title: 'Agente Inteligente Activo',
-      description: 'Nuestro agente de IA prepara automaticamente todos los datos del caso: CURP, datos laborales, prestaciones y empresa demandada',
+      title: 'Agente inteligente activo',
+      description: 'Nuestro agente de IA prepara automáticamente todos los datos del caso: CURP, datos laborales, prestaciones y empresa demandada',
       icon: Bot,
       status: isAuthorized && !hasAccount ? 'active' : hasAccount ? 'completed' : 'pending'
     },
     {
       id: 'account',
-      title: 'Creacion de Cuenta SINACOL',
-      description: 'El sistema genera automaticamente las credenciales de acceso al portal SINACOL usando los datos validados del trabajador',
+      title: 'Creación de cuenta SINACOL',
+      description: 'El sistema genera automáticamente las credenciales de acceso al portal SINACOL usando los datos validados del trabajador',
       icon: Key,
       status: hasAccount ? 'completed' : 'pending'
     },
     {
       id: 'folio',
-      title: 'Generacion de Folio Unico',
+      title: 'Generación de folio único',
       description: 'Se genera un folio de referencia interno y se prepara la solicitud para obtener el folio oficial de SINACOL',
       icon: FileText,
       status: folioGenerado ? 'completed' : 'pending'
@@ -95,6 +95,22 @@ export function SinacolAutomationInfo({
             credenciales y datos proporcionados, crea tu <strong>usuario con contraseña</strong> en 
             el portal SINACOL, y gestiona tu caso para <strong>reducir significativamente</strong> el 
             tiempo y eliminar los errores del llenado manual.
+          </p>
+        </div>
+
+        {/* Verificacion de Browserless */}
+        <div className="p-4 bg-white dark:bg-black rounded-lg border border-blue-100 dark:border-blue-900">
+          <h4 className="font-semibold text-sm mb-2 flex items-center gap-2">
+            <Bot className="h-4 w-4 text-blue-600" />
+            Verificación rápida de Browserless
+          </h4>
+          <ol className="list-decimal list-inside text-sm text-muted-foreground space-y-1">
+            <li>Abre <strong>account.browserless.io</strong> y entra al <strong>REST API Playground</strong>.</li>
+            <li>Escribe una URL simple (por ejemplo: <strong>https://example.com</strong>).</li>
+            <li>Haz clic en <strong>Run</strong> y confirma que recibes una respuesta 200.</li>
+          </ol>
+          <p className="mt-2 text-xs text-muted-foreground">
+            Si falla, revisa tu <strong>API Key</strong> y endpoint configurado en el servidor.
           </p>
         </div>
 
@@ -179,17 +195,17 @@ export function SinacolAutomationInfo({
           </div>
           <div className="p-2 rounded-lg bg-purple-50 dark:bg-purple-950/30 text-center">
             <Bot className="h-4 w-4 mx-auto mb-1 text-purple-600" />
-            <p className="text-xs font-medium text-purple-700 dark:text-purple-300">100% automatico</p>
+            <p className="text-xs font-medium text-purple-700 dark:text-purple-300">100% automático</p>
           </div>
         </div>
 
         {/* Aviso legal */}
         <div className="p-3 bg-amber-50 dark:bg-amber-950/30 rounded-lg border border-amber-200 dark:border-amber-800">
           <p className="text-xs text-amber-700 dark:text-amber-300">
-            <strong>Importante:</strong> El agente inteligente de MeCorrieron.mx actua como intermediario 
-            tecnologico para facilitar tu proceso de conciliacion. La solicitud final se registra en el 
-            portal oficial SINACOL del gobierno mexicano. Despues del pre-registro automatizado, se requiere 
-            ratificacion presencial con identificacion oficial dentro de 5 dias habiles.
+            <strong>Importante:</strong> El agente inteligente de MeCorrieron.mx actúa como intermediario 
+            tecnológico para facilitar tu proceso de conciliación. La solicitud final se registra en el 
+            portal oficial SINACOL del gobierno mexicano. Después del pre-registro automatizado, se requiere 
+            ratificación presencial con identificación oficial dentro de 5 días hábiles.
           </p>
         </div>
       </CardContent>
