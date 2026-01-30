@@ -23,18 +23,13 @@ import {
   CheckCircle, 
   XCircle, 
   AlertTriangle,
-  Camera,
   User,
   MapPin,
   Calendar,
   CreditCard,
   FileText,
   Edit3,
-  Trash2,
   ChevronRight,
-  Building2,
-  Briefcase,
-  Scale,
   LogOut,
   Eye,
   EyeOff,
@@ -77,6 +72,7 @@ interface ProfileData {
   avatarUrl?: string
   // Datos de INE
   curp?: string
+  rfc?: string
   tipoIdentificacion?: string
   numeroIdentificacion?: string
   fechaNacimiento?: string
@@ -89,7 +85,6 @@ interface ProfileData {
   estado?: string
   // Contadores
   calculosCount: number
-  tieneINE: boolean
 }
 
 type EditMode = 'none' | 'personal' | 'contact' | 'address'
@@ -111,6 +106,8 @@ export default function PerfilPage() {
   const [editFullName, setEditFullName] = useState('')
   const [editPhone, setEditPhone] = useState('')
   const [editEmail, setEditEmail] = useState('')
+  const [editCurp, setEditCurp] = useState('')
+  const [editRfc, setEditRfc] = useState('')
   const [editCalle, setEditCalle] = useState('')
   const [editColonia, setEditColonia] = useState('')
   const [editCP, setEditCP] = useState('')
@@ -148,14 +145,6 @@ export default function PerfilPage() {
         .eq('categoria', 'calculo_liquidacion')
         .eq('estado', 'activo')
 
-      // Verificar si tiene INE
-      const { count: ineCount } = await supabase
-        .from('documentos_boveda')
-        .select('*', { count: 'exact', head: true })
-        .eq('user_id', user.id)
-        .in('categoria', ['ine_frente', 'ine_reverso', 'pasaporte'])
-        .eq('estado', 'activo')
-
       const profile: ProfileData = {
         id: user.id,
         email: profileData?.email || user.email || '',
@@ -167,6 +156,7 @@ export default function PerfilPage() {
         isProfilePublic: profileData?.is_profile_public ?? true,
         avatarUrl: profileData?.avatar_url,
         curp: profileData?.curp,
+        rfc: profileData?.rfc,
         tipoIdentificacion: profileData?.tipo_identificacion,
         numeroIdentificacion: profileData?.numero_identificacion,
         fechaNacimiento: profileData?.fecha_nacimiento,
@@ -176,8 +166,7 @@ export default function PerfilPage() {
         codigoPostal: profileData?.codigo_postal,
         municipio: profileData?.municipio,
         estado: profileData?.estado,
-        calculosCount: calculosCount || 0,
-        tieneINE: (ineCount || 0) > 0
+        calculosCount: calculosCount || 0
       }
 
       setProfile(profile)
@@ -187,6 +176,8 @@ export default function PerfilPage() {
       setEditFullName(profile.fullName)
       setEditPhone(profile.phone)
       setEditEmail(profile.email)
+      setEditCurp(profile.curp || '')
+      setEditRfc(profile.rfc || '')
       setEditCalle(profile.calle || '')
       setEditColonia(profile.colonia || '')
       setEditCP(profile.codigoPostal || '')
@@ -214,6 +205,8 @@ export default function PerfilPage() {
         updateData.full_name = editFullName || null
         updateData.phone = editPhone || null
         updateData.email = editEmail || null
+        updateData.curp = editCurp ? editCurp.toUpperCase() : null
+        updateData.rfc = editRfc ? editRfc.toUpperCase() : null
       }
       
       if (editMode === 'address') {
@@ -237,6 +230,8 @@ export default function PerfilPage() {
         fullName: editFullName,
         phone: editPhone,
         email: editEmail,
+        curp: editCurp ? editCurp.toUpperCase() : undefined,
+        rfc: editRfc ? editRfc.toUpperCase() : undefined,
         calle: editCalle,
         colonia: editColonia,
         codigoPostal: editCP,
@@ -346,6 +341,8 @@ export default function PerfilPage() {
     return '/avatars/default-user-avatar.jpg'
   }
 
+  const rolesProfesionales = ['lawyer', 'admin', 'superadmin', 'webagent', 'guestlawyer', 'despacho']
+
   // Determinar estado de verificacion
   const getVerificationState = () => {
     if (!profile) return { status: 'loading', color: 'gray', icon: Loader2 }
@@ -361,16 +358,18 @@ export default function PerfilPage() {
     const tieneNombre = !!profile.fullName
     const tienePhone = !!profile.phone
     const tieneCalculo = profile.calculosCount > 0
-    const tieneINE = profile.tieneINE
+    const tieneCurp = !!profile.curp
+    const requiereRfc = rolesProfesionales.includes(profile.role)
+    const tieneRfc = !!profile.rfc
     
-    const puedeVerificar = tieneNombre && tienePhone && tieneCalculo && tieneINE
+    const puedeVerificar = tieneNombre && tienePhone && tieneCalculo && tieneCurp && (!requiereRfc || tieneRfc)
     
     return { 
       status: puedeVerificar ? 'ready' : 'incomplete', 
       color: puedeVerificar ? 'blue' : 'gray', 
       icon: puedeVerificar ? Shield : XCircle,
       label: puedeVerificar ? 'Listo para Verificar' : 'Completa tu Perfil',
-      requisitos: { tieneNombre, tienePhone, tieneCalculo, tieneINE }
+      requisitos: { tieneNombre, tienePhone, tieneCalculo, tieneCurp, tieneRfc, requiereRfc }
     }
   }
 
@@ -385,9 +384,6 @@ export default function PerfilPage() {
   }
 
   if (!profile) return null
-
-  // Check if user is lawyer
-  const isLawyer = ['lawyer', 'admin', 'superadmin', 'guestlawyer'].includes(profile.role)
 
   return (
     <div className="min-h-screen bg-background">
@@ -410,6 +406,20 @@ export default function PerfilPage() {
       </header>
 
       <main className="container mx-auto px-4 py-6 max-w-lg space-y-4">
+        <Card className="border border-muted bg-muted/40">
+          <CardContent className="pt-4 pb-4">
+            <div className="flex items-center justify-between text-xs text-muted-foreground">
+              <span>Perfil</span>
+              <span>Identidad</span>
+              <span>Calculo</span>
+            </div>
+            <div className="mt-2 grid grid-cols-3 gap-2">
+              <div className={`h-1.5 rounded-full ${profile.fullName && profile.phone ? 'bg-green-500' : 'bg-muted-foreground/20'}`} />
+              <div className={`h-1.5 rounded-full ${profile.curp && (!rolesProfesionales.includes(profile.role) || profile.rfc) ? 'bg-green-500' : 'bg-muted-foreground/20'}`} />
+              <div className={`h-1.5 rounded-full ${profile.calculosCount > 0 ? 'bg-green-500' : 'bg-muted-foreground/20'}`} />
+            </div>
+          </CardContent>
+        </Card>
         
         {/* 1. ESTADO DE VERIFICACION - Siempre primero y prominente */}
         <Card className={`border-2 ${
@@ -495,9 +505,21 @@ export default function PerfilPage() {
                         link={!verification.requisitos.tieneCalculo ? '/calculadora' : undefined}
                       />
                       <RequisitoItem 
-                        cumplido={verification.requisitos.tieneINE} 
-                        texto="INE o identificacion"
-                        link={!verification.requisitos.tieneINE ? '/boveda' : undefined}
+                        cumplido={verification.requisitos.tieneCurp} 
+                        texto="CURP completo"
+                        accion={!verification.requisitos.tieneCurp ? () => setEditMode('personal') : undefined}
+                      />
+                      {verification.requisitos.requiereRfc && (
+                        <RequisitoItem 
+                          cumplido={verification.requisitos.tieneRfc} 
+                          texto="RFC con homoclave"
+                          accion={!verification.requisitos.tieneRfc ? () => setEditMode('personal') : undefined}
+                        />
+                      )}
+                      <RequisitoItem 
+                        cumplido 
+                        texto="Identificacion en Cartera"
+                        link="/dashboard"
                       />
                     </div>
                   </div>
@@ -639,6 +661,24 @@ export default function PerfilPage() {
                     placeholder="Tu nombre completo"
                   />
                 </div>
+                <div className="space-y-2">
+                  <Label className="text-xs">CURP</Label>
+                  <Input 
+                    value={editCurp} 
+                    onChange={(e) => setEditCurp(e.target.value.toUpperCase())}
+                    placeholder="CURP a 18 caracteres"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label className="text-xs">
+                    RFC con homoclave {rolesProfesionales.includes(profile.role) ? '(requerido)' : '(opcional)'}
+                  </Label>
+                  <Input 
+                    value={editRfc} 
+                    onChange={(e) => setEditRfc(e.target.value.toUpperCase())}
+                    placeholder="RFC a 13 caracteres"
+                  />
+                </div>
                 <div className="flex gap-2">
                   <Button size="sm" onClick={handleSave} disabled={saving}>
                     {saving && <Loader2 className="w-3 h-3 mr-1 animate-spin" />}
@@ -652,7 +692,8 @@ export default function PerfilPage() {
             ) : (
               <>
                 <DataRow icon={User} label="Nombre" value={profile.fullName || 'Sin registrar'} muted={!profile.fullName} />
-                {profile.curp && <DataRow icon={CreditCard} label="CURP" value={profile.curp} />}
+                <DataRow icon={CreditCard} label="CURP" value={profile.curp || 'Sin registrar'} muted={!profile.curp} />
+                <DataRow icon={FileText} label="RFC" value={profile.rfc || 'Sin registrar'} muted={!profile.rfc} />
                 {profile.fechaNacimiento && (
                   <DataRow icon={Calendar} label="Nacimiento" value={profile.fechaNacimiento} />
                 )}
@@ -782,71 +823,26 @@ export default function PerfilPage() {
           </Card>
         )}
 
-        {/* 6. IDENTIFICACION */}
+        {/* 6. IDENTIFICACION EN CARTERA */}
         <Card>
           <CardHeader className="pb-2">
             <CardTitle className="text-base flex items-center gap-2">
               <CreditCard className="w-4 h-4" />
-              Identificacion
+              Identificacion en Cartera
             </CardTitle>
           </CardHeader>
-          <CardContent>
-            {profile.tieneINE ? (
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <CheckCircle className="w-5 h-5 text-green-500" />
-                  <div>
-                    <p className="text-sm font-medium">INE registrada</p>
-                    {profile.numeroIdentificacion && (
-                      <p className="text-xs text-muted-foreground">Clave: {profile.numeroIdentificacion}</p>
-                    )}
-                  </div>
-                </div>
-                <Button variant="ghost" size="sm" asChild>
-                  <Link href="/boveda">
-                    Ver <ChevronRight className="w-4 h-4 ml-1" />
-                  </Link>
-                </Button>
-              </div>
-            ) : (
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2 text-muted-foreground">
-                  <XCircle className="w-5 h-5" />
-                  <p className="text-sm">Sin identificacion</p>
-                </div>
-                <Button size="sm" asChild>
-                  <Link href="/boveda">
-                    <Camera className="w-4 h-4 mr-2" />
-                    Escanear INE
-                  </Link>
-                </Button>
-              </div>
-            )}
+          <CardContent className="space-y-2">
+            <p className="text-sm text-muted-foreground">
+              Tu INE, pasaporte o cédula se resguardan en la Cartera Digital.
+            </p>
+            <Button variant="outline" size="sm" asChild className="w-full bg-transparent">
+              <Link href="/dashboard">
+                Ver Cartera
+                <ChevronRight className="w-4 h-4 ml-2" />
+              </Link>
+            </Button>
           </CardContent>
         </Card>
-
-        {/* 7. ACCESO RAPIDO - Para abogados */}
-        {isLawyer && (
-          <Card className="border-primary/20 bg-primary/5">
-            <CardHeader className="pb-2">
-              <CardTitle className="text-base flex items-center gap-2">
-                <Briefcase className="w-4 h-4 text-primary" />
-                Panel de Abogado
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <p className="text-sm text-muted-foreground mb-3">
-                Accede a tu oficina virtual para gestionar casos y clientes.
-              </p>
-              <Button asChild className="w-full">
-                <Link href="/oficina-virtual">
-                  Ir a Oficina Virtual
-                  <ChevronRight className="w-4 h-4 ml-2" />
-                </Link>
-              </Button>
-            </CardContent>
-          </Card>
-        )}
 
         {/* Info footer */}
         <p className="text-xs text-center text-muted-foreground px-4">
