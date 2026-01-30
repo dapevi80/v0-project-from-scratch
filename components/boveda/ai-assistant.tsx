@@ -94,7 +94,7 @@ const QUICK_QUESTIONS = [
   { icon: HelpCircle, text: "Ayuda con la app", color: "bg-slate-50 text-slate-600 border-slate-200" },
 ]
 
-// FAQ por asistente - Con urgencia de 60 dias y pregunta persuasiva
+// FAQ por asistente - respuestas base
 const FAQ_RESPONSES: Record<string, Record<string, string>> = {
   lia: {
     "Calcular liquidacion": `**Para calcular tu liquidacion:**
@@ -103,35 +103,27 @@ Solo necesitas tu **salario** y **fechas de trabajo**.
 
 La app calcula: 3 meses + 20 dias/año + aguinaldo + vacaciones.
 
-**Importante:** Los primeros **60 dias** son clave para negociar.
-
-Ya tienes todo para empezar. **Quieres calcular tu liquidacion ahora mismo?**`,
+Si quieres, te guio con tu calculo paso a paso.`,
     "Iniciar conciliacion": `**Para iniciar conciliacion:**
 
 1. Junta documentos (INE, nomina)
 2. Pide cita en el Centro de Conciliacion
 3. Asiste y expon tu caso
 
-**Ojo:** Tienes solo **60 dias** para tener mas fuerza legal.
-
-**Te ayudo a organizar tus documentos en la app?**`,
+Si quieres, revisamos los documentos que ya tienes.`,
     "Despido sin causa": `**Si te despiden sin causa, te deben:**
 
 - 3 meses de salario
 - 20 dias por año trabajado
 - Prima de antiguedad
 
-**Tip:** En los primeros **60 dias** tienes mejor posicion.
-
-**Quieres ver cuanto te corresponde exactamente?**`,
+Si quieres, estimamos un rango aproximado.`,
     "Plazo para demandar": `**Plazos importantes:**
 
-- **60 dias:** Mejor momento para negociar
+- **60 dias:** Momento fuerte para negociar
 - **1 año:** Limite legal para demandar
 
-Entre mas rapido actues, mejor resultado.
-
-**Empezamos con tu calculo ahora?**`,
+Si quieres, te digo que informacion conviene reunir.`,
     "Ayuda con la app": `**Te explico como usar la app:**
 
 **Mi Boveda** - Guarda tus documentos de forma segura (recibos, contratos, INE)
@@ -145,24 +137,10 @@ Entre mas rapido actues, mejor resultado.
 **Que seccion te gustaria explorar primero?**`
   },
   mandu: {
-    "Calcular liquidacion": `*bosteza* Salario y fechas... la app hace todo.
-
-*abre un ojo* **60 dias** para que te tomen en serio.
-
-**Entramos a la app? Prometo no dormirme...**`,
-    "Iniciar conciliacion": `*abre un ojo* Papeles, cita, audiencia.
-
-*se lame la pata* **60 dias** para actuar con fuerza.
-
-**Guardamos tus documentos? Yo vigilo mientras duermo...**`,
-    "Despido sin causa": `*levanta las orejas* 3 meses + 20 dias/año + prima.
-
-*ronronea* **60 dias** o la empresa se pone dificil.
-
-**Calculamos tu lana? No me cuesta nada... solo siestas.**`,
-    "Plazo para demandar": `*bosteza* 60 dias para negociar. Un año limite.
-
-**Hacemos numeros? Sera rapido, como mi siesta #47...**`,
+    "Calcular liquidacion": `*bosteza* Salario y fechas... la app hace todo.`,
+    "Iniciar conciliacion": `*abre un ojo* Papeles, cita, audiencia. Te digo que llevar si quieres.`,
+    "Despido sin causa": `*levanta las orejas* 3 meses + 20 dias/año + prima. Podemos estimar.`,
+    "Plazo para demandar": `*bosteza* 60 dias para negociar. Un año limite. Te ayudo a ordenar fechas.`,
     "Ayuda con la app": `*abre un ojo perezosamente*
 
 **Boveda** - Tus papeles seguros... como mi cama...
@@ -173,24 +151,10 @@ Entre mas rapido actues, mejor resultado.
 *se estira* **Cual exploramos? Prometo no dormirme... mucho...**`
   },
   bora: {
-    "Calcular liquidacion": `*suspira* Ay mijo... Salario y fechas. Ya.
-
-*te mira seria* **60 dias** o se hacen los sordos.
-
-**Vas a calcular o seguimos platicando? No tengo todo el dia... bueno, si tengo.**`,
-    "Iniciar conciliacion": `*ojos entrecerrados* Papeles. Cita. Audiencia.
-
-*gruñe* **60 dias**. Tu tiempo de oro.
-
-**Organizamos tus papeles o prefieres perder tu caso? Tu decides.**`,
-    "Despido sin causa": `*ronquido interrumpido* 3 meses, 20 dias/año, prima.
-
-*te ve fijamente* **60 dias** o pierdes ventaja.
-
-**Calculamos de una vez? Esta gata vieja no tiene paciencia.**`,
-    "Plazo para demandar": `*te observa* 60 dias para negociar. Un año limite.
-
-**Vas a actuar o seguiras preguntando? Porque yo tengo sueño.**`,
+    "Calcular liquidacion": `*suspira* Ay mijo... Salario y fechas. Ya. Si quieres, lo hacemos.`,
+    "Iniciar conciliacion": `*ojos entrecerrados* Papeles. Cita. Audiencia. Te digo que llevar.`,
+    "Despido sin causa": `*ronquido interrumpido* 3 meses, 20 dias/año, prima. Podemos estimar.`,
+    "Plazo para demandar": `*te observa* 60 dias para negociar. Un año limite.`,
     "Ayuda con la app": `*te mira por encima de sus lentes*
 
 Ay mijo, es facil:
@@ -207,21 +171,15 @@ Ay mijo, es facil:
 
 Salario, fechas... la app lo hace... eventualmente...
 
-*parpadea despacio* **60 dias**... es importante... aunque todo es relativo...
-
 **Vamos a la app? Yo te guio... a mi ritmo...**`,
     "Iniciar conciliacion": `*se rasca la cabeza lentamente*
 
 Documentos... cita... audiencia... paso a paso...
 
-*bosteza suavemente* **60 dias**... el tiempo vuela... o camina despacio como yo...
-
 **Te ayudo a guardar tus papeles? Sin prisa... pero sin pausa...**`,
     "Despido sin causa": `*ajusta sus lentes despacio*
 
 3 meses... 20 dias por año... prima... matematicas simples...
-
-*parpadea* **60 dias** para negociar bien...
 
 **Calculamos juntos? Lento pero seguro gana la carrera...**`,
     "Plazo para demandar": `*reflexiona pausadamente*
@@ -605,7 +563,7 @@ ${docText.slice(0, 4000)}`
   }, [metrics])
 
   useEffect(() => {
-    if (faqCount >= 2 && !showCTA) {
+    if (faqCount >= 2 && !showCTA && !userProfile?.id) {
       setShowCTA(true)
       setTimeout(() => {
         setMessages(prev => [...prev, {
@@ -615,7 +573,33 @@ ${docText.slice(0, 4000)}`
         }])
       }, 500)
     }
-  }, [faqCount, showCTA, assistant.ctaMessage])
+  }, [faqCount, showCTA, assistant.ctaMessage, userProfile?.id])
+
+  const getContextualResponse = (text: string) => {
+    const normalized = text.toLowerCase()
+    const role = userProfile?.role
+    const isLawyer = role === 'lawyer' || role === 'admin' || role === 'superadmin' || role === 'webagent'
+    const isWorker = role === 'worker' || role === 'guest'
+
+    if (isLawyer && (normalized.includes('nuevo caso') || normalized.includes('crear caso') || normalized.includes('cliente'))) {
+      const codigo = userProfile?.codigoUsuario ? `Tu codigo de referido: **${userProfile.codigoUsuario}**.` : ''
+      return `Para crear un caso nuevo como abogado:
+1. Abre la **Calculadora** y genera el calculo del cliente.
+2. Al finalizar, elige **"Guardar y crear cliente"**.
+3. Comparte el folio y el enlace de referido con tu cliente para que abra su cuenta y vea el calculo.
+
+[Ir a la Calculadora](/calculadora) ${codigo}`.trim()
+    }
+
+    if (isWorker && userProfile?.verificationStatus !== 'verified' && normalized.includes('verificar')) {
+      return `Puedo ayudarte a completar tu verificacion.
+Revisa que tengas tu **CURP**, telefono y un calculo guardado.
+
+[Ir a Mi Perfil](/perfil)`
+    }
+
+    return null
+  }
 
   const sendMessage = async (text: string) => {
     if (!text.trim() || isLoading || chatExpired) return
@@ -628,6 +612,13 @@ ${docText.slice(0, 4000)}`
     // Actualizar metricas
     setMetrics(prev => ({ ...prev, totalMessages: prev.totalMessages + 1, assistant: currentAssistant }))
     
+    const contextualResponse = getContextualResponse(text)
+    if (contextualResponse) {
+      setMessages(prev => [...prev, { id: `assistant-${Date.now()}`, role: "assistant", content: contextualResponse }])
+      setMetrics(prev => ({ ...prev, aiResponses: prev.aiResponses + 1 }))
+      return
+    }
+
     // Primero buscar en FAQ
     const faqResponse = findFAQResponse(text, currentAssistant)
     
