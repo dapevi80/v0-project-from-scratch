@@ -188,6 +188,7 @@ export default function DashboardPage() {
             email={user?.email}
             isGuest={isGuest}
             codigoUsuario={profile?.codigo_usuario}
+            referralCode={profile?.referral_code}
             fullName={profile?.full_name}
             role={role}
             isVerified={profile?.verification_status === 'verified' || role === 'worker' || role === 'lawyer'}

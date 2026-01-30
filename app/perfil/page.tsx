@@ -72,6 +72,7 @@ interface ProfileData {
   phone: string
   role: string
   codigoUsuario: string
+  referralCode: string
   verificationStatus: string // 'none' | 'pending' | 'verified'
   isProfilePublic: boolean
   avatarUrl?: string
@@ -156,6 +157,7 @@ export default function PerfilPage() {
         .in('categoria', ['ine_frente', 'ine_reverso', 'pasaporte'])
         .eq('estado', 'activo')
 
+      const referralCode = profileData?.referral_code || profileData?.codigo_usuario || ''
       const profile: ProfileData = {
         id: user.id,
         email: profileData?.email || user.email || '',
@@ -163,6 +165,7 @@ export default function PerfilPage() {
         phone: profileData?.phone || '',
         role: profileData?.role || 'guest',
         codigoUsuario: profileData?.codigo_usuario || '',
+        referralCode,
         verificationStatus: profileData?.verification_status || 'none',
         isProfilePublic: profileData?.is_profile_public ?? true,
         avatarUrl: profileData?.avatar_url,
@@ -306,8 +309,8 @@ export default function PerfilPage() {
   }
 
   const handleCopyCode = async () => {
-    if (profile?.codigoUsuario) {
-      await navigator.clipboard.writeText(profile.codigoUsuario)
+    if (profile?.referralCode || profile?.codigoUsuario) {
+      await navigator.clipboard.writeText(profile.referralCode || profile.codigoUsuario)
       setCopied(true)
       setTimeout(() => setCopied(false), 2000)
     }
@@ -337,7 +340,9 @@ export default function PerfilPage() {
 
   // Determinar avatar segun rol
   const getAvatarSrc = () => {
-    if (profile?.avatarUrl) return profile.avatarUrl
+    const isLawyerRole = profile?.role === 'lawyer' || profile?.role === 'admin' || profile?.role === 'guestlawyer'
+    const isDefaultUserAvatar = profile?.avatarUrl?.includes('default-user-avatar')
+    if (profile?.avatarUrl && !(isLawyerRole && isDefaultUserAvatar)) return profile.avatarUrl
     if (profile?.role === 'superadmin') return '/avatars/superadmin-avatar.jpg'
     // Avatar de abogado para roles de abogado (lawyer, admin, guestlawyer)
     if (profile?.role === 'lawyer' || profile?.role === 'admin' || profile?.role === 'guestlawyer') {
@@ -354,7 +359,10 @@ export default function PerfilPage() {
       return { status: 'verified', color: 'green', icon: CheckCircle, label: 'Cuenta Verificada' }
     }
     if (profile.verificationStatus === 'pending') {
-      return { status: 'pending', color: 'amber', icon: AlertTriangle, label: 'Verificacion Pendiente' }
+      if (!profile.tieneINE) {
+        return { status: 'awaiting_documents', color: 'amber', icon: AlertTriangle, label: 'Documentación pendiente' }
+      }
+      return { status: 'pending', color: 'amber', icon: AlertTriangle, label: 'Verificación en revisión' }
     }
     
     // Verificar requisitos
@@ -369,7 +377,7 @@ export default function PerfilPage() {
       status: puedeVerificar ? 'ready' : 'incomplete', 
       color: puedeVerificar ? 'blue' : 'gray', 
       icon: puedeVerificar ? Shield : XCircle,
-      label: puedeVerificar ? 'Listo para Verificar' : 'Completa tu Perfil',
+      label: puedeVerificar ? 'Listo para verificar' : 'Completa tu perfil',
       requisitos: { tieneNombre, tienePhone, tieneCalculo, tieneINE }
     }
   }
@@ -445,20 +453,26 @@ export default function PerfilPage() {
                 
                 {verification.status === 'verified' && (
                   <p className="text-sm text-green-700 mt-1">
-                    Tu cuenta esta verificada. Tienes acceso completo a todas las funciones.
+                    Tu cuenta está verificada. Tienes acceso completo a todas las funciones.
                   </p>
                 )}
                 
                 {verification.status === 'pending' && (
                   <p className="text-sm text-amber-700 mt-1">
-                    Un abogado esta revisando tu documentacion. Te contactaremos pronto.
+                    Tu documentación fue enviada. Nuestro equipo está revisándola.
+                  </p>
+                )}
+
+                {verification.status === 'awaiting_documents' && (
+                  <p className="text-sm text-amber-700 mt-1">
+                    Aún no recibimos tu INE. Sube tu identificación para iniciar la verificación.
                   </p>
                 )}
                 
                 {verification.status === 'ready' && (
                   <>
                     <p className="text-sm text-blue-700 mt-1">
-                      Tienes todo listo. Solicita la verificacion para acceder a un abogado.
+                      Tienes todo listo. Solicita la verificación para acceder a un abogado.
                     </p>
                     <Button 
                       className="mt-3 bg-blue-600 hover:bg-blue-700"
@@ -470,7 +484,7 @@ export default function PerfilPage() {
                       ) : (
                         <Shield className="w-4 h-4 mr-2" />
                       )}
-                      Solicitar Verificacion
+                      Solicitar verificación
                     </Button>
                   </>
                 )}
@@ -502,6 +516,19 @@ export default function PerfilPage() {
                     </div>
                   </div>
                 )}
+
+                {verification.status !== 'verified' && (
+                  <div className="mt-4 rounded-lg border border-dashed border-amber-300 bg-amber-50/60 p-3">
+                    <p className="text-xs font-medium text-amber-800">
+                      Herramientas Pro desactivadas hasta verificar tu cuenta:
+                    </p>
+                    <div className="mt-2 grid gap-1 text-xs text-amber-700">
+                      <span>• Oficina virtual y asignación de casos</span>
+                      <span>• Casos activos y seguimiento avanzado</span>
+                      <span>• Acceso a paneles profesionales</span>
+                    </div>
+                  </div>
+                )}
               </div>
             </div>
           </CardContent>
@@ -513,7 +540,13 @@ export default function PerfilPage() {
             profile.role === 'superadmin' 
               ? 'bg-gradient-to-br from-black to-zinc-900' 
               : 'bg-gradient-to-br from-slate-800 to-slate-900'
-          }`}>
+          } relative overflow-hidden`}>
+            <div className="pointer-events-none absolute inset-0 opacity-10">
+              <span className="absolute top-3 right-5 text-2xl">✨</span>
+              <span className="absolute bottom-5 right-10 text-xl">💬</span>
+              <span className="absolute bottom-4 left-8 text-2xl">🏢</span>
+              <span className="absolute top-8 left-1/2 text-xl">🔎</span>
+            </div>
             <div className="flex items-center gap-4">
               {/* Avatar */}
               <div className={`relative w-16 h-16 rounded-full overflow-hidden ${
@@ -557,24 +590,28 @@ export default function PerfilPage() {
                      profile.role === 'superadmin' ? 'ROOT' : profile.role}
                   </Badge>
                   {/* Codigo de referido visible solo si es publico */}
-                  {isPublic && (
-                    <button
-                      onClick={handleCopyCode}
-                      className={`flex items-center gap-1 font-mono text-xs transition-colors ${
-                        profile.role === 'superadmin'
-                          ? 'text-green-500/70 hover:text-green-400'
-                          : 'text-slate-400 hover:text-white'
-                      }`}
-                      title="Copiar codigo de referido"
-                    >
-                      <span>{profile.codigoUsuario}</span>
-                      {copied ? (
-                        <Check className="w-3 h-3 text-green-400" />
-                      ) : (
-                        <Copy className="w-3 h-3" />
-                      )}
-                    </button>
-                  )}
+                  <div className="min-h-[22px]">
+                    {isPublic ? (
+                      <button
+                        onClick={handleCopyCode}
+                        className={`flex items-center gap-1 font-mono text-xs transition-colors ${
+                          profile.role === 'superadmin'
+                            ? 'text-green-500/70 hover:text-green-400'
+                            : 'text-slate-400 hover:text-white'
+                        }`}
+                        title="Copiar código de referido"
+                      >
+                        <span>{profile.referralCode || profile.codigoUsuario}</span>
+                        {copied ? (
+                          <Check className="w-3 h-3 text-green-400" />
+                        ) : (
+                          <Copy className="w-3 h-3" />
+                        )}
+                      </button>
+                    ) : (
+                      <span className="text-xs text-slate-500">Código oculto en modo incógnito</span>
+                    )}
+                  </div>
                 </div>
               </div>
             </div>
@@ -585,20 +622,25 @@ export default function PerfilPage() {
                 ? 'bg-green-500/10 border border-green-500/30'
                 : 'bg-slate-700/50'
             }`}>
-              <div className="flex items-center gap-2">
+              <div className="flex items-start gap-2">
                 {isPublic ? (
                   <Eye className={`w-4 h-4 ${profile.role === 'superadmin' ? 'text-green-400' : 'text-green-400'}`} />
                 ) : (
                   <EyeOff className="w-4 h-4 text-slate-400" />
                 )}
-                <span className={`text-sm ${
-                  profile.role === 'superadmin' ? 'text-green-400/80 font-mono' : 'text-slate-300'
-                }`}>
-                  {profile.role === 'superadmin' 
-                    ? `PROFILE.visibility = "${isPublic ? 'PUBLIC' : 'PRIVATE'}"`
-                    : `Perfil ${isPublic ? 'Publico' : 'Privado'}`
-                  }
-                </span>
+                <div>
+                  <span className={`text-sm ${
+                    profile.role === 'superadmin' ? 'text-green-400/80 font-mono' : 'text-slate-300'
+                  }`}>
+                    {profile.role === 'superadmin' 
+                      ? `PROFILE.visibility = "${isPublic ? 'PUBLIC' : 'PRIVATE'}"`
+                      : `Perfil ${isPublic ? 'Público' : 'Incógnito'}`
+                    }
+                  </span>
+                  <p className="text-[11px] text-slate-400">
+                    Define cómo aparecerás al comentar en el Buró de Empresas (próximamente).
+                  </p>
+                </div>
               </div>
               <Switch
                 checked={isPublic}
