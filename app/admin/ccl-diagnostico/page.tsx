@@ -7,7 +7,7 @@ import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Progress } from '@/components/ui/progress'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog'
-import { ArrowLeft, Play, Pause, CheckCircle2, XCircle, AlertTriangle, Clock, Loader2, Eye, Shield, HelpCircle, Send, Camera, RefreshCw, FileText, Download, ExternalLink, User, Key, Mail, Copy, LogIn } from 'lucide-react'
+import { ArrowLeft, Play, Pause, CheckCircle2, XCircle, AlertTriangle, Clock, Loader2, Eye, Shield, HelpCircle, Send, Camera, RefreshCw, FileText, Download, ExternalLink, User, Key, Mail, Copy, LogIn, Globe } from 'lucide-react'
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase/client'
 import { MatrixRain } from '@/components/ui/matrix-rain'
@@ -29,6 +29,43 @@ interface DatosTrabajador {
   salario_diario: number
   fecha_ingreso: string
   fecha_despido: string
+}
+
+const EMPRESAS_PRUEBA = [
+  { nombre: 'Experiencias Xcaret SAPI de CV', direccion: 'Av. Bonampak 251' },
+  { nombre: 'Hotel Caribe Azul SA de CV', direccion: 'Blvd. Kukulkán 12' },
+  { nombre: 'Servicios Industriales del Sureste SA de CV', direccion: 'Av. Nichupté 55' }
+]
+
+const PUESTOS_PRUEBA = ['Empleado General', 'Supervisor de Turno', 'Auxiliar Administrativo']
+const MOTIVOS_DESPIDO = [
+  { ingreso: '2019-06-01', despido: '2026-02-15' },
+  { ingreso: '2021-02-12', despido: '2026-01-30' },
+  { ingreso: '2020-09-20', despido: '2026-03-05' }
+]
+
+const generarDatosTrabajador = (estado: string, seed: number): DatosTrabajador => {
+  const empresa = EMPRESAS_PRUEBA[seed % EMPRESAS_PRUEBA.length]
+  const puesto = PUESTOS_PRUEBA[seed % PUESTOS_PRUEBA.length]
+  const fechas = MOTIVOS_DESPIDO[seed % MOTIVOS_DESPIDO.length]
+
+  return {
+    nombre_completo: 'David Perez Villasenor',
+    curp: 'PEVD930106HDFRLV00',
+    rfc: 'PEVD930106XXX',
+    fecha_nacimiento: '1993-01-06',
+    sexo: 'H',
+    email_personal: 'david.perez@mecorrieron.mx',
+    telefono: '9985933232',
+    direccion: empresa.direccion,
+    ciudad: estado,
+    codigo_postal: '77500',
+    empresa_nombre: empresa.nombre,
+    puesto,
+    salario_diario: 450 + (seed % 4) * 75,
+    fecha_ingreso: fechas.ingreso,
+    fecha_despido: fechas.despido
+  }
 }
 
 // Helper function to call CCL account creation API
@@ -195,6 +232,9 @@ export default function CCLDiagnosticoPage() {
   const [showPdfDialog, setShowPdfDialog] = useState(false)
   const [selectedPdf, setSelectedPdf] = useState<Resultado | null>(null)
   const [captchasSolicitados, setCaptchasSolicitados] = useState<string[]>([])
+  const [showPdfViewer, setShowPdfViewer] = useState(false)
+  const [selectedPdfUrl, setSelectedPdfUrl] = useState('')
+  const [selectedPdfEstado, setSelectedPdfEstado] = useState('')
   // Nuevo: Selector de estado individual para diagnóstico específico
   const [estadoSeleccionado, setEstadoSeleccionado] = useState<string>('todos')
   const [modoDiagnostico, setModoDiagnostico] = useState<'todos' | 'individual'>('todos')
@@ -606,23 +646,7 @@ export default function CCLDiagnosticoPage() {
     
     if (finalStatus === 'exito') {
       const resultadoActual = resultados.find(r => r.estado === estado)
-      const datosTrabajadorPrueba: DatosTrabajador = {
-        nombre_completo: resultadoActual?.cuentaCCL?.nombreTrabajador || 'David Perez Villasenor',
-        curp: resultadoActual?.cuentaCCL?.curp || 'PEVD930106HDFRLV00',
-        rfc: 'PEVD930106XXX',
-        fecha_nacimiento: '1993-01-06',
-        sexo: 'H',
-        email_personal: 'david.perez@mecorrieron.mx',
-        telefono: '9985933232',
-        direccion: 'Av. Principal 123',
-        ciudad: estado,
-        codigo_postal: '77500',
-        empresa_nombre: 'Experiencias Xcaret SAPI de CV',
-        puesto: 'Empleado General',
-        salario_diario: 500,
-        fecha_ingreso: '2020-01-15',
-        fecha_despido: '2026-01-15'
-      }
+      const datosTrabajadorPrueba = generarDatosTrabajador(estado, Date.now())
       
       try {
         const resultadoCuenta = await crearCuentaCCLAPI(
@@ -641,6 +665,7 @@ export default function CCLDiagnosticoPage() {
             password: resultadoCuenta.password_portal || '',
             urlLogin: resultadoCuenta.url_login || '',
             urlBuzon: resultadoCuenta.url_buzon || '',
+            urlSinacol: resultadoCuenta.url_login || '',
             curp: datosTrabajadorPrueba.curp,
             nombreTrabajador: datosTrabajadorPrueba.nombre_completo
           }
@@ -663,6 +688,7 @@ export default function CCLDiagnosticoPage() {
             password: resultadoCuenta.password_portal || '',
             urlLogin: resultadoCuenta.url_login || '',
             urlBuzon: resultadoCuenta.captchaUrl || '',
+            urlSinacol: resultadoCuenta.captchaUrl || '',
             curp: datosTrabajadorPrueba.curp,
             nombreTrabajador: datosTrabajadorPrueba.nombre_completo
           }
@@ -799,23 +825,7 @@ export default function CCLDiagnosticoPage() {
       if (finalStatus === 'exito') {
         // Obtener datos del trabajador ficticio ya generados
         const resultadoActual = resultados.find(r => r.estado === estadoActual)
-        const datosTrabajadorPrueba: DatosTrabajador = {
-          nombre_completo: resultadoActual?.cuentaCCL?.nombreTrabajador || 'Juan Perez Garcia',
-          curp: resultadoActual?.cuentaCCL?.curp || 'PEGJ800101HDFRRS09',
-          rfc: 'PEGJ800101XXX',
-          fecha_nacimiento: '1980-01-01',
-          sexo: 'H',
-          email_personal: 'prueba@mecorrieron.mx',
-          telefono: '5551234567',
-          direccion: 'Av. Reforma 123',
-          ciudad: estadoActual,
-          codigo_postal: '06600',
-          empresa_nombre: 'Empresa de Prueba SA de CV',
-          puesto: 'Empleado General',
-          salario_diario: 500,
-          fecha_ingreso: '2020-01-15',
-          fecha_despido: '2025-01-15'
-        }
+        const datosTrabajadorPrueba = generarDatosTrabajador(estadoActual, Date.now() + i)
         
         try {
           // Crear cuenta real en el portal CCL (simulada pero guardada en DB)
@@ -835,6 +845,7 @@ export default function CCLDiagnosticoPage() {
               password: resultadoCuenta.password_portal || '',
               urlLogin: resultadoCuenta.url_login || '',
               urlBuzon: resultadoCuenta.url_buzon || '',
+              urlSinacol: resultadoCuenta.url_login || '',
               curp: datosTrabajadorPrueba.curp,
               nombreTrabajador: datosTrabajadorPrueba.nombre_completo
             }
@@ -858,6 +869,7 @@ export default function CCLDiagnosticoPage() {
               password: resultadoCuenta.password_portal || '',
               urlLogin: resultadoCuenta.url_login || '',
               urlBuzon: resultadoCuenta.captchaUrl || '',
+              urlSinacol: resultadoCuenta.captchaUrl || '',
               curp: datosTrabajadorPrueba.curp,
               nombreTrabajador: datosTrabajadorPrueba.nombre_completo
             }
@@ -917,6 +929,13 @@ export default function CCLDiagnosticoPage() {
     ))
   }
 
+  const marcarCaptchaResuelto = (estado: string) => {
+    setCaptchasSolicitados(prev => (prev.includes(estado) ? prev : [...prev, estado]))
+    setResultados(prev => prev.map(r => 
+      r.estado === estado ? { ...r, captchaPendiente: false } : r
+    ))
+  }
+
   const reintentarEstado = async (estado: string) => {
     const idx = resultados.findIndex(r => r.estado === estado)
     if (idx === -1) return
@@ -932,7 +951,9 @@ export default function CCLDiagnosticoPage() {
         status: 'en_progreso', 
         pasos: pasosReiniciados,
         pasoDetenido: null,
-        errorDetallado: null
+        errorDetallado: null,
+        pdfUrl: '',
+        folioGenerado: ''
       } : r
     ))
 
@@ -955,23 +976,7 @@ export default function CCLDiagnosticoPage() {
     
     if (exitoso && resultadoActual.cuentaCCL) {
       // Crear cuenta real
-      const datosTrabajador: DatosTrabajador = {
-        nombre_completo: resultadoActual.cuentaCCL.nombreTrabajador,
-        curp: resultadoActual.cuentaCCL.curp,
-        rfc: resultadoActual.cuentaCCL.curp.slice(0, 10) + 'XXX',
-        fecha_nacimiento: '1980-01-01',
-        sexo: 'H',
-        email_personal: 'prueba@mecorrieron.mx',
-        telefono: '5551234567',
-        direccion: 'Av. Reforma 123',
-        ciudad: estado,
-        codigo_postal: '06600',
-        empresa_nombre: 'Empresa de Prueba SA de CV',
-        puesto: 'Empleado General',
-        salario_diario: 500,
-        fecha_ingreso: '2020-01-15',
-        fecha_despido: '2025-01-15'
-      }
+      const datosTrabajador = generarDatosTrabajador(estado, Date.now() + idx)
       
       try {
           const resultadoCuenta = await crearCuentaCCLAPI(estado, datosTrabajador, { esPrueba: true })
@@ -982,6 +987,7 @@ export default function CCLDiagnosticoPage() {
             password: resultadoCuenta.password_portal || '',
             urlLogin: resultadoCuenta.url_login || '',
             urlBuzon: resultadoCuenta.url_buzon || '',
+            urlSinacol: resultadoCuenta.url_login || '',
             curp: datosTrabajador.curp,
             nombreTrabajador: datosTrabajador.nombre_completo
           }
@@ -1296,6 +1302,60 @@ export default function CCLDiagnosticoPage() {
           </Card>
         )}
 
+        {/* Panel de intervención humana */}
+        <Card className="bg-black/80 border-green-800 mb-4 sm:mb-6">
+          <CardHeader className="pb-2 px-3 sm:px-4">
+            <CardTitle className="text-green-400 font-mono text-xs sm:text-sm">PANEL HUMANO (CAPTCHA & PDF)</CardTitle>
+          </CardHeader>
+          <CardContent className="p-3 sm:p-4 pt-0 space-y-3">
+            <p className="text-green-700 text-[10px] sm:text-xs">
+              Si un portal solicita CAPTCHA, abre el sitio oficial, resuélvelo manualmente y reintenta el flujo.
+              Los PDFs del diagnóstico son temporales y se reemplazan en cada intento; no se guardan en bóvedas.
+            </p>
+            <div className="grid gap-2 sm:grid-cols-2">
+              {resultados.filter(r => r.captchaPendiente).length === 0 ? (
+                <div className="text-green-700 text-xs border border-green-900 rounded p-2 bg-green-950/30">
+                  Sin CAPTCHA pendientes. ✅
+                </div>
+              ) : (
+                resultados.filter(r => r.captchaPendiente).map((r) => {
+                  const portalUrl = r.cuentaCCL?.urlSinacol || r.cuentaCCL?.urlLogin || r.cuentaCCL?.urlBuzon || r.url
+                  return (
+                    <div key={r.estado} className="border border-red-700/60 bg-red-950/30 rounded p-2 flex items-center justify-between gap-2">
+                      <div>
+                        <p className="text-red-300 text-xs font-mono">{r.estado}</p>
+                        <p className="text-red-500 text-[10px]">CAPTCHA pendiente</p>
+                      </div>
+                      <div className="flex gap-1">
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          className="h-7 px-2 border-red-500 text-red-300 hover:bg-red-950"
+                          onClick={() => window.open(portalUrl, '_blank')}
+                        >
+                          <Globe className="w-3 h-3 mr-1" />
+                          Abrir
+                        </Button>
+                        <Button
+                          size="sm"
+                          className="h-7 px-2 bg-green-600 hover:bg-green-500 text-black"
+                          onClick={() => {
+                            marcarCaptchaResuelto(r.estado)
+                            reintentarEstado(r.estado)
+                          }}
+                        >
+                          <RefreshCw className="w-3 h-3 mr-1" />
+                          Continuar
+                        </Button>
+                      </div>
+                    </div>
+                  )
+                })
+              )}
+            </div>
+          </CardContent>
+        </Card>
+
         {/* Grid de Estados */}
         <div className="grid grid-cols-4 sm:grid-cols-5 md:grid-cols-6 lg:grid-cols-8 gap-1.5 sm:gap-2 mb-4 sm:mb-6">
           {resultados.map((resultado) => (
@@ -1592,6 +1652,45 @@ export default function CCLDiagnosticoPage() {
                     <p className="text-red-400 text-xs mt-2">{selectedEstado.errorMessage}</p>
                   </div>
 
+                  {selectedEstado.errorType === 'captcha' && (
+                    <div className="p-3 bg-yellow-950/30 rounded border border-yellow-700">
+                      <div className="flex items-center gap-2 mb-2">
+                        <AlertTriangle className="w-4 h-4 text-yellow-400" />
+                        <span className="text-yellow-400 text-xs font-bold">CAPTCHA REQUIERE ACCION HUMANA</span>
+                      </div>
+                      <p className="text-yellow-300 text-xs">
+                        Abre el portal oficial, resuelve el CAPTCHA manualmente y luego continúa el flujo para descargar el PDF real.
+                      </p>
+                      <div className="flex gap-2 mt-3">
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          className="flex-1 border-yellow-500 text-yellow-300 hover:bg-yellow-950"
+                          onClick={() => {
+                            const portalUrl = selectedEstado.cuentaCCL?.urlSinacol || selectedEstado.cuentaCCL?.urlLogin || selectedEstado.cuentaCCL?.urlBuzon || selectedEstado.url
+                            window.open(portalUrl, '_blank')
+                          }}
+                        >
+                          <Globe className="w-3 h-3 mr-1" />
+                          Abrir portal
+                        </Button>
+                        <Button
+                          size="sm"
+                          className="flex-1 bg-green-600 hover:bg-green-500 text-black"
+                          onClick={async () => {
+                            marcarCaptchaResuelto(selectedEstado.estado)
+                            setShowDetailDialog(false)
+                            await new Promise(r => setTimeout(r, 100))
+                            reintentarEstado(selectedEstado.estado)
+                          }}
+                        >
+                          <RefreshCw className="w-3 h-3 mr-1" />
+                          Continuar
+                        </Button>
+                      </div>
+                    </div>
+                  )}
+
                   {/* Screenshot simulado */}
                   <div className="p-3 bg-green-950/50 rounded border border-green-800">
                     <div className="flex items-center gap-2 mb-2">
@@ -1792,6 +1891,21 @@ export default function CCLDiagnosticoPage() {
                       VER BUZON
                     </Button>
                   </div>
+
+                  {selectedEstado.pdfUrl && (
+                    <Button
+                      size="sm"
+                      className="w-full bg-cyan-600 hover:bg-cyan-500 text-black font-mono text-xs"
+                      onClick={() => {
+                        setSelectedPdfUrl(selectedEstado.pdfUrl)
+                        setSelectedPdfEstado(selectedEstado.estado)
+                        setShowPdfViewer(true)
+                      }}
+                    >
+                      <FileText className="w-3 h-3 mr-1" />
+                      VER PDF DE SOLICITUD
+                    </Button>
+                  )}
                   
                   {/* Info adicional */}
                   <div className="p-2 bg-green-950/30 rounded border border-green-900">
@@ -1963,6 +2077,30 @@ export default function CCLDiagnosticoPage() {
           >
             Cerrar
           </Button>
+        </DialogContent>
+      </Dialog>
+
+      {/* Visor PDF diagnóstico */}
+      <Dialog open={showPdfViewer} onOpenChange={setShowPdfViewer}>
+        <DialogContent className="bg-black text-green-400 max-w-4xl max-h-[95vh] overflow-hidden border border-cyan-700">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2 text-cyan-400 font-mono">
+              <FileText className="w-5 h-5" />
+              PDF de Solicitud - {selectedPdfEstado || 'Diagnóstico'}
+            </DialogTitle>
+            <DialogDescription className="text-cyan-600 text-xs">
+              Documento temporal del diagnóstico. Se reemplaza en cada intento y no se guarda en bóvedas.
+            </DialogDescription>
+          </DialogHeader>
+          {selectedPdfUrl ? (
+            <iframe
+              src={selectedPdfUrl}
+              className="w-full h-[70vh] rounded border border-cyan-900"
+              title="PDF diagnóstico"
+            />
+          ) : (
+            <div className="text-xs text-cyan-700">No hay PDF disponible.</div>
+          )}
         </DialogContent>
       </Dialog>
     </div>
