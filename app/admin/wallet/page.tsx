@@ -5,7 +5,7 @@ import Link from 'next/link'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
-import { ArrowLeft, Coins, CreditCard, Zap, Crown, Sparkles, Check } from 'lucide-react'
+import { ArrowLeft, Coins, CreditCard, Zap, Crown, Sparkles, Check, ShieldCheck, Ticket, KeyRound, BadgeCheck } from 'lucide-react'
 import { MatrixRain } from '@/components/ui/matrix-rain'
 
 interface PaqueteFichas {
@@ -29,18 +29,18 @@ interface Suscripcion {
 
 export default function WalletPage() {
   const [loading, setLoading] = useState(true)
-  const [tab, setTab] = useState<'fichas' | 'suscripciones'>('fichas')
+  const [tab, setTab] = useState<'monedas' | 'suscripciones' | 'emision'>('monedas')
 
   useEffect(() => {
     setLoading(false)
   }, [])
 
   const paquetesFichas: PaqueteFichas[] = [
-    { id: '1', nombre: 'Starter', fichas: 100, precio: 99, descripcion: 'Ideal para probar' },
-    { id: '2', nombre: 'Basico', fichas: 500, precio: 449, descuento: 10, descripcion: 'Uso personal' },
-    { id: '3', nombre: 'Pro', fichas: 1500, precio: 1199, descuento: 20, popular: true, descripcion: 'Mas popular' },
-    { id: '4', nombre: 'Business', fichas: 5000, precio: 3499, descuento: 30, descripcion: 'Para despachos' },
-    { id: '5', nombre: 'Enterprise', fichas: 15000, precio: 8999, descuento: 40, descripcion: 'Alto volumen' },
+    { id: '1', nombre: 'Starter', fichas: 120, precio: 99, descripcion: 'Ideal para probar IA' },
+    { id: '2', nombre: 'Basico', fichas: 600, precio: 449, descuento: 10, descripcion: 'Uso personal' },
+    { id: '3', nombre: 'Pro', fichas: 2000, precio: 1199, descuento: 20, popular: true, descripcion: 'Despachos activos' },
+    { id: '4', nombre: 'Business', fichas: 6500, precio: 3499, descuento: 30, descripcion: 'Equipos legales' },
+    { id: '5', nombre: 'Enterprise', fichas: 18000, precio: 8999, descuento: 40, descripcion: 'Alto volumen' },
   ]
 
   const suscripciones: Suscripcion[] = [
@@ -49,7 +49,7 @@ export default function WalletPage() {
       nombre: 'Basico', 
       precioMensual: 199, 
       fichasIncluidas: 200,
-      beneficios: ['200 fichas/mes', 'Calculadora ilimitada', 'Soporte email']
+      beneficios: ['200 monedas IA/mes', 'Calculadora ilimitada', 'Soporte email']
     },
     { 
       id: '2', 
@@ -57,15 +57,43 @@ export default function WalletPage() {
       precioMensual: 499, 
       fichasIncluidas: 600,
       popular: true,
-      beneficios: ['600 fichas/mes', 'AutoCCL incluido', 'Leads prioritarios', 'Soporte WhatsApp']
+      beneficios: ['600 monedas IA/mes', 'AutoCCL incluido', 'Leads prioritarios', 'Soporte WhatsApp']
     },
     { 
       id: '3', 
       nombre: 'Enterprise', 
       precioMensual: 1999, 
       fichasIncluidas: 3000,
-      beneficios: ['3000 fichas/mes', 'API access', 'Multi-usuario', 'Soporte dedicado', 'Reportes custom']
+      beneficios: ['3000 monedas IA/mes', 'API access', 'Multi-usuario', 'Soporte dedicado', 'Reportes custom']
     },
+  ]
+
+  const emisionesNFT = [
+    {
+      title: 'Cupones',
+      icon: Ticket,
+      description: 'NFT intercambiables para suscripciones y paquetes de monedas.'
+    },
+    {
+      title: 'Monedas IA',
+      icon: Coins,
+      description: 'Creditos para herramientas de IA y automatizacion.'
+    },
+    {
+      title: 'VCard + Credenciales',
+      icon: BadgeCheck,
+      description: 'Identidad digital y tarjetas profesionales verificables.'
+    },
+    {
+      title: 'Llave digital SAT',
+      icon: KeyRound,
+      description: 'Certificados y llaves oficiales con custodia segura.'
+    },
+    {
+      title: 'Firma digital',
+      icon: ShieldCheck,
+      description: 'Firmas electronicas para documentos legales.'
+    }
   ]
 
   const formatCurrency = (amount: number) => {
@@ -75,7 +103,7 @@ export default function WalletPage() {
   if (loading) {
     return (
       <div className="min-h-screen bg-black flex items-center justify-center">
-        <div className="text-green-500 font-mono animate-pulse">Cargando wallet...</div>
+        <div className="text-green-500 font-mono animate-pulse">Cargando cartera...</div>
       </div>
     )
   }
@@ -92,14 +120,14 @@ export default function WalletPage() {
                 <ArrowLeft className="w-4 h-4 sm:w-5 sm:h-5 text-green-500" />
               </Link>
               <div>
-                <h1 className="font-mono font-bold text-green-400 text-sm sm:text-base">WALLET</h1>
-                <p className="text-[10px] sm:text-xs text-green-700 font-mono hidden sm:block">Fichas y suscripciones</p>
+                <h1 className="font-mono font-bold text-green-400 text-sm sm:text-base">CARTERA</h1>
+                <p className="text-[10px] sm:text-xs text-green-700 font-mono hidden sm:block">Monedas IA y suscripciones</p>
               </div>
             </div>
             <div className="flex items-center gap-1.5 sm:gap-2 px-2 sm:px-3 py-1 sm:py-1.5 bg-green-950 border border-green-700 rounded-full">
               <Coins className="w-3 h-3 sm:w-4 sm:h-4 text-green-400" />
               <span className="font-mono font-bold text-green-400">1,250</span>
-              <span className="text-green-700 text-xs font-mono">fichas</span>
+              <span className="text-green-700 text-xs font-mono">monedas</span>
             </div>
           </div>
         </div>
@@ -107,18 +135,18 @@ export default function WalletPage() {
 
       <main className="container mx-auto px-3 sm:px-4 py-4 sm:py-6 space-y-4 sm:space-y-6 max-w-4xl relative z-10">
         {/* Tabs */}
-        <div className="flex gap-1.5 sm:gap-2 justify-center">
+        <div className="flex flex-wrap gap-1.5 sm:gap-2 justify-center">
           <Button
-            variant={tab === 'fichas' ? 'default' : 'outline'}
+            variant={tab === 'monedas' ? 'default' : 'outline'}
             size="sm"
-            onClick={() => setTab('fichas')}
-            className={`text-xs sm:text-sm ${tab === 'fichas' 
+            onClick={() => setTab('monedas')}
+            className={`text-xs sm:text-sm ${tab === 'monedas' 
               ? 'bg-green-600 text-black font-mono' 
               : 'border-green-900 text-green-500 hover:bg-green-950 font-mono bg-transparent'
             }`}
           >
             <Coins className="w-3 h-3 sm:w-4 sm:h-4 mr-1 sm:mr-2" />
-            <span className="hidden sm:inline">Comprar</span> Fichas
+            <span className="hidden sm:inline">Comprar</span> Monedas
           </Button>
           <Button
             variant={tab === 'suscripciones' ? 'default' : 'outline'}
@@ -132,10 +160,22 @@ export default function WalletPage() {
             <Crown className="w-3 h-3 sm:w-4 sm:h-4 mr-1 sm:mr-2" />
             <span className="hidden sm:inline">Suscripciones</span><span className="sm:hidden">Suscrip.</span> (-10%)
           </Button>
+          <Button
+            variant={tab === 'emision' ? 'default' : 'outline'}
+            size="sm"
+            onClick={() => setTab('emision')}
+            className={`text-xs sm:text-sm ${tab === 'emision' 
+              ? 'bg-green-600 text-black font-mono' 
+              : 'border-green-900 text-green-500 hover:bg-green-950 font-mono bg-transparent'
+            }`}
+          >
+            <Sparkles className="w-3 h-3 sm:w-4 sm:h-4 mr-1 sm:mr-2" />
+            Emision NFT
+          </Button>
         </div>
 
-        {/* Contenido Fichas */}
-        {tab === 'fichas' && (
+        {/* Contenido Monedas */}
+        {tab === 'monedas' && (
           <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-2 sm:gap-3">
             {paquetesFichas.map((paquete) => (
               <Card 
@@ -209,7 +249,7 @@ export default function WalletPage() {
                         {formatCurrency(sub.precioMensual)}/mes
                       </p>
                       <p className="text-green-600 font-mono text-[10px] sm:text-xs mt-1">
-                        {sub.fichasIncluidas.toLocaleString()} fichas/mes
+                        {sub.fichasIncluidas.toLocaleString()} monedas/mes
                       </p>
                     </div>
                     <div className="space-y-1.5 sm:space-y-2 mb-3 sm:mb-4">
@@ -228,6 +268,75 @@ export default function WalletPage() {
               ))}
             </div>
           </>
+        )}
+
+        {/* Contenido Emision */}
+        {tab === 'emision' && (
+          <div className="space-y-4 sm:space-y-6">
+            <Card className="bg-black/80 border-green-900">
+              <CardHeader className="pb-2">
+                <CardTitle className="font-mono text-green-400 text-sm sm:text-base">Modelo de negocio</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-3 text-[10px] sm:text-xs text-green-200 font-mono">
+                <p>
+                  La Cartera emite NFTs desde Superadmin: USDT, MXN estimado, cupones, llaves y firmas. Los cupones
+                  se venden como suscripciones mensuales o packs intercambiables por monedas IA.
+                </p>
+                <p>
+                  Las monedas IA son creditos para herramientas inteligentes. Los despachos pagan suscripciones
+                  recurrentes, mientras que los abogados pueden comprar monedas a demanda o por cupones.
+                </p>
+              </CardContent>
+            </Card>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 sm:gap-3">
+              {emisionesNFT.map((emision) => {
+                const Icon = emision.icon
+                return (
+                  <Card key={emision.title} className="bg-black/80 border-green-900">
+                    <CardContent className="p-3 sm:p-4">
+                      <div className="flex items-center gap-2">
+                        <div className="w-9 h-9 rounded-lg bg-green-950 border border-green-700 flex items-center justify-center">
+                          <Icon className="w-4 h-4 text-green-400" />
+                        </div>
+                        <div>
+                          <p className="font-mono text-green-400 text-xs sm:text-sm font-semibold">{emision.title}</p>
+                          <p className="font-mono text-green-700 text-[10px] sm:text-xs">{emision.description}</p>
+                        </div>
+                      </div>
+                    </CardContent>
+                  </Card>
+                )
+              })}
+            </div>
+
+            <Card className="bg-black/80 border-green-900">
+              <CardHeader className="pb-2">
+                <CardTitle className="font-mono text-green-400 text-sm sm:text-base">Plan de rewards y dinamica</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-2 text-[10px] sm:text-xs text-green-200 font-mono">
+                <ul className="space-y-1.5 list-disc list-inside">
+                  <li>Logros: cada milestone libera cupones NFT (onboarding, referidos, casos cerrados).</li>
+                  <li>Cupones: canjeables por monedas IA o descuentos en suscripciones mensuales.</li>
+                  <li>Intercambio: usuarios pueden transferir cupones entre carteras verificadas.</li>
+                  <li>Distribucion: Superadmin mina y dispersa NFTs segun rol (abogados, despachos, clientes).</li>
+                  <li>Bloqueo inteligente: llaves, contraseñas y vCards no requieren verificacion.</li>
+                  <li>Cripto + monedas IA: requieren cuenta verificada y backup de seed phrase.</li>
+                </ul>
+                <div className="mt-3 flex flex-wrap gap-2">
+                  <Badge className="bg-green-950 text-green-300 border border-green-700 font-mono text-[10px] sm:text-xs">
+                    Rewards automaticos
+                  </Badge>
+                  <Badge className="bg-green-950 text-green-300 border border-green-700 font-mono text-[10px] sm:text-xs">
+                    Emision controlada
+                  </Badge>
+                  <Badge className="bg-green-950 text-green-300 border border-green-700 font-mono text-[10px] sm:text-xs">
+                    Cupones intercambiables
+                  </Badge>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
         )}
 
         {/* Info Mercado Pago */}
@@ -251,7 +360,7 @@ export default function WalletPage() {
         {/* Terminal footer */}
         <div className="mt-4 sm:mt-8 p-2 sm:p-3 bg-black border border-green-900 rounded-lg font-mono text-[10px] sm:text-xs overflow-x-auto">
           <p className="text-green-600 whitespace-nowrap">
-            <span className="text-green-400">root@wallet</span>
+            <span className="text-green-400">root@cartera</span>
             <span className="text-white">$ </span>
             <span className="text-green-300">API: MercadoPago</span>
           </p>

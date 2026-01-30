@@ -148,7 +148,7 @@ export default function AdminDashboardPage() {
   const superAdminTools = [
     { name: 'Cobros', href: '/admin/cobros', emoji: '💳', description: 'Suscripciones' },
     { name: 'Facturacion SAT', href: '/admin/facturacion', emoji: '🧾', description: 'CFDI y facturas' },
-    { name: 'Wallet', href: '/admin/wallet', emoji: '🪙', description: 'Fichas y recargas' },
+    { name: 'Cartera', href: '/admin/wallet', emoji: '🪙', description: 'Monedas y recompensas' },
     { name: 'Reportes', href: '/admin/reportes', emoji: '📊', description: 'Analytics' },
     { name: 'Config', href: '/admin/config', emoji: '⚙️', description: 'Sistema' },
     { name: 'C:/', href: '/admin/terminal', symbol: true, description: 'Terminal modo' },
