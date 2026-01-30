@@ -1137,6 +1137,12 @@ export default function CCLDiagnosticoPage() {
     captchasPendientes: resultados.filter(r => r.captchaPendiente).length
   }
 
+  const resultadoActivo =
+    resultados.find(r => r.status === 'en_progreso') ||
+    selectedEstado ||
+    [...resultados].reverse().find(r => r.status !== 'pendiente') ||
+    null
+
   const liveFrames = selectedEstado?.pasos.filter(p => p.screenshot) || []
   const liveFrame = liveFrames[livePreviewIndex] || null
   const cursorPos = CURSOR_POSITIONS[livePreviewIndex % CURSOR_POSITIONS.length]
@@ -1337,6 +1343,132 @@ export default function CCLDiagnosticoPage() {
                   value={progreso} 
                   className={`h-2 ${modoDiagnostico === 'individual' ? 'bg-cyan-950' : 'bg-green-950'}`} 
                 />
+              </div>
+            )}
+          </CardContent>
+        </Card>
+
+        {/* Panel de resultados reales */}
+        <Card className="bg-black/80 border-cyan-800 mb-4 sm:mb-6">
+          <CardHeader className="pb-2 px-3 sm:px-4 flex flex-row items-center justify-between">
+            <div>
+              <CardTitle className="text-cyan-300 font-mono text-xs sm:text-sm">DASHBOARD SUPERADMIN · RESULTADOS REALES</CardTitle>
+              <p className="text-cyan-600 text-[10px] sm:text-xs font-mono">
+                Seguimiento del último diagnóstico en tiempo real (folio oficial, PDF y paso actual).
+              </p>
+            </div>
+            {resultadoActivo?.status && (
+              <Badge
+                className={`font-mono text-[10px] ${
+                  resultadoActivo.status === 'exito'
+                    ? 'bg-green-900 text-green-300 border border-green-700'
+                    : resultadoActivo.status === 'parcial'
+                      ? 'bg-yellow-900 text-yellow-300 border border-yellow-700'
+                      : resultadoActivo.status === 'error'
+                        ? 'bg-red-900 text-red-300 border border-red-700'
+                        : 'bg-cyan-900 text-cyan-300 border border-cyan-700'
+                }`}
+              >
+                {resultadoActivo.status.toUpperCase()}
+              </Badge>
+            )}
+          </CardHeader>
+          <CardContent className="p-3 sm:p-4 pt-0">
+            {!resultadoActivo ? (
+              <div className="text-cyan-500 text-xs font-mono border border-cyan-900 rounded p-3 bg-cyan-950/20">
+                Sin ejecuciones recientes. Ejecuta un diagnóstico para ver resultados reales.
+              </div>
+            ) : (
+              <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+                <div className="border border-cyan-900 rounded p-3 bg-cyan-950/20">
+                  <p className="text-cyan-400 text-[10px] font-mono">ESTADO / PORTAL</p>
+                  <p className="text-cyan-200 text-sm font-mono mt-1">{resultadoActivo.estado}</p>
+                  <p className="text-cyan-600 text-[10px] font-mono mt-1 break-all">
+                    {resultadoActivo.cuentaCCL?.urlSinacol || resultadoActivo.url}
+                  </p>
+                </div>
+                <div className="border border-cyan-900 rounded p-3 bg-cyan-950/20">
+                  <p className="text-cyan-400 text-[10px] font-mono">FOLIO OFICIAL</p>
+                  <p className="text-cyan-200 text-sm font-mono mt-1">
+                    {resultadoActivo.folioGenerado || 'Pendiente'}
+                  </p>
+                  <p className="text-cyan-600 text-[10px] font-mono mt-1">
+                    Paso: {PASOS_ROBOT.find(p => p.paso === resultadoActivo.pasoDetenido)?.nombre || resultadoActivo.pasoDetenido || resultadoActivo.pasoActual}
+                  </p>
+                </div>
+                <div className="border border-cyan-900 rounded p-3 bg-cyan-950/20">
+                  <p className="text-cyan-400 text-[10px] font-mono">PDF REAL</p>
+                  <p className="text-cyan-200 text-sm font-mono mt-1">
+                    {resultadoActivo.pdfUrl ? 'Disponible' : 'Pendiente'}
+                  </p>
+                  <p className="text-cyan-600 text-[10px] font-mono mt-1">
+                    {resultadoActivo.pdfUrl ? 'Listo para abrir en visor' : 'Esperando descarga en portal'}
+                  </p>
+                </div>
+                <div className="border border-cyan-900 rounded p-3 bg-cyan-950/20">
+                  <p className="text-cyan-400 text-[10px] font-mono">TIEMPO / LATENCIA</p>
+                  <p className="text-cyan-200 text-sm font-mono mt-1">{resultadoActivo.tiempo}ms</p>
+                  <p className="text-cyan-600 text-[10px] font-mono mt-1">
+                    CAPTCHA: {resultadoActivo.captchaPendiente ? 'Pendiente' : 'Sin bloqueo'}
+                  </p>
+                </div>
+              </div>
+            )}
+
+            {resultadoActivo && (
+              <div className="flex flex-wrap gap-2 mt-3">
+                <Button
+                  size="sm"
+                  variant="outline"
+                  className="border-cyan-600 text-cyan-300 hover:bg-cyan-950 font-mono text-xs"
+                  onClick={() => {
+                    const portalUrl = resultadoActivo.cuentaCCL?.urlSinacol || resultadoActivo.cuentaCCL?.urlLogin || resultadoActivo.url
+                    if (portalUrl) window.open(portalUrl, '_blank')
+                  }}
+                >
+                  <ExternalLink className="w-3 h-3 mr-1" />
+                  Abrir portal
+                </Button>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  className="border-cyan-600 text-cyan-300 hover:bg-cyan-950 font-mono text-xs"
+                  onClick={() => {
+                    if (!resultadoActivo) return
+                    setSelectedEstado(resultadoActivo)
+                    setShowDetailDialog(true)
+                  }}
+                >
+                  <Eye className="w-3 h-3 mr-1" />
+                  Ver detalle en vivo
+                </Button>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  className="border-cyan-600 text-cyan-300 hover:bg-cyan-950 font-mono text-xs"
+                  onClick={() => {
+                    if (!resultadoActivo?.folioGenerado) return
+                    navigator.clipboard.writeText(resultadoActivo.folioGenerado)
+                  }}
+                  disabled={!resultadoActivo.folioGenerado}
+                >
+                  <Copy className="w-3 h-3 mr-1" />
+                  Copiar folio
+                </Button>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  className="border-cyan-600 text-cyan-300 hover:bg-cyan-950 font-mono text-xs"
+                  onClick={() => {
+                    if (!resultadoActivo?.pdfUrl) return
+                    setSelectedPdfUrl(resultadoActivo.pdfUrl)
+                    setSelectedPdfEstado(resultadoActivo.estado)
+                  }}
+                  disabled={!resultadoActivo.pdfUrl}
+                >
+                  <FileText className="w-3 h-3 mr-1" />
+                  Ver PDF
+                </Button>
               </div>
             )}
           </CardContent>
