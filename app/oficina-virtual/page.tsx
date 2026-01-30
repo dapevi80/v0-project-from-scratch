@@ -23,7 +23,11 @@ import {
   Shield,
   CheckCircle2,
   ArrowLeft,
-  ClipboardList
+  ClipboardList,
+  Radar,
+  FileText,
+  Users2,
+  FolderKanban
 } from 'lucide-react'
 import { getOficinaDashboard, getPendingVerifications, getCasosPendientes } from './actions'
 
@@ -94,6 +98,7 @@ export default function OficinaVirtualPage() {
   const isLawyer = profile.role === 'lawyer'
   const isAdmin = ['admin', 'superadmin'].includes(profile.role)
   const canVerify = ['lawyer', 'admin', 'superadmin', 'webagent'].includes(profile.role)
+  const showLawyerTools = ['lawyer', 'admin', 'superadmin', 'guestlawyer'].includes(profile.role)
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-slate-50 to-white">
@@ -135,6 +140,75 @@ export default function OficinaVirtualPage() {
       </header>
 
       <main className="container mx-auto px-4 py-6 space-y-6">
+        {showLawyerTools && (
+          <section className="space-y-3">
+            <div>
+              <p className="text-xs uppercase tracking-wider text-muted-foreground">Oficina virtual para abogados</p>
+              <h2 className="text-base font-semibold">Herramientas</h2>
+            </div>
+            <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+              <Card className="border-slate-200 hover:border-slate-300 transition-colors">
+                <CardContent className="p-4 flex flex-col gap-2">
+                  <div className="w-10 h-10 rounded-full bg-emerald-50 flex items-center justify-center">
+                    <Radar className="w-5 h-5 text-emerald-600" />
+                  </div>
+                  <div>
+                    <p className="font-semibold text-sm">Radar de clientes</p>
+                    <p className="text-xs text-muted-foreground">Casos nuevos con filtro por estado</p>
+                  </div>
+                  <Button asChild size="sm" className="mt-2">
+                    <Link href="/oficina-virtual/radar-clientes">Abrir</Link>
+                  </Button>
+                </CardContent>
+              </Card>
+
+              <Card className="border-slate-200 hover:border-slate-300 transition-colors">
+                <CardContent className="p-4 flex flex-col gap-2">
+                  <div className="w-10 h-10 rounded-full bg-blue-50 flex items-center justify-center">
+                    <FolderKanban className="w-5 h-5 text-blue-600" />
+                  </div>
+                  <div>
+                    <p className="font-semibold text-sm">Mis casos</p>
+                    <p className="text-xs text-muted-foreground">Nuevos, radar y activos</p>
+                  </div>
+                  <Button asChild size="sm" className="mt-2" variant="outline">
+                    <Link href="/oficina-virtual/mis-casos">Abrir</Link>
+                  </Button>
+                </CardContent>
+              </Card>
+
+              <Card className="border-slate-200 hover:border-slate-300 transition-colors">
+                <CardContent className="p-4 flex flex-col gap-2">
+                  <div className="w-10 h-10 rounded-full bg-amber-50 flex items-center justify-center">
+                    <FileText className="w-5 h-5 text-amber-600" />
+                  </div>
+                  <div>
+                    <p className="font-semibold text-sm">Generador IA de solicitudes</p>
+                    <p className="text-xs text-muted-foreground">IA o flujo manual por caso</p>
+                  </div>
+                  <Button asChild size="sm" className="mt-2" variant="outline">
+                    <Link href="/oficina-virtual/solicitudes-ia">Abrir</Link>
+                  </Button>
+                </CardContent>
+              </Card>
+
+              <Card className="border-slate-200 hover:border-slate-300 transition-colors">
+                <CardContent className="p-4 flex flex-col gap-2">
+                  <div className="w-10 h-10 rounded-full bg-purple-50 flex items-center justify-center">
+                    <Users2 className="w-5 h-5 text-purple-600" />
+                  </div>
+                  <div>
+                    <p className="font-semibold text-sm">Mi equipo y red</p>
+                    <p className="text-xs text-muted-foreground">Clientes, referidos y equipo</p>
+                  </div>
+                  <Button asChild size="sm" className="mt-2" variant="outline">
+                    <Link href="/oficina-virtual/mi-equipo">Abrir</Link>
+                  </Button>
+                </CardContent>
+              </Card>
+            </div>
+          </section>
+        )}
         {/* Stats Cards */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
           <Card className="bg-gradient-to-br from-amber-50 to-amber-100/50 border-amber-200 cursor-pointer hover:border-amber-400 transition-colors"
