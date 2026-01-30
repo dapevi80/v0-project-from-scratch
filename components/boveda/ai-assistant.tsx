@@ -3,7 +3,7 @@
 import Link from "next/link"
 
 import React, { useState, useRef, useEffect, useCallback } from "react"
-import { useRouter } from "next/navigation"
+import { usePathname, useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import {
   X,
@@ -111,6 +111,11 @@ Si quieres, te guio con tu calculo paso a paso.`,
 3. Asiste y expon tu caso
 
 Si quieres, revisamos los documentos que ya tienes.`,
+    "Centro conciliacion Cancun": `**Centro de Conciliacion en Cancun (Q. Roo):**
+
+El directorio oficial cambia por municipio, asi que lo mas seguro es consultar el **CCL de Quintana Roo** y buscar la sede de Cancun.
+
+Si me confirmas tu municipio y situacion, te ayudo a ubicar la sede correcta y la lista exacta de documentos.`,
     "Despido sin causa": `**Si te despiden sin causa, te deben:**
 
 - 3 meses de salario
@@ -139,6 +144,7 @@ Si quieres, te digo que informacion conviene reunir.`,
   mandu: {
     "Calcular liquidacion": `*bosteza* Salario y fechas... la app hace todo.`,
     "Iniciar conciliacion": `*abre un ojo* Papeles, cita, audiencia. Te digo que llevar si quieres.`,
+    "Centro conciliacion Cancun": `*abre un ojo* Para Cancun, revisa el directorio oficial del CCL de Quintana Roo. Si me dices tu municipio, te ubico la sede.`,
     "Despido sin causa": `*levanta las orejas* 3 meses + 20 dias/año + prima. Podemos estimar.`,
     "Plazo para demandar": `*bosteza* 60 dias para negociar. Un año limite. Te ayudo a ordenar fechas.`,
     "Ayuda con la app": `*abre un ojo perezosamente*
@@ -153,6 +159,7 @@ Si quieres, te digo que informacion conviene reunir.`,
   bora: {
     "Calcular liquidacion": `*suspira* Ay mijo... Salario y fechas. Ya. Si quieres, lo hacemos.`,
     "Iniciar conciliacion": `*ojos entrecerrados* Papeles. Cita. Audiencia. Te digo que llevar.`,
+    "Centro conciliacion Cancun": `*te mira* Para Cancun, busca el directorio del CCL de Quintana Roo. Dime tu municipio y te digo a cual ir.`,
     "Despido sin causa": `*ronquido interrumpido* 3 meses, 20 dias/año, prima. Podemos estimar.`,
     "Plazo para demandar": `*te observa* 60 dias para negociar. Un año limite.`,
     "Ayuda con la app": `*te mira por encima de sus lentes*
@@ -177,6 +184,7 @@ Salario, fechas... la app lo hace... eventualmente...
 Documentos... cita... audiencia... paso a paso...
 
 **Te ayudo a guardar tus papeles? Sin prisa... pero sin pausa...**`,
+    "Centro conciliacion Cancun": `*parpadea lento* Cancun... revisa el directorio del CCL de Quintana Roo. Si me dices tu municipio, lo ubicamos.`,
     "Despido sin causa": `*ajusta sus lentes despacio*
 
 3 meses... 20 dias por año... prima... matematicas simples...
@@ -289,6 +297,9 @@ function findFAQResponse(question: string, assistant: AssistantType): string | n
   const q = question.toLowerCase()
   const responses = FAQ_RESPONSES[assistant]
   
+  if ((q.includes("cancun") || q.includes("quintana roo")) && (q.includes("concili") || q.includes("centro"))) {
+    return responses["Centro conciliacion Cancun"]
+  }
   if (q.includes("calcul") || q.includes("liquidaci")) return responses["Calcular liquidacion"]
   if (q.includes("concilia") || q.includes("reclamo")) return responses["Iniciar conciliacion"]
   if (q.includes("despid") && q.includes("causa")) return responses["Despido sin causa"]
@@ -299,11 +310,20 @@ function findFAQResponse(question: string, assistant: AssistantType): string | n
 }
 
 // Identificar mensajes que deben mostrar el boton de app
-function shouldShowAppButton(messageId: string, messages: Message[], hasSession: boolean): boolean {
-  if (hasSession) return false
+function shouldShowAppButton(messageId: string, messages: Message[], hasSession: boolean, isInAppRoute: boolean): boolean {
+  if (hasSession || isInAppRoute) return false
   const msg = messages.find(m => m.id === messageId)
   if (!msg || msg.role !== "assistant") return false
   // Mostrar boton en respuestas FAQ (no en errores ni CTA)
+  return !messageId.includes("error") && !messageId.includes("cta")
+}
+
+function shouldShowInAppActions(messageId: string, messages: Message[], hasSession: boolean): boolean {
+  if (!hasSession) return false
+  const msg = messages.find(m => m.id === messageId)
+  if (!msg || msg.role !== "assistant") return false
+  const lastAssistant = [...messages].reverse().find(m => m.role === "assistant")
+  if (!lastAssistant || lastAssistant.id !== messageId) return false
   return !messageId.includes("error") && !messageId.includes("cta")
 }
 
@@ -317,6 +337,7 @@ export function AIAssistant({
   assistantType = 'lia'
 }: AIAssistantProps) {
   const router = useRouter()
+  const pathname = usePathname()
   const [currentAssistant, setCurrentAssistant] = useState<AssistantType>(assistantType)
   const [hasProcessedInitialMessage, setHasProcessedInitialMessage] = useState(false)
   const [messages, setMessages] = useState<Message[]>([])
@@ -349,6 +370,21 @@ export function AIAssistant({
   const containerRef = useRef<HTMLDivElement>(null)
   const assistant = ASSISTANTS[currentAssistant]
   const hasSession = Boolean(userProfile?.id)
+  const isInAppRoute = Boolean(
+    pathname &&
+      (
+        pathname.startsWith('/dashboard') ||
+        pathname.startsWith('/abogado') ||
+        pathname.startsWith('/boveda') ||
+        pathname.startsWith('/calculadora') ||
+        pathname.startsWith('/casos') ||
+        pathname.startsWith('/agenda') ||
+        pathname.startsWith('/perfil') ||
+        pathname.startsWith('/oficina-virtual') ||
+        pathname.startsWith('/admin') ||
+        pathname.startsWith('/recompensas')
+      )
+  )
   const sessionKey = `ai-chat-session-${userProfile?.id ?? 'guest'}`
   const MAX_CHAT_DURATION_MS = 5 * 60 * 1000
   const expirationMessage = `Tengo que atender mas casos. Puedes seguir usando la app y al volver a iniciar sesion se restauran tus 5 minutos de chat.`
@@ -840,7 +876,7 @@ Revisa que tengas tu **CURP**, telefono y un calculo guardado.
                   }} />
                 </div>
                 {/* Boton Abrir App para respuestas del asistente */}
-                {shouldShowAppButton(msg.id, messages, hasSession) && (
+                {shouldShowAppButton(msg.id, messages, hasSession, isInAppRoute) && (
                   <Button 
                     size="sm" 
                     onClick={goToGuestRegister}
@@ -849,6 +885,22 @@ Revisa que tengas tu **CURP**, telefono y un calculo guardado.
                     <ArrowRight className="w-3.5 h-3.5" />
                     Abrir App
                   </Button>
+                )}
+                {shouldShowInAppActions(msg.id, messages, hasSession) && (
+                  <div className="grid grid-cols-2 gap-2">
+                    <Button asChild size="sm" variant="outline" className="text-xs">
+                      <Link href="/calculadora">Calculadora</Link>
+                    </Button>
+                    <Button asChild size="sm" variant="outline" className="text-xs">
+                      <Link href="/casos">Mis casos</Link>
+                    </Button>
+                    <Button asChild size="sm" variant="outline" className="text-xs">
+                      <Link href="/agenda">Alertas</Link>
+                    </Button>
+                    <Button asChild size="sm" variant="outline" className="text-xs">
+                      <Link href="/perfil">Mi perfil</Link>
+                    </Button>
+                  </div>
                 )}
               </div>
             </div>
