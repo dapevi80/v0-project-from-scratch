@@ -32,14 +32,7 @@ export default function DashboardPage() {
     
     const userRole = profile.role
     
-    // Abogados van al dashboard de abogado
-    if (userRole === 'guestlawyer' || userRole === 'lawyer') {
-      router.replace('/abogado/dashboard')
-      return
-    }
-    
-    // Admin y superadmin YA NO se redirigen automaticamente
-    // Se quedan en dashboard y acceden al panel desde la tarjeta
+    // Todos los roles permanecen en el dashboard actualizado
     
     // Verificar celebracion pendiente
     if (profile.verification_status === 'verified' && profile.role === 'worker' && !profile.celebration_shown) {
@@ -49,6 +42,11 @@ export default function DashboardPage() {
       supabase.from('profiles').update({ celebration_shown: true }).eq('id', profile.id)
     }
   }, [loading, profile, router])
+
+  useEffect(() => {
+    if (loading || !user) return
+    refreshProfile()
+  }, [loading, user, refreshProfile])
 
   // Cargar casos activos (solo una vez)
   useEffect(() => {

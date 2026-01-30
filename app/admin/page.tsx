@@ -315,7 +315,7 @@ export default function AdminDashboardPage() {
         {/* Links rapidos a dashboards de usuario */}
         {data.isSuperAdmin && (
           <div className="pt-2 space-y-2">
-            <Link href="/abogado/dashboard">
+          <Link href="/dashboard">
               <Card className="bg-green-950/30 border-green-800 hover:border-green-600 transition-all cursor-pointer">
                 <CardContent className="p-3 flex items-center justify-center gap-2">
                   <span className="text-green-400 font-mono text-xs">{'>'} Dashboard Abogado (Herramientas, Casos, Leads, AutoCCL)</span>

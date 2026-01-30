@@ -333,7 +333,7 @@ export default function LeadsTinderPage() {
         <div className="max-w-lg mx-auto px-4 py-3">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
-              <Link href="/abogado/dashboard" className="p-2 hover:bg-muted rounded-lg transition-colors">
+              <Link href="/dashboard" className="p-2 hover:bg-muted rounded-lg transition-colors">
                 <ArrowLeft className="w-5 h-5" />
               </Link>
               <div>

@@ -35,13 +35,7 @@ export default function AbogadoDashboardPage() {
       return
     }
     
-    if (role !== 'lawyer' && role !== 'guestlawyer' && role !== 'admin' && role !== 'superadmin') {
-      router.replace('/dashboard')
-      return
-    }
-    
-    // Usuario valido, cargar datos
-    loadData()
+    router.replace('/dashboard')
   }, [authLoading, user, role, router])
 
   async function loadData() {
@@ -91,6 +85,9 @@ export default function AbogadoDashboardPage() {
 
   if (authLoading || pageLoading) {
     return <DashboardSkeleton />
+  }
+  if (user) {
+    return null
   }
 
   const isVerified = role === 'lawyer' || role === 'admin' || role === 'superadmin'
