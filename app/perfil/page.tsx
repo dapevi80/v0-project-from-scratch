@@ -2,7 +2,7 @@
 
 import React from "react"
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { Button } from '@/components/ui/button'
@@ -34,7 +34,8 @@ import {
   Eye,
   EyeOff,
   Copy,
-  Check
+  Check,
+  Camera
 } from 'lucide-react'
 import { Switch } from '@/components/ui/switch'
 import Image from 'next/image'
@@ -70,6 +71,7 @@ interface ProfileData {
   verificationStatus: string // 'none' | 'pending' | 'verified'
   isProfilePublic: boolean
   avatarUrl?: string
+  coverUrl?: string
   // Datos de INE
   curp?: string
   rfc?: string
@@ -101,6 +103,10 @@ export default function PerfilPage() {
   const [isPublic, setIsPublic] = useState(true)
   const [copied, setCopied] = useState(false)
   const [savingPublic, setSavingPublic] = useState(false)
+  const [uploadingAvatar, setUploadingAvatar] = useState(false)
+  const [uploadingCover, setUploadingCover] = useState(false)
+  const avatarInputRef = useRef<HTMLInputElement>(null)
+  const coverInputRef = useRef<HTMLInputElement>(null)
   
   // Campos editables
   const [editFullName, setEditFullName] = useState('')
@@ -155,6 +161,7 @@ export default function PerfilPage() {
         verificationStatus: profileData?.verification_status || 'none',
         isProfilePublic: profileData?.is_profile_public ?? true,
         avatarUrl: profileData?.avatar_url,
+        coverUrl: profileData?.cover_url,
         curp: profileData?.curp,
         rfc: profileData?.rfc,
         tipoIdentificacion: profileData?.tipo_identificacion,
@@ -330,15 +337,73 @@ export default function PerfilPage() {
     }
   }
 
+  const handleImageUpload = async (file: File, type: 'avatar' | 'cover') => {
+    if (!profile) return
+    const isAvatar = type === 'avatar'
+    if (isAvatar) setUploadingAvatar(true)
+    else setUploadingCover(true)
+
+    try {
+      const supabase = createClient()
+      const extension = file.name.split('.').pop() || 'jpg'
+      const fileName = `${profile.id}/${type}-${Date.now()}.${extension}`
+      const bucket = 'avatars'
+
+      const { error: uploadError } = await supabase.storage
+        .from(bucket)
+        .upload(fileName, file, {
+          contentType: file.type,
+          upsert: true
+        })
+
+      if (uploadError) throw uploadError
+
+      const { data: urlData } = supabase.storage
+        .from(bucket)
+        .getPublicUrl(fileName)
+
+      const publicUrl = urlData?.publicUrl
+
+      if (!publicUrl) {
+        throw new Error('No se pudo generar la URL pública')
+      }
+
+      const updatePayload = isAvatar ? { avatar_url: publicUrl } : { cover_url: publicUrl }
+      const { error: updateError } = await supabase
+        .from('profiles')
+        .update(updatePayload)
+        .eq('id', profile.id)
+
+      if (updateError) throw updateError
+
+      setProfile({
+        ...profile,
+        avatarUrl: isAvatar ? publicUrl : profile.avatarUrl,
+        coverUrl: !isAvatar ? publicUrl : profile.coverUrl
+      })
+
+      toast({
+        title: isAvatar ? 'Foto actualizada' : 'Portada actualizada',
+        description: 'Tu perfil público se actualizó correctamente.'
+      })
+    } catch (error) {
+      console.error('Error uploading profile image:', error)
+      toast({ title: 'Error', description: 'No se pudo subir la imagen', variant: 'destructive' })
+    } finally {
+      if (isAvatar) setUploadingAvatar(false)
+      else setUploadingCover(false)
+    }
+  }
+
   // Determinar avatar segun rol
   const getAvatarSrc = () => {
     if (profile?.avatarUrl) return profile.avatarUrl
     if (profile?.role === 'superadmin') return '/avatars/superadmin-avatar.jpg'
     // Avatar de abogado para roles de abogado (lawyer, admin, guestlawyer)
     if (profile?.role === 'lawyer' || profile?.role === 'admin' || profile?.role === 'guestlawyer') {
-      return '/avatars/lawyer-default.jpg'
+      return profile?.sexo === 'M' ? '/avatars/lawyer-default-female.svg' : '/avatars/lawyer-default.jpg'
     }
-    return '/avatars/default-user-avatar.jpg'
+    return profile?.sexo === 'M' ? '/avatars/default-user-female.svg' : '/avatars/default-user-avatar.jpg'
   }
 
   const rolesProfesionales = ['lawyer', 'admin', 'superadmin', 'webagent', 'guestlawyer', 'despacho']
@@ -531,11 +596,14 @@ export default function PerfilPage() {
 
         {/* 2. PERFIL CON AVATAR Y CODIGO */}
         <Card className="overflow-hidden">
-          <div className={`p-4 ${
+          <div className={`relative p-4 ${
             profile.role === 'superadmin' 
               ? 'bg-gradient-to-br from-black to-zinc-900' 
               : 'bg-gradient-to-br from-slate-800 to-slate-900'
-          }`}>
+          } ${profile.coverUrl ? 'bg-cover bg-center' : ''}`}
+          style={profile.coverUrl ? { backgroundImage: `url(${profile.coverUrl})` } : undefined}
+          >
+            {profile.coverUrl && <div className="absolute inset-0 bg-slate-900/70" />}
             <div className="flex items-center gap-4">
               {/* Avatar */}
               <div className={`relative w-16 h-16 rounded-full overflow-hidden ${
@@ -548,7 +616,7 @@ export default function PerfilPage() {
                   : profile.role === 'worker'
                   ? 'ring-2 ring-emerald-400 ring-offset-2 ring-offset-slate-900'
                   : 'ring-2 ring-slate-500 ring-offset-2 ring-offset-slate-900'
-              }`}>
+              } ${profile.coverUrl ? 'relative z-10' : ''}`}>
                 <Image
                   src={getAvatarSrc() || "/placeholder.svg"}
                   alt="Avatar"
@@ -558,12 +626,12 @@ export default function PerfilPage() {
                 />
               </div>
 
-              <div className="flex-1 min-w-0">
+              <div className={`flex-1 min-w-0 ${profile.coverUrl ? 'relative z-10' : ''}`}>
                 {/* Nombre visible solo si es publico */}
                 <h3 className={`font-semibold text-lg truncate ${
                   profile.role === 'superadmin' ? 'text-green-400 font-mono' : 'text-white'
                 }`}>
-                  {isPublic ? (profile.fullName || 'Usuario') : 'Usuario Privado'}
+                  {isPublic ? (profile.fullName || (profile.sexo === 'M' ? 'Usuaria' : 'Usuario')) : (profile.sexo === 'M' ? 'Usuaria Privada' : 'Usuario Privado')}
                 </h3>
                 <div className="flex items-center gap-2 mt-1 flex-wrap">
                   <Badge variant="secondary" className={`text-xs ${
@@ -571,11 +639,11 @@ export default function PerfilPage() {
                       ? 'bg-green-500/20 text-green-400 border-green-500/50' 
                       : 'bg-slate-700 text-slate-300 border-slate-600'
                   }`}>
-                    {profile.role === 'guest' ? 'Invitado' : 
-                     profile.role === 'worker' ? 'Trabajador' : 
-                     profile.role === 'lawyer' ? 'Abogado' : 
-                     profile.role === 'guestlawyer' ? 'Abogado Invitado' :
-                     profile.role === 'admin' ? 'Admin' : 
+                    {profile.role === 'guest' ? (profile.sexo === 'M' ? 'Invitada' : 'Invitado') : 
+                     profile.role === 'worker' ? (profile.sexo === 'M' ? 'Trabajadora' : 'Trabajador') : 
+                     profile.role === 'lawyer' ? (profile.sexo === 'M' ? 'Abogada' : 'Abogado') : 
+                     profile.role === 'guestlawyer' ? (profile.sexo === 'M' ? 'Abogada Invitada' : 'Abogado Invitado') :
+                     profile.role === 'admin' ? (profile.sexo === 'M' ? 'Administradora' : 'Administrador') : 
                      profile.role === 'superadmin' ? 'ROOT' : profile.role}
                   </Badge>
                   {/* Codigo de referido visible solo si es publico */}
@@ -602,32 +670,78 @@ export default function PerfilPage() {
             </div>
 
             {/* Switch de modo publico/privado */}
-            <div className={`mt-4 flex items-center justify-between p-3 rounded-lg ${
+            <div className={`mt-4 flex flex-col gap-3 p-3 rounded-lg ${
               profile.role === 'superadmin'
                 ? 'bg-green-500/10 border border-green-500/30'
                 : 'bg-slate-700/50'
             }`}>
-              <div className="flex items-center gap-2">
-                {isPublic ? (
-                  <Eye className={`w-4 h-4 ${profile.role === 'superadmin' ? 'text-green-400' : 'text-green-400'}`} />
-                ) : (
-                  <EyeOff className="w-4 h-4 text-slate-400" />
-                )}
-                <span className={`text-sm ${
-                  profile.role === 'superadmin' ? 'text-green-400/80 font-mono' : 'text-slate-300'
-                }`}>
-                  {profile.role === 'superadmin' 
-                    ? `PROFILE.visibility = "${isPublic ? 'PUBLIC' : 'PRIVATE'}"`
-                    : `Perfil ${isPublic ? 'Publico' : 'Privado'}`
-                  }
-                </span>
+              <div className="flex items-center justify-between gap-2">
+                <div className="flex items-center gap-2">
+                  {isPublic ? (
+                    <Eye className={`w-4 h-4 ${profile.role === 'superadmin' ? 'text-green-400' : 'text-green-400'}`} />
+                  ) : (
+                    <EyeOff className="w-4 h-4 text-slate-400" />
+                  )}
+                  <span className={`text-sm ${
+                    profile.role === 'superadmin' ? 'text-green-400/80 font-mono' : 'text-slate-300'
+                  }`}>
+                    {profile.role === 'superadmin' 
+                      ? `PROFILE.visibility = "${isPublic ? 'PUBLIC' : 'PRIVATE'}"`
+                      : `Perfil ${isPublic ? 'Publico' : 'Privado'}`
+                    }
+                  </span>
+                </div>
+                <Switch
+                  checked={isPublic}
+                  onCheckedChange={handlePublicModeChange}
+                  disabled={savingPublic}
+                  className="data-[state=checked]:bg-green-500"
+                />
               </div>
-              <Switch
-                checked={isPublic}
-                onCheckedChange={handlePublicModeChange}
-                disabled={savingPublic}
-                className="data-[state=checked]:bg-green-500"
-              />
+              <div className="flex flex-wrap items-center gap-2">
+                <input
+                  ref={avatarInputRef}
+                  type="file"
+                  accept="image/*"
+                  className="hidden"
+                  onChange={(event) => {
+                    const file = event.target.files?.[0]
+                    if (file) handleImageUpload(file, 'avatar')
+                  }}
+                />
+                <input
+                  ref={coverInputRef}
+                  type="file"
+                  accept="image/*"
+                  className="hidden"
+                  onChange={(event) => {
+                    const file = event.target.files?.[0]
+                    if (file) handleImageUpload(file, 'cover')
+                  }}
+                />
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="outline"
+                  disabled={uploadingAvatar}
+                  className="bg-slate-800/60 border-slate-600 text-slate-200 hover:text-white"
+                  onClick={() => avatarInputRef.current?.click()}
+                >
+                  <Camera className="w-3.5 h-3.5 mr-2" />
+                  {uploadingAvatar ? 'Subiendo foto...' : 'Foto de perfil'}
+                </Button>
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="outline"
+                  disabled={uploadingCover}
+                  className="bg-slate-800/60 border-slate-600 text-slate-200 hover:text-white"
+                  onClick={() => coverInputRef.current?.click()}
+                >
+                  <Camera className="w-3.5 h-3.5 mr-2" />
+                  {uploadingCover ? 'Subiendo portada...' : 'Foto de portada'}
+                </Button>
+              </div>
             </div>
           </div>
         </Card>

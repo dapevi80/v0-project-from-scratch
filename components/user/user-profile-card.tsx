@@ -35,6 +35,7 @@ interface UserProfileCardProps {
   casosActivos?: number
   isProfilePublic?: boolean
   avatarUrl?: string | null
+  sexo?: string | null
 }
 
 // Genera o recupera datos del perfil desde localStorage
@@ -84,7 +85,8 @@ export function UserProfileCard({
   verificationStatus = 'none',
   casosActivos = 0,
   isProfilePublic = true,
-  avatarUrl
+  avatarUrl,
+  sexo
 }: UserProfileCardProps) {
   const [codigo, setCodigo] = useState(codigoUsuario || '--------')
   const [isPublic, setIsPublic] = useState(isProfilePublic)
@@ -156,12 +158,13 @@ export function UserProfileCard({
   const verification = getVerificationDisplay()
   const VerificationIcon = verification.icon
 
+  const isFemale = sexo === 'M' || sexo?.toLowerCase() === 'mujer'
   const displayName = propFullName || `Usuario ${codigo.slice(0, 4)}`
-  const roleLabel = role === 'guest' ? 'Invitado' : 
-                    role === 'worker' ? 'Trabajador' : 
-                    role === 'lawyer' ? 'Abogado' : 
-                    role === 'guestlawyer' ? 'Abogado Invitado' :
-                    role === 'admin' ? 'Admin' : 
+  const roleLabel = role === 'guest' ? (isFemale ? 'Invitada' : 'Invitado') : 
+                    role === 'worker' ? (isFemale ? 'Trabajadora' : 'Trabajador') : 
+                    role === 'lawyer' ? (isFemale ? 'Abogada' : 'Abogado') : 
+                    role === 'guestlawyer' ? (isFemale ? 'Abogada Invitada' : 'Abogado Invitado') :
+                    role === 'admin' ? (isFemale ? 'Administradora' : 'Administrador') : 
                     role === 'superadmin' ? 'SuperAdmin' : role
 
   // Determinar avatar segun modo publico/privado y rol
@@ -174,9 +177,9 @@ export function UserProfileCard({
     if (role === 'superadmin') return '/avatars/superadmin-avatar.jpg'
     // Avatar de abogado profesional para roles de abogado
     if (role === 'lawyer' || role === 'admin' || role === 'guestlawyer') {
-      return '/avatars/lawyer-default.jpg'
+      return isFemale ? '/avatars/lawyer-default-female.svg' : '/avatars/lawyer-default.jpg'
     }
-    return '/avatars/default-user-avatar.jpg'
+    return isFemale ? '/avatars/default-user-female.svg' : '/avatars/default-user-avatar.jpg'
   }
 
   // Colores de borde del avatar segun rol
@@ -211,7 +214,7 @@ export function UserProfileCard({
             <div className="flex-1 min-w-0">
               {/* Nombre visible solo si es publico */}
               <h3 className="text-white font-semibold truncate text-lg">
-                {isPublic ? displayName : 'Usuario Anonimo'}
+                {isPublic ? displayName : (isFemale ? 'Usuaria Anonima' : 'Usuario Anonimo')}
               </h3>
               <div className="flex items-center gap-2 mt-1">
                 <Badge variant="secondary" className={`text-xs ${!isPublic ? 'bg-slate-600 text-slate-400 border-slate-500' : 'bg-slate-700 text-slate-300 border-slate-600'}`}>

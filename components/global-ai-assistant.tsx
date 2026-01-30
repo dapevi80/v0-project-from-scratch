@@ -281,7 +281,7 @@ export function GlobalAIAssistant() {
   }
 
   if (!mounted || position.x === -1) return null
-  if (pathname?.startsWith('/abogado/dashboard')) return null
+  if (pathname?.startsWith('/abogado')) return null
 
   return (
     <>

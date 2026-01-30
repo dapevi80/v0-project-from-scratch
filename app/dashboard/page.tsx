@@ -195,6 +195,8 @@ export default function DashboardPage() {
             verificationStatus={profile?.verification_status || 'none'}
             casosActivos={casosActivos}
             isProfilePublic={profile?.is_profile_public ?? true}
+            avatarUrl={profile?.avatar_url}
+            sexo={profile?.sexo ?? null}
           />
 
           {/* Herramientas Gratuitas */}

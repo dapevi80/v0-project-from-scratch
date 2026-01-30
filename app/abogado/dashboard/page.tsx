@@ -96,6 +96,7 @@ export default function AbogadoDashboardPage() {
   const isVerified = role === 'lawyer' || role === 'admin' || role === 'superadmin'
   const isGuestLawyer = role === 'guestlawyer'
   const displayName = lawyerProfile?.display_name || profile?.full_name || 'Abogado'
+  const defaultLawyerAvatar = profile?.sexo === 'M' ? '/avatars/lawyer-default-female.svg' : '/avatars/lawyer-default.jpg'
 
   // Herramientas con emojis
   const freeTools = [
@@ -150,7 +151,7 @@ export default function AbogadoDashboardPage() {
                   : 'ring-2 ring-gray-300 ring-offset-2'
               }`}>
                 <Image
-                  src={lawyerProfile?.photo_url || '/avatars/lawyer-default.jpg'}
+                  src={lawyerProfile?.photo_url || defaultLawyerAvatar}
                   alt={displayName}
                   fill
                   className="object-cover"

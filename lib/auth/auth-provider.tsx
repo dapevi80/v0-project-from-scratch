@@ -18,6 +18,7 @@ export interface UserProfile {
   upgrade_type: string | null
   avatar_url: string | null
   phone: string | null
+  sexo?: string | null
   // Nuevos campos para sistema de bienvenida y perfil publico
   is_profile_public: boolean
   first_login_at: string | null
@@ -74,7 +75,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     const supabase = createClient()
     const { data } = await supabase
       .from('profiles')
-      .select('id, email, full_name, role, codigo_usuario, verification_status, celebration_shown, downgrade_reason, previous_role, upgrade_at, upgrade_type, avatar_url, phone, is_profile_public, first_login_at, login_count, last_welcome_shown_at')
+      .select('id, email, full_name, role, codigo_usuario, verification_status, celebration_shown, downgrade_reason, previous_role, upgrade_at, upgrade_type, avatar_url, phone, sexo, is_profile_public, first_login_at, login_count, last_welcome_shown_at')
       .eq('id', user.id)
       .single()
 
@@ -93,6 +94,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         upgrade_type: data.upgrade_type,
         avatar_url: data.avatar_url,
         phone: data.phone,
+        sexo: data.sexo,
         is_profile_public: data.is_profile_public ?? true,
         first_login_at: data.first_login_at,
         login_count: data.login_count || 0,
@@ -128,7 +130,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           
           const { data } = await supabase
             .from('profiles')
-            .select('id, email, full_name, role, codigo_usuario, verification_status, celebration_shown, downgrade_reason, previous_role, upgrade_at, upgrade_type, avatar_url, phone, is_profile_public, first_login_at, login_count, last_welcome_shown_at')
+            .select('id, email, full_name, role, codigo_usuario, verification_status, celebration_shown, downgrade_reason, previous_role, upgrade_at, upgrade_type, avatar_url, phone, sexo, is_profile_public, first_login_at, login_count, last_welcome_shown_at')
             .eq('id', currentUser.id)
             .single()
 
@@ -147,6 +149,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
               upgrade_type: data.upgrade_type,
               avatar_url: data.avatar_url,
               phone: data.phone,
+              sexo: data.sexo,
               is_profile_public: data.is_profile_public ?? true,
               first_login_at: data.first_login_at,
               login_count: data.login_count || 0,
