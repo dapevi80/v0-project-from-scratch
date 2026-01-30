@@ -211,6 +211,9 @@ export default function CasoDetallePage() {
   const porcentajeOferta = caso.oferta_empresa && caso.monto_estimado 
     ? Math.round((caso.oferta_empresa / caso.monto_estimado) * 100)
     : null
+  const procesoActual = statusLabels[caso.status] || 'Pendiente'
+  const tipoCasoLabel = caso.lawyer_id ? 'Caso asignado' : 'Caso por asignar'
+  const documentos = Array.isArray(caso.case_documents) ? caso.case_documents : []
 
   return (
     <div className="min-h-screen bg-background">
@@ -281,6 +284,56 @@ export default function CasoDetallePage() {
           {/* Tab: Resumen */}
           <TabsContent value="resumen" className="space-y-4">
             <div className="grid md:grid-cols-2 gap-4">
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2 text-base">
+                    <Briefcase className="h-4 w-4" />
+                    Resumen del caso
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-2 text-sm">
+                  <div className="flex justify-between">
+                    <span className="text-muted-foreground">Folio:</span>
+                    <span className="font-mono">{caso.folio}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-muted-foreground">Tipo:</span>
+                    <span className="font-medium">{tipoCasoLabel}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-muted-foreground">Proceso actual:</span>
+                    <span className="font-medium">{procesoActual}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-muted-foreground">Categoría:</span>
+                    <span className="font-medium">{caso.categoria || '-'}</span>
+                  </div>
+                </CardContent>
+              </Card>
+
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2 text-base">
+                    <Shield className="h-4 w-4" />
+                    Abogado asignado
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-2 text-sm">
+                  <div className="flex justify-between">
+                    <span className="text-muted-foreground">Nombre:</span>
+                    <span className="font-medium">{caso.lawyer?.full_name || 'Sin asignar'}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-muted-foreground">Email:</span>
+                    <span className="font-medium">{caso.lawyer?.email || '-'}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-muted-foreground">Teléfono:</span>
+                    <span className="font-medium">{caso.lawyer?.phone || '-'}</span>
+                  </div>
+                </CardContent>
+              </Card>
+
               {/* Datos de la Empresa */}
               <Card>
                 <CardHeader>
@@ -363,6 +416,39 @@ export default function CasoDetallePage() {
                   <p className="text-xs text-muted-foreground mt-2">
                     Última actualización: {new Date(caso.oferta_empresa_fecha).toLocaleDateString('es-MX')}
                   </p>
+                )}
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2 text-base">
+                  <FileText className="h-4 w-4" />
+                  Documentos del caso
+                </CardTitle>
+                <CardDescription>Documentos subidos por el cliente o el abogado</CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-3">
+                {documentos.length === 0 ? (
+                  <p className="text-sm text-muted-foreground">
+                    Aún no hay documentos subidos para este caso.
+                  </p>
+                ) : (
+                  <div className="space-y-2">
+                    {documentos.map((doc: any) => (
+                      <div key={doc.id} className="flex items-center justify-between gap-3 rounded-lg border p-3 text-sm">
+                        <div className="min-w-0">
+                          <p className="font-medium truncate">
+                            {doc.nombre || doc.nombre_archivo || doc.title || 'Documento'}
+                          </p>
+                          <p className="text-xs text-muted-foreground">
+                            {doc.created_at ? new Date(doc.created_at).toLocaleDateString('es-MX') : 'Sin fecha'}
+                          </p>
+                        </div>
+                        <Badge variant="outline">{doc.tipo || doc.categoria || 'Documento'}</Badge>
+                      </div>
+                    ))}
+                  </div>
                 )}
               </CardContent>
             </Card>
