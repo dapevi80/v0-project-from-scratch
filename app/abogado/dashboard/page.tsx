@@ -94,7 +94,11 @@ export default function AbogadoDashboardPage() {
     return <DashboardSkeleton />
   }
 
-  const isVerified = role === 'lawyer' || role === 'admin' || role === 'superadmin'
+  const isVerified =
+    lawyerProfile?.verification_status === 'verified' ||
+    profile?.verification_status === 'verified' ||
+    role === 'admin' ||
+    role === 'superadmin'
   const isGuestLawyer = role === 'guestlawyer'
   const displayName = lawyerProfile?.display_name || profile?.full_name || 'Abogado'
 
@@ -146,10 +150,10 @@ export default function AbogadoDashboardPage() {
           email={user?.email}
           codigoUsuario={profile?.codigo_usuario}
           referralCode={profile?.referral_code}
-          fullName={profile?.full_name}
+          fullName={lawyerProfile?.display_name || profile?.full_name}
           role={role}
-          isVerified={profile?.verification_status === 'verified' || role === 'lawyer'}
-          verificationStatus={profile?.verification_status || 'none'}
+          isVerified={isVerified}
+          verificationStatus={lawyerProfile?.verification_status || profile?.verification_status || 'none'}
           isProfilePublic={profile?.is_profile_public ?? true}
           avatarUrl={lawyerProfile?.photo_url || profile?.avatar_url}
         />
