@@ -13,6 +13,17 @@ import { Badge } from '@/components/ui/badge'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Separator } from '@/components/ui/separator'
 import { useToast } from '@/hooks/use-toast'
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger
+} from '@/components/ui/alert-dialog'
 import { 
   ArrowLeft, 
   Save, 
@@ -107,6 +118,15 @@ export default function PerfilPage() {
   const [isPublic, setIsPublic] = useState(true)
   const [copied, setCopied] = useState(false)
   const [savingPublic, setSavingPublic] = useState(false)
+  const [whatsappCode, setWhatsappCode] = useState('')
+  const [emailCode, setEmailCode] = useState('')
+  const [whatsappStatus, setWhatsappStatus] = useState<{ verified: boolean; phone?: string | null } | null>(null)
+  const [emailStatus, setEmailStatus] = useState<{ verified: boolean; email?: string | null } | null>(null)
+  const [sendingWhatsapp, setSendingWhatsapp] = useState(false)
+  const [verifyingWhatsapp, setVerifyingWhatsapp] = useState(false)
+  const [sendingEmail, setSendingEmail] = useState(false)
+  const [verifyingEmail, setVerifyingEmail] = useState(false)
+  const [deletingAccount, setDeletingAccount] = useState(false)
   
   // Campos editables
   const [editFullName, setEditFullName] = useState('')
@@ -195,12 +215,177 @@ export default function PerfilPage() {
       setEditCP(profile.codigoPostal || '')
       setEditMunicipio(profile.municipio || '')
       setEditEstado(profile.estado || '')
+      await loadVerificationStatus()
 
     } catch (error) {
       console.error('Error loading profile:', error)
       toast({ title: 'Error', description: 'No se pudo cargar el perfil', variant: 'destructive' })
     } finally {
       setLoading(false)
+    }
+  }
+
+  const loadVerificationStatus = async () => {
+    try {
+      const [whatsappRes, emailRes] = await Promise.all([
+        fetch('/api/whatsapp/status'),
+        fetch('/api/email/verification/status')
+      ])
+      if (whatsappRes.ok) {
+        const data = await whatsappRes.json()
+        setWhatsappStatus({ verified: data.verified, phone: data.phone })
+      }
+      if (emailRes.ok) {
+        const data = await emailRes.json()
+        setEmailStatus({ verified: data.verified, email: data.email })
+      }
+    } catch (error) {
+      console.error('Error loading verification status:', error)
+    }
+  }
+
+  const handleEnviarWhatsapp = async () => {
+    if (!editPhone) {
+      toast({ title: 'Número requerido', description: 'Ingresa tu número para enviar el código.', variant: 'destructive' })
+      return
+    }
+    setSendingWhatsapp(true)
+    try {
+      const response = await fetch('/api/whatsapp/request', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ phone: editPhone })
+      })
+      const data = await response.json()
+      if (!response.ok) {
+        throw new Error(data.error || 'No se pudo enviar el código')
+      }
+      toast({ title: 'Código enviado', description: 'Revisa tu WhatsApp para continuar.' })
+    } catch (error) {
+      toast({
+        title: 'Error',
+        description: error instanceof Error ? error.message : 'No se pudo enviar el código',
+        variant: 'destructive'
+      })
+    } finally {
+      setSendingWhatsapp(false)
+    }
+  }
+
+  const handleVerificarWhatsapp = async () => {
+    if (!whatsappCode) {
+      toast({ title: 'Código requerido', description: 'Ingresa el código recibido.', variant: 'destructive' })
+      return
+    }
+    setVerifyingWhatsapp(true)
+    try {
+      const response = await fetch('/api/whatsapp/verify', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ phone: editPhone, code: whatsappCode })
+      })
+      const data = await response.json()
+      if (!response.ok) {
+        throw new Error(data.error || 'No se pudo verificar')
+      }
+      toast({ title: 'WhatsApp verificado', description: 'Tu número quedó validado.' })
+      setWhatsappCode('')
+      await loadVerificationStatus()
+    } catch (error) {
+      toast({
+        title: 'Error',
+        description: error instanceof Error ? error.message : 'No se pudo verificar',
+        variant: 'destructive'
+      })
+    } finally {
+      setVerifyingWhatsapp(false)
+    }
+  }
+
+  const handleEnviarEmail = async () => {
+    if (!editEmail) {
+      toast({ title: 'Correo requerido', description: 'Ingresa tu correo para enviar el código.', variant: 'destructive' })
+      return
+    }
+    setSendingEmail(true)
+    try {
+      const response = await fetch('/api/email/verification/request', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: editEmail })
+      })
+      const data = await response.json()
+      if (!response.ok) {
+        throw new Error(data.error || 'No se pudo enviar el correo')
+      }
+      toast({ title: 'Correo enviado', description: 'Revisa tu bandeja para el código.' })
+    } catch (error) {
+      toast({
+        title: 'Error',
+        description: error instanceof Error ? error.message : 'No se pudo enviar el correo',
+        variant: 'destructive'
+      })
+    } finally {
+      setSendingEmail(false)
+    }
+  }
+
+  const handleVerificarEmail = async () => {
+    if (!emailCode) {
+      toast({ title: 'Código requerido', description: 'Ingresa el código recibido.', variant: 'destructive' })
+      return
+    }
+    setVerifyingEmail(true)
+    try {
+      const response = await fetch('/api/email/verification/confirm', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ code: emailCode })
+      })
+      const data = await response.json()
+      if (!response.ok) {
+        throw new Error(data.error || 'No se pudo verificar')
+      }
+      toast({
+        title: 'Correo verificado',
+        description: data.requiresSecondFactor ? 'Completa la verificación de WhatsApp para el segundo factor.' : 'Verificación completa.'
+      })
+      setEmailCode('')
+      await loadVerificationStatus()
+    } catch (error) {
+      toast({
+        title: 'Error',
+        description: error instanceof Error ? error.message : 'No se pudo verificar',
+        variant: 'destructive'
+      })
+    } finally {
+      setVerifyingEmail(false)
+    }
+  }
+
+  const handleDeleteAccount = async () => {
+    setDeletingAccount(true)
+    try {
+      const response = await fetch('/api/account/delete', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ confirm: true })
+      })
+      const data = await response.json()
+      if (!response.ok) {
+        throw new Error(data.error || 'No se pudo eliminar la cuenta')
+      }
+      toast({ title: 'Cuenta eliminada', description: 'Tus datos fueron borrados correctamente.' })
+      await createClient().auth.signOut()
+      router.push('/')
+    } catch (error) {
+      toast({
+        title: 'Error',
+        description: error instanceof Error ? error.message : 'No se pudo eliminar la cuenta',
+        variant: 'destructive'
+      })
+    } finally {
+      setDeletingAccount(false)
     }
   }
 
@@ -760,6 +945,105 @@ export default function PerfilPage() {
           </CardContent>
         </Card>
 
+        {/* 5. VERIFICACIONES DE CONTACTO */}
+        <Card>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-base flex items-center gap-2">
+              <Shield className="w-4 h-4" />
+              Verificación de contacto
+            </CardTitle>
+            <CardDescription className="text-xs">
+              Usa tu WhatsApp y correo para asegurar tu cuenta y completar el doble factor.
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="rounded-lg border p-3 space-y-3">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm font-medium">WhatsApp</p>
+                  <p className="text-xs text-muted-foreground">
+                    {whatsappStatus?.verified ? `Verificado: ${whatsappStatus.phone}` : 'Aún no verificado'}
+                  </p>
+                </div>
+                <Badge variant={whatsappStatus?.verified ? 'default' : 'secondary'}>
+                  {whatsappStatus?.verified ? 'Verificado' : 'Pendiente'}
+                </Badge>
+              </div>
+              <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={handleEnviarWhatsapp}
+                  disabled={sendingWhatsapp}
+                >
+                  {sendingWhatsapp ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Phone className="w-4 h-4 mr-2" />}
+                  Enviar código WhatsApp
+                </Button>
+                <div className="flex flex-1 gap-2">
+                  <Input
+                    value={whatsappCode}
+                    onChange={(e) => setWhatsappCode(e.target.value)}
+                    placeholder="Código de 6 dígitos"
+                  />
+                  <Button
+                    size="sm"
+                    onClick={handleVerificarWhatsapp}
+                    disabled={verifyingWhatsapp}
+                  >
+                    {verifyingWhatsapp ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <CheckCircle className="w-4 h-4 mr-2" />}
+                    Verificar
+                  </Button>
+                </div>
+              </div>
+            </div>
+
+            <div className="rounded-lg border p-3 space-y-3">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm font-medium">Correo electrónico</p>
+                  <p className="text-xs text-muted-foreground">
+                    {emailStatus?.verified ? `Verificado: ${emailStatus.email}` : 'Aún no verificado'}
+                  </p>
+                </div>
+                <Badge variant={emailStatus?.verified ? 'default' : 'secondary'}>
+                  {emailStatus?.verified ? 'Verificado' : 'Pendiente'}
+                </Badge>
+              </div>
+              {emailStatus?.verified && !whatsappStatus?.verified && (
+                <p className="text-xs text-amber-600">
+                  Completa WhatsApp como segundo factor para finalizar la verificación.
+                </p>
+              )}
+              <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={handleEnviarEmail}
+                  disabled={sendingEmail}
+                >
+                  {sendingEmail ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Mail className="w-4 h-4 mr-2" />}
+                  Enviar código por correo
+                </Button>
+                <div className="flex flex-1 gap-2">
+                  <Input
+                    value={emailCode}
+                    onChange={(e) => setEmailCode(e.target.value)}
+                    placeholder="Código de 6 dígitos"
+                  />
+                  <Button
+                    size="sm"
+                    onClick={handleVerificarEmail}
+                    disabled={verifyingEmail}
+                  >
+                    {verifyingEmail ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <CheckCircle className="w-4 h-4 mr-2" />}
+                    Verificar
+                  </Button>
+                </div>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
         {/* 5. DOMICILIO (de INE) */}
         {(profile.calle || profile.colonia || profile.codigoPostal) && (
           <Card>
@@ -889,6 +1173,43 @@ export default function PerfilPage() {
             </CardContent>
           </Card>
         )}
+
+        {/* 8. ELIMINAR CUENTA */}
+        <Card className="border-red-200 bg-red-50/40">
+          <CardHeader className="pb-2">
+            <CardTitle className="text-base flex items-center gap-2 text-red-700">
+              <Trash2 className="w-4 h-4" />
+              Eliminar cuenta
+            </CardTitle>
+            <CardDescription className="text-xs text-red-600">
+              Esta acción elimina tu perfil, bóveda y archivos asociados de forma permanente.
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <AlertDialog>
+              <AlertDialogTrigger asChild>
+                <Button variant="destructive" className="w-full" disabled={deletingAccount}>
+                  {deletingAccount ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Trash2 className="w-4 h-4 mr-2" />}
+                  Borrar cuenta definitivamente
+                </Button>
+              </AlertDialogTrigger>
+              <AlertDialogContent>
+                <AlertDialogHeader>
+                  <AlertDialogTitle>¿Eliminar tu cuenta?</AlertDialogTitle>
+                  <AlertDialogDescription>
+                    Perderás el acceso a tus casos, documentos y datos guardados. Esta acción es irreversible.
+                  </AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter>
+                  <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                  <AlertDialogAction onClick={handleDeleteAccount} className="bg-red-600 hover:bg-red-700">
+                    Sí, eliminar
+                  </AlertDialogAction>
+                </AlertDialogFooter>
+              </AlertDialogContent>
+            </AlertDialog>
+          </CardContent>
+        </Card>
 
         {/* Info footer */}
         <p className="text-xs text-center text-muted-foreground px-4">

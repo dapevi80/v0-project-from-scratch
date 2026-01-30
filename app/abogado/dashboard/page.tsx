@@ -124,6 +124,13 @@ export default function AbogadoDashboardPage() {
     ] : [])
   ]
 
+  const proTools = [
+    { name: 'IA Estratégica', icon: '🤖', description: 'Análisis inteligente de casos', available: isVerified },
+    { name: 'Agenda Pro', icon: '📆', description: 'Gestión avanzada de audiencias', available: isVerified },
+    { name: 'Contratos Express', icon: '📄', description: 'Plantillas legales rápidas', available: isVerified },
+    { name: 'Monitor CCL', icon: '📡', description: 'Seguimiento en tiempo real', available: isVerified }
+  ]
+
   return (
     <div className="min-h-screen bg-muted/30">
       {/* Header */}
@@ -288,6 +295,33 @@ export default function AbogadoDashboardPage() {
                   </CardContent>
                 </Card>
               </Link>
+            ))}
+          </div>
+        </div>
+
+        {/* Herramientas Pro */}
+        <div>
+          <div className="flex items-center gap-2 mb-3">
+            <h3 className="text-base font-semibold">Herramientas Pro</h3>
+            {isVerified ? (
+              <Badge className="bg-emerald-600 text-white text-xs">PRO+</Badge>
+            ) : (
+              <Badge variant="secondary" className="text-xs">Requiere verificación</Badge>
+            )}
+          </div>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            {proTools.map((tool) => (
+              <Card key={tool.name} className={`transition-all h-full ${
+                tool.available ? 'hover:shadow-md border-emerald-200 bg-gradient-to-br from-emerald-50 to-green-50' : 'opacity-50 bg-muted/30 border-dashed'
+              }`}>
+                <CardContent className="p-4 sm:p-5 flex flex-col items-center text-center gap-2">
+                  <span className={`text-3xl sm:text-4xl ${!tool.available ? 'grayscale' : ''}`}>{tool.icon}</span>
+                  <p className={`font-semibold text-sm sm:text-base ${tool.available ? 'text-foreground' : 'text-muted-foreground'}`}>
+                    {tool.name}
+                  </p>
+                  <p className="text-xs text-muted-foreground">{tool.description}</p>
+                </CardContent>
+              </Card>
             ))}
           </div>
         </div>

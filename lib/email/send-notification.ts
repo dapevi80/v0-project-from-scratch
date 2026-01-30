@@ -10,8 +10,8 @@ import {
 } from './templates'
 
 // Configuración del servicio de email
-const EMAIL_FROM = process.env.EMAIL_FROM || 'notificaciones@tudominio.com'
-const EMAIL_FROM_NAME = process.env.EMAIL_FROM_NAME || 'Sistema CCL'
+const EMAIL_FROM = process.env.EMAIL_FROM || 'notificaciones@mecorrieron.mx'
+const EMAIL_FROM_NAME = process.env.EMAIL_FROM_NAME || 'mecorrieron.mx'
 const EMAIL_SERVICE = process.env.EMAIL_SERVICE || 'console' // 'smtp', 'resend', 'sendgrid', 'console'
 
 // Configuración SMTP para Hostinger
@@ -149,6 +149,15 @@ async function enviarEmail(
   // Si no hay servicio configurado
   console.warn('No email service configured. Email not sent.')
   return { success: false, error: 'Servicio de email no configurado' }
+}
+
+export async function enviarEmailTransaccional(
+  to: string,
+  subject: string,
+  html: string,
+  text: string
+): Promise<EmailResult> {
+  return enviarEmail(to, subject, html, text)
 }
 
 // Enviar notificación al abogado cuando la solicitud CCL se envía exitosamente
