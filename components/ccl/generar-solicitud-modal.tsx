@@ -10,19 +10,32 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Card, CardContent } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
-import { 
-  FileText, Calendar, MapPin, Building2, User, Phone, Mail, 
-  AlertTriangle, CheckCircle2, Loader2, Clock, Scale, Sparkles,
-  ArrowRight, ArrowLeft, DollarSign, Video, Users, Bot, Zap
+import {
+  Calendar,
+  MapPin,
+  Building2,
+  User,
+  Phone,
+  Mail,
+  AlertTriangle,
+  CheckCircle2,
+  Loader2,
+  Clock,
+  Scale,
+  Sparkles,
+  ArrowRight,
+  ArrowLeft,
+  DollarSign,
+  Video,
+  Users,
+  Bot,
+  Zap,
 } from 'lucide-react'
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group'
 import { AgentProgressModal } from './agent-progress-modal'
 import { 
-  generarSolicitudCCL, 
-  calcularPrescripcion, 
+  calcularPrescripcion,
   obtenerPortalCCL,
-  getEstadosMexico,
-  type DatosCasoSolicitud,
   type TipoTerminacion,
   type TipoPersonaCitado,
   type ModalidadConciliacionTipo,
@@ -102,8 +115,6 @@ export function GenerarSolicitudModal({ isOpen, onClose, caso, onSuccess }: Gene
   // Estado del agente de IA
   const [agentJobId, setAgentJobId] = useState<string | null>(null)
   const [showAgentProgress, setShowAgentProgress] = useState(false)
-  const [useAgent, setUseAgent] = useState(true) // Por defecto usar el agente de IA
-  
   // Datos del formulario
   const [tipoTerminacion, setTipoTerminacion] = useState<TipoTerminacion>('despido')
   const [estadoEmpleador, setEstadoEmpleador] = useState('')
@@ -161,69 +172,41 @@ export function GenerarSolicitudModal({ isOpen, onClose, caso, onSuccess }: Gene
     
     setLoading(true)
     
-    // Si usa el agente de IA, iniciar el proceso automatizado
-    if (useAgent) {
-      try {
-        const response = await fetch('/api/ccl/agent/run', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            casoId: caso.id,
-            modalidad: modalidadConciliacion,
-            tipoPersonaCitado: tipoPersonaCitado,
-            estadoEmpleador: estadoEmpleador,
-            tipoTerminacion: tipoTerminacion,
-            fechaTerminacion: fechaTerminacion
-          })
-        })
-        
-        const data = await response.json()
-        
-        if (data.jobId) {
-          setAgentJobId(data.jobId)
-          setShowAgentProgress(true)
-          setLoading(false)
-          return
-        } else {
-          throw new Error(data.error || 'Error al iniciar el agente')
-        }
-      } catch (error) {
-        console.error('Error iniciando agente:', error)
-        // Fallback al metodo manual si falla el agente
+    try {
+      const response = await fetch('/api/ccl/agent/run', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          casoId: caso.id,
+          modalidad: modalidadConciliacion,
+          tipoPersonaCitado: tipoPersonaCitado,
+          estadoEmpleador: estadoEmpleador,
+          tipoTerminacion: tipoTerminacion,
+          fechaTerminacion: fechaTerminacion,
+        }),
+      })
+
+      const data = await response.json()
+
+      if (data.jobId) {
+        setAgentJobId(data.jobId)
+        setShowAgentProgress(true)
+        setLoading(false)
+        return
       }
+
+      throw new Error(data.error || 'Error al iniciar el agente')
+    } catch (error) {
+      console.error('Error iniciando agente:', error)
+      setResultado({
+        success: false,
+        error:
+          error instanceof Error
+            ? error.message
+            : 'Error al iniciar el agente de IA',
+      })
+      setLoading(false)
     }
-    
-    // Metodo manual (fallback)
-    const datos: DatosCasoSolicitud = {
-      casoId: caso.id,
-      trabajadorNombre: caso.worker?.full_name || 'Sin nombre',
-      trabajadorCurp: caso.worker?.curp,
-      trabajadorDomicilio: caso.worker?.calle ? `${caso.worker.calle}, ${caso.worker.ciudad}, ${caso.worker.estado}` : undefined,
-      trabajadorTelefono: caso.worker?.phone,
-      trabajadorEmail: caso.worker?.email,
-      empleadorNombre: caso.employer_name,
-      empleadorDomicilio: caso.employer_address,
-      empleadorEstado: estadoEmpleador,
-      fechaIngreso: caso.start_date || '',
-      fechaTerminacion: fechaTerminacion,
-      tipoTerminacion: tipoTerminacion,
-      salarioDiario: caso.salary_daily || 0,
-      puestoTrabajo: caso.job_title,
-      descripcionHechos: descripcionHechos,
-      montoEstimado: montoEstimado ? parseFloat(montoEstimado) : undefined,
-      citadoTipoPersona: tipoPersonaCitado,
-      modalidadConciliacion: modalidadConciliacion
-    }
-    
-    const result = await generarSolicitudCCL(datos)
-    setResultado(result)
-    
-    if (result.success) {
-      setStep(3)
-      onSuccess?.(result)
-    }
-    
-    setLoading(false)
   }
   
   const handleAgentComplete = (job: { resultado?: { folioSolicitud?: string; pdfUrl?: string } }) => {
@@ -516,54 +499,34 @@ export function GenerarSolicitudModal({ isOpen, onClose, caso, onSuccess }: Gene
             </div>
 
 {/* Modo de generacion: Agente IA o Manual */}
-            <Card className={useAgent ? 'border-primary bg-primary/5' : 'border-amber-300 bg-amber-50'}>
+            <Card className="border-primary bg-primary/5">
               <CardContent className="pt-4">
                 <div className="flex items-start justify-between gap-4">
                   <div className="flex items-start gap-3">
-                    {useAgent ? (
-                      <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center">
-                        <Bot className="h-5 w-5 text-primary" />
-                      </div>
-                    ) : (
-                      <div className="w-10 h-10 rounded-full bg-amber-100 flex items-center justify-center">
-                        <FileText className="h-5 w-5 text-amber-600" />
-                      </div>
-                    )}
+                    <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center">
+                      <Bot className="h-5 w-5 text-primary" />
+                    </div>
                     <div>
                       <h4 className="font-semibold flex items-center gap-2">
-                        {useAgent ? (
-                          <>
-                            <Zap className="h-4 w-4 text-primary" />
-                            Agente de IA Activado
-                          </>
-                        ) : (
-                          'Modo Manual'
-                        )}
+                        <>
+                          <Zap className="h-4 w-4 text-primary" />
+                          Agente de IA Activado
+                        </>
                       </h4>
                       <p className="text-sm text-muted-foreground mt-1">
-                        {useAgent 
-                          ? 'El agente navegara automaticamente el portal SINACOL, llenara los formularios, resolvera CAPTCHAs y obtendra el PDF de tu solicitud.' 
-                          : 'Se generaran instrucciones para completar la solicitud manualmente en el portal CCL.'}
+                        El agente navegara automaticamente el portal SINACOL, llenara los formularios, resolvera
+                        CAPTCHAs y obtendra el PDF de tu solicitud.
                       </p>
                     </div>
                   </div>
-                  <Button
-                    variant={useAgent ? 'outline' : 'default'}
-                    size="sm"
-                    onClick={() => setUseAgent(!useAgent)}
-                    className="shrink-0"
-                  >
-                    {useAgent ? 'Usar modo manual' : 'Usar Agente IA'}
-                  </Button>
                 </div>
-                {useAgent && (
-                  <Alert className="mt-3 border-blue-200 bg-blue-50">
-                    <Bot className="h-4 w-4 text-blue-600" />
-                    <AlertDescription className="text-blue-700 text-xs">
-                      El agente se ejecutara en segundo plano. Recibiras una notificacion cuando termine con el PDF del acuse listo.
-                    </AlertDescription>
-                  </Alert>
-                )}
+                <Alert className="mt-3 border-blue-200 bg-blue-50">
+                  <Bot className="h-4 w-4 text-blue-600" />
+                  <AlertDescription className="text-blue-700 text-xs">
+                    El agente se ejecutara en segundo plano. Recibiras una notificacion cuando termine con el PDF del
+                    acuse listo.
+                  </AlertDescription>
+                </Alert>
               </CardContent>
             </Card>
 

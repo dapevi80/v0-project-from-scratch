@@ -488,7 +488,7 @@ export default function AsignarCasoPage({ params }: { params: Promise<{ id: stri
             ) : isLawyer ? (
               <div className="p-4 bg-primary/5 border border-primary/20 rounded-lg">
                 <p className="text-sm">
-                  <span className="font-medium">Este caso sera asignado a tu cuenta.</span>
+                  <span className="font-medium">Este caso será asignado a tu cuenta.</span>
                   <br />
                   <span className="text-muted-foreground">
                     Como abogado, solo puedes tomar casos para ti mismo.

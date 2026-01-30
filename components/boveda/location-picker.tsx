@@ -489,14 +489,14 @@ export function LocationPicker({ onSave, onClose, casoId }: LocationPickerProps)
                 <p className="text-xs font-mono">{selectedLocation.lng.toFixed(6)}</p>
               </div>
               <div className="flex-1 p-2 bg-muted rounded-lg text-center">
-                <p className="text-[10px] text-muted-foreground">Direccion camara</p>
+                <p className="text-[10px] text-muted-foreground">Dirección cámara</p>
                 <p className="text-xs font-mono">{streetViewParams.heading}°</p>
               </div>
             </div>
             
-            {/* Que se guardara */}
+            {/* ¿Qué se guardará? */}
             <div className="p-3 bg-blue-50 border border-blue-100 rounded-lg">
-              <p className="text-xs font-medium text-blue-700 mb-2">Se guardara:</p>
+              <p className="text-xs font-medium text-blue-700 mb-2">Se guardará:</p>
               <ul className="text-xs text-blue-600 space-y-1">
                 <li className="flex items-center gap-2">
                   <CheckCircle className="w-3 h-3" /> Coordenadas exactas del lugar
@@ -505,13 +505,13 @@ export function LocationPicker({ onSave, onClose, casoId }: LocationPickerProps)
                   <CheckCircle className="w-3 h-3" /> Imagen de la fachada (esta vista)
                 </li>
                 <li className="flex items-center gap-2">
-                  <CheckCircle className="w-3 h-3" /> PDF guia para notificador
+                  <CheckCircle className="w-3 h-3" /> PDF guía para notificador
                 </li>
               </ul>
             </div>
           </div>
           
-          {/* Boton guardar */}
+          {/* Botón guardar */}
           <div className="p-4 border-t bg-background shrink-0">
             <Button 
               onClick={handleSave}

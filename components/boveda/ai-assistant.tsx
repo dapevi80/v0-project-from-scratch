@@ -88,209 +88,209 @@ interface AIAssistantProps {
 
 // Preguntas prediseñadas
 const QUICK_QUESTIONS = [
-  { icon: Calculator, text: "Calcular liquidacion", color: "bg-blue-50 text-blue-600 border-blue-200" },
-  { icon: FileText, text: "Iniciar conciliacion", color: "bg-emerald-50 text-emerald-600 border-emerald-200" },
+  { icon: Calculator, text: "Calcular liquidación", color: "bg-blue-50 text-blue-600 border-blue-200" },
+  { icon: FileText, text: "Iniciar conciliación", color: "bg-emerald-50 text-emerald-600 border-emerald-200" },
   { icon: Scale, text: "Despido sin causa", color: "bg-amber-50 text-amber-600 border-amber-200" },
   { icon: HelpCircle, text: "Ayuda con la app", color: "bg-slate-50 text-slate-600 border-slate-200" },
 ]
 
-// FAQ por asistente - Con urgencia de 60 dias y pregunta persuasiva
+// FAQ por asistente - Con urgencia de 60 días y pregunta persuasiva
 const FAQ_RESPONSES: Record<string, Record<string, string>> = {
   lia: {
-    "Calcular liquidacion": `**Para calcular tu liquidacion:**
+    "Calcular liquidación": `**Para calcular tu liquidación:**
 
 Solo necesitas tu **salario** y **fechas de trabajo**.
 
-La app calcula: 3 meses + 20 dias/año + aguinaldo + vacaciones.
+La app calcula: 3 meses + 20 días/año + aguinaldo + vacaciones.
 
-**Importante:** Los primeros **60 dias** son clave para negociar.
+**Importante:** Los primeros **60 días** son clave para negociar.
 
-Ya tienes todo para empezar. **Quieres calcular tu liquidacion ahora mismo?**`,
-    "Iniciar conciliacion": `**Para iniciar conciliacion:**
+Ya tienes todo para empezar. **¿Quieres calcular tu liquidación ahora mismo?**`,
+    "Iniciar conciliación": `**Para iniciar conciliación:**
 
-1. Junta documentos (INE, nomina)
-2. Pide cita en el Centro de Conciliacion
-3. Asiste y expon tu caso
+1. Junta documentos (INE, nómina)
+2. Pide cita en el Centro de Conciliación
+3. Asiste y expón tu caso
 
-**Ojo:** Tienes solo **60 dias** para tener mas fuerza legal.
+**Ojo:** Tienes solo **60 días** para tener más fuerza legal.
 
-**Te ayudo a organizar tus documentos en la app?**`,
+**¿Te ayudo a organizar tus documentos en la app?**`,
     "Despido sin causa": `**Si te despiden sin causa, te deben:**
 
 - 3 meses de salario
-- 20 dias por año trabajado
-- Prima de antiguedad
+- 20 días por año trabajado
+- Prima de antigüedad
 
-**Tip:** En los primeros **60 dias** tienes mejor posicion.
+**Tip:** En los primeros **60 días** tienes mejor posición.
 
-**Quieres ver cuanto te corresponde exactamente?**`,
+**¿Quieres ver cuánto te corresponde exactamente?**`,
     "Plazo para demandar": `**Plazos importantes:**
 
-- **60 dias:** Mejor momento para negociar
-- **1 año:** Limite legal para demandar
+- **60 días:** Mejor momento para negociar
+- **1 año:** Límite legal para demandar
 
-Entre mas rapido actues, mejor resultado.
+Entre más rápido actúes, mejor resultado.
 
-**Empezamos con tu calculo ahora?**`,
-    "Ayuda con la app": `**Te explico como usar la app:**
+**¿Empezamos con tu cálculo ahora?**`,
+    "Ayuda con la app": `**Te explico cómo usar la app:**
 
-**Mi Boveda** - Guarda tus documentos de forma segura (recibos, contratos, INE)
+**Mi Bóveda** - Guarda tus documentos de forma segura (recibos, contratos, INE)
 
-**Calculadora** - Calcula tu liquidacion en segundos
+**Calculadora** - Calcula tu liquidación en segundos
 
-**Mis Casos** - Administra tu proceso de conciliacion
+**Mis Casos** - Administra tu proceso de conciliación
 
-**Buro de Empresas** - Comenta sobre tu empresa en modo anonimo
+**Buró de Empresas** - Comenta sobre tu empresa en modo anónimo
 
-**Que seccion te gustaria explorar primero?**`
+**¿Qué sección te gustaría explorar primero?**`
   },
   mandu: {
-    "Calcular liquidacion": `*bosteza* Salario y fechas... la app hace todo.
+    "Calcular liquidación": `*bosteza* Salario y fechas... la app hace todo.
 
-*abre un ojo* **60 dias** para que te tomen en serio.
+*abre un ojo* **60 días** para que te tomen en serio.
 
-**Entramos a la app? Prometo no dormirme...**`,
-    "Iniciar conciliacion": `*abre un ojo* Papeles, cita, audiencia.
+**¿Entramos a la app? Prometo no dormirme...**`,
+    "Iniciar conciliación": `*abre un ojo* Papeles, cita, audiencia.
 
-*se lame la pata* **60 dias** para actuar con fuerza.
+*se lame la pata* **60 días** para actuar con fuerza.
 
-**Guardamos tus documentos? Yo vigilo mientras duermo...**`,
-    "Despido sin causa": `*levanta las orejas* 3 meses + 20 dias/año + prima.
+**¿Guardamos tus documentos? Yo vigilo mientras duermo...**`,
+    "Despido sin causa": `*levanta las orejas* 3 meses + 20 días/año + prima.
 
-*ronronea* **60 dias** o la empresa se pone dificil.
+*ronronea* **60 días** o la empresa se pone difícil.
 
-**Calculamos tu lana? No me cuesta nada... solo siestas.**`,
-    "Plazo para demandar": `*bosteza* 60 dias para negociar. Un año limite.
+**¿Calculamos tu lana? No me cuesta nada... solo siestas.**`,
+    "Plazo para demandar": `*bosteza* 60 días para negociar. Un año límite.
 
-**Hacemos numeros? Sera rapido, como mi siesta #47...**`,
+**¿Hacemos números? Será rápido, como mi siesta #47...**`,
     "Ayuda con la app": `*abre un ojo perezosamente*
 
-**Boveda** - Tus papeles seguros... como mi cama...
-**Calculadora** - Numeros... rapido... zzz
+**Bóveda** - Tus papeles seguros... como mi cama...
+**Calculadora** - Números... rápido... zzz
 **Mis Casos** - Tu proceso... yo vigilo mientras duermo
-**Buro** - Habla de tu empresa... anonimamente...
+**Buró** - Habla de tu empresa... anónimamente...
 
-*se estira* **Cual exploramos? Prometo no dormirme... mucho...**`
+*se estira* **¿Cuál exploramos? Prometo no dormirme... mucho...**`
   },
   bora: {
-    "Calcular liquidacion": `*suspira* Ay mijo... Salario y fechas. Ya.
+    "Calcular liquidación": `*suspira* Ay mijo... Salario y fechas. Ya.
 
-*te mira seria* **60 dias** o se hacen los sordos.
+*te mira seria* **60 días** o se hacen los sordos.
 
-**Vas a calcular o seguimos platicando? No tengo todo el dia... bueno, si tengo.**`,
-    "Iniciar conciliacion": `*ojos entrecerrados* Papeles. Cita. Audiencia.
+**¿Vas a calcular o seguimos platicando? No tengo todo el día... bueno, sí tengo.**`,
+    "Iniciar conciliación": `*ojos entrecerrados* Papeles. Cita. Audiencia.
 
-*gruñe* **60 dias**. Tu tiempo de oro.
+*gruñe* **60 días**. Tu tiempo de oro.
 
-**Organizamos tus papeles o prefieres perder tu caso? Tu decides.**`,
-    "Despido sin causa": `*ronquido interrumpido* 3 meses, 20 dias/año, prima.
+**¿Organizamos tus papeles o prefieres perder tu caso? Tú decides.**`,
+    "Despido sin causa": `*ronquido interrumpido* 3 meses, 20 días/año, prima.
 
-*te ve fijamente* **60 dias** o pierdes ventaja.
+*te ve fijamente* **60 días** o pierdes ventaja.
 
-**Calculamos de una vez? Esta gata vieja no tiene paciencia.**`,
-    "Plazo para demandar": `*te observa* 60 dias para negociar. Un año limite.
+**¿Calculamos de una vez? Esta gata vieja no tiene paciencia.**`,
+    "Plazo para demandar": `*te observa* 60 días para negociar. Un año límite.
 
-**Vas a actuar o seguiras preguntando? Porque yo tengo sueño.**`,
+**¿Vas a actuar o seguirás preguntando? Porque yo tengo sueño.**`,
     "Ayuda con la app": `*te mira por encima de sus lentes*
 
-Ay mijo, es facil:
+Ay mijo, es fácil:
 
-**Boveda** - Guarda tus papeles. No los pierdas.
+**Bóveda** - Guarda tus papeles. No los pierdas.
 **Calculadora** - Saca cuentas. Sin excusas.
 **Mis Casos** - Tu proceso legal. Organizado.
-**Buro** - Denuncia a tu empresa. Anonimo.
+**Buró** - Denuncia a tu empresa. Anónimo.
 
-*suspira* **Por donde empezamos? No tengo toda la vida... bueno, si tengo.**`
+*suspira* **¿Por dónde empezamos? No tengo toda la vida... bueno, sí tengo.**`
   },
   licperez: {
-    "Calcular liquidacion": `*se acomoda lentamente* Mmm... liquidacion...
+    "Calcular liquidación": `*se acomoda lentamente* Mmm... liquidación...
 
 Salario, fechas... la app lo hace... eventualmente...
 
-*parpadea despacio* **60 dias**... es importante... aunque todo es relativo...
+*parpadea despacio* **60 días**... es importante... aunque todo es relativo...
 
-**Vamos a la app? Yo te guio... a mi ritmo...**`,
-    "Iniciar conciliacion": `*se rasca la cabeza lentamente*
+**¿Vamos a la app? Yo te guío... a mi ritmo...**`,
+    "Iniciar conciliación": `*se rasca la cabeza lentamente*
 
 Documentos... cita... audiencia... paso a paso...
 
-*bosteza suavemente* **60 dias**... el tiempo vuela... o camina despacio como yo...
+*bosteza suavemente* **60 días**... el tiempo vuela... o camina despacio como yo...
 
-**Te ayudo a guardar tus papeles? Sin prisa... pero sin pausa...**`,
+**¿Te ayudo a guardar tus papeles? Sin prisa... pero sin pausa...**`,
     "Despido sin causa": `*ajusta sus lentes despacio*
 
-3 meses... 20 dias por año... prima... matematicas simples...
+3 meses... 20 días por año... prima... matemáticas simples...
 
-*parpadea* **60 dias** para negociar bien...
+*parpadea* **60 días** para negociar bien...
 
-**Calculamos juntos? Lento pero seguro gana la carrera...**`,
+**¿Calculamos juntos? Lento pero seguro gana la carrera...**`,
     "Plazo para demandar": `*reflexiona pausadamente*
 
-60 dias... optimo... un año... limite...
+60 días... óptimo... un año... límite...
 
 *se estira muy lento* El tiempo pasa... incluso para un perezoso...
 
-**Empezamos? Prometo ser... eficiente... a mi manera...**`,
+**¿Empezamos? Prometo ser... eficiente... a mi manera...**`,
     "Ayuda con la app": `*parpadea lentamente*
 
 Veamos... despacio... pero seguro...
 
-**Boveda**... tus documentos... seguros... como yo en mi rama...
-**Calculadora**... matematicas... sin prisa...
+**Bóveda**... tus documentos... seguros... como yo en mi rama...
+**Calculadora**... matemáticas... sin prisa...
 **Mis Casos**... tu proceso... paso... a... paso...
-**Buro**... opiniones... anonimas... tranquilo...
+**Buró**... opiniones... anónimas... tranquilo...
 
-*se acomoda* **Cual te interesa...? Tenemos... todo el tiempo... del mundo...**`
+*se acomoda* **¿Cuál te interesa...? Tenemos... todo el tiempo... del mundo...**`
   }
 }
 
 // Respuesta generica cuando no se conoce la respuesta (despues de 2 intentos)
 const FALLBACK_RESPONSES: Record<string, string> = {
-  lia: `Mmm, esa pregunta es muy especifica. Para darte la mejor respuesta, necesito que uses la app donde tengo acceso a toda la informacion legal.
+  lia: `Mmm, esa pregunta es muy específica. Para darte la mejor respuesta, necesito que uses la app donde tengo acceso a toda la información legal.
 
-**Creamos tu cuenta en 30 segundos?** Asi puedo ayudarte mejor.`,
-  mandu: `*se rasca la oreja* Eso esta muy complicado para contestar aqui...
+**¿Creamos tu cuenta en 30 segundos?** Así puedo ayudarte mejor.`,
+  mandu: `*se rasca la oreja* Eso está muy complicado para contestar aquí...
 
-*bosteza* En la app tengo mas herramientas... y una cama mas comoda.
+*bosteza* En la app tengo más herramientas... y una cama más cómoda.
 
-**Entramos? Te prometo despertar para ayudarte...**`,
-  bora: `*suspira* Mira mijo, eso no te lo puedo contestar bien aqui afuera.
+**¿Entramos? Te prometo despertar para ayudarte...**`,
+  bora: `*suspira* Mira mijo, eso no te lo puedo contestar bien aquí afuera.
 
 *mueve la cola* En la app tengo todo lo que necesitas. Soy vieja pero no tonta.
 
-**Vas a entrar o seguimos perdiendo el tiempo?**`,
-  licperez: `*parpadea lentamente* Mmm... esa pregunta... requiere mas... contexto...
+**¿Vas a entrar o seguimos perdiendo el tiempo?**`,
+  licperez: `*parpadea lentamente* Mmm... esa pregunta... requiere más... contexto...
 
 *se acomoda* En la app tengo... todas las herramientas... eventualmente...
 
-**Vamos juntos? Despacio... pero llegaremos...**`
+**¿Vamos juntos? Despacio... pero llegaremos...**`
 }
 
 // Preguntas persuasivas para mantener la conversacion
 const FOLLOWUP_QUESTIONS: Record<string, string[]> = {
   lia: [
-    "Te gustaria calcular tu liquidacion ahora?",
-    "Quieres que te explique algo mas?",
-    "Necesitas ayuda con tus documentos?",
-    "Empezamos con tu caso?"
+    "¿Te gustaría calcular tu liquidación ahora?",
+    "¿Quieres que te explique algo más?",
+    "¿Necesitas ayuda con tus documentos?",
+    "¿Empezamos con tu caso?"
   ],
   mandu: [
-    "Calculamos? *se estira*",
-    "Algo mas? *bosteza*",
-    "Entramos a la app? *abre un ojo*",
-    "Te ayudo con algo? *ronronea*"
+    "¿Calculamos? *se estira*",
+    "¿Algo más? *bosteza*",
+    "¿Entramos a la app? *abre un ojo*",
+    "¿Te ayudo con algo? *ronronea*"
   ],
   bora: [
-    "Vas a actuar o no?",
-    "Algo mas? *suspira*",
-    "Entramos de una vez?",
-    "Mas preguntas? *te mira fijamente*"
+    "¿Vas a actuar o no?",
+    "¿Algo más? *suspira*",
+    "¿Entramos de una vez?",
+    "¿Más preguntas? *te mira fijamente*"
   ],
   licperez: [
-    "Continuamos... despacio?",
-    "Algo mas... sin prisa?",
-    "Vamos a la app... eventualmente?",
-    "Te ayudo... con calma?"
+    "¿Continuamos... despacio?",
+    "¿Algo más... sin prisa?",
+    "¿Vamos a la app... eventualmente?",
+    "¿Te ayudo... con calma?"
   ]
 }
 
@@ -302,9 +302,9 @@ const ASSISTANTS = {
     avatar: "/lia-avatar.jpg",
     color: "bg-emerald-500",
     api: "/api/legal-assistant",
-    welcomeMessage: `Hola! Soy **Lia**, tu asistente legal. Los primeros **60 dias** son clave. En que te ayudo?`,
+    welcomeMessage: `¡Hola! Soy **Lia**, tu asistente legal. Los primeros **60 días** son clave. ¿En qué te ayudo?`,
     loadingText: "Escribiendo...",
-    ctaMessage: `**El tiempo corre!** Crea tu cuenta y calcula tu liquidacion ahora.`
+    ctaMessage: `**¡El tiempo corre!** Crea tu cuenta y calcula tu liquidación ahora.`
   },
   mandu: {
     name: "Mandu",
@@ -312,9 +312,9 @@ const ASSISTANTS = {
     avatar: "/mandu-avatar.jpg",
     color: "bg-slate-500",
     api: "/api/mandu-assistant",
-    welcomeMessage: `*bosteza* Soy **Mandu**... Tienes **60 dias** para actuar. Que necesitas? *se estira*`,
+    welcomeMessage: `*bosteza* Soy **Mandu**... Tienes **60 días** para actuar. ¿Qué necesitas? *se estira*`,
     loadingText: "Pensando... zzz",
-    ctaMessage: `*se estira* Ya sabes lo basico. Entra a la app antes de que me duerma.`
+    ctaMessage: `*se estira* Ya sabes lo básico. Entra a la app antes de que me duerma.`
   },
   bora: {
     name: "Bora",
@@ -322,17 +322,17 @@ const ASSISTANTS = {
     avatar: "/bora-avatar.jpg",
     color: "bg-orange-500",
     api: "/api/bora-assistant",
-    welcomeMessage: `*te mira* Soy **Bora**. Vieja y sabia. **60 dias** tienes. Que quieres saber?`,
+    welcomeMessage: `*te mira* Soy **Bora**. Vieja y sabia. **60 días** tienes. ¿Qué quieres saber?`,
     loadingText: "Pensando... *suspira*",
-    ctaMessage: `*suspira* Ya te di la info. Actua. Los 60 dias pasan rapido.`
+    ctaMessage: `*suspira* Ya te di la info. Actúa. Los 60 días pasan rápido.`
   },
   licperez: {
-    name: "Lic. Perez",
+    name: "Lic. Pérez",
     emoji: "🦥",
     avatar: "/licperez-avatar.jpg",
     color: "bg-amber-600",
     api: "/api/licperez-assistant",
-    welcomeMessage: `*parpadea lentamente* Hola... soy el **Lic. Perez**... perezoso de profesion... pero muy eficiente... **60 dias** tienes... en que te ayudo... sin prisa?`,
+    welcomeMessage: `*parpadea lentamente* Hola... soy el **Lic. Pérez**... perezoso de profesión... pero muy eficiente... **60 días** tienes... ¿en qué te ayudo... sin prisa?`,
     loadingText: "Pensando... despacio...",
     ctaMessage: `*se acomoda* Bueno... ya tienes info... ahora... entremos a la app... con calma...`
   }
@@ -345,8 +345,8 @@ function findFAQResponse(question: string, assistant: AssistantType): string | n
   const q = question.toLowerCase()
   const responses = FAQ_RESPONSES[assistant]
   
-  if (q.includes("calcul") || q.includes("liquidaci")) return responses["Calcular liquidacion"]
-  if (q.includes("concilia") || q.includes("reclamo")) return responses["Iniciar conciliacion"]
+  if (q.includes("calcul") || q.includes("liquidaci")) return responses["Calcular liquidación"]
+  if (q.includes("concilia") || q.includes("reclamo")) return responses["Iniciar conciliación"]
   if (q.includes("despid") && q.includes("causa")) return responses["Despido sin causa"]
   if (q.includes("tiempo") || q.includes("plazo") || q.includes("demandar")) return responses["Plazo para demandar"]
   if (q.includes("ayuda") || q.includes("como funciona") || q.includes("usar") || q.includes("app") || q.includes("tutorial")) return responses["Ayuda con la app"]
@@ -499,7 +499,7 @@ export function AIAssistant({
           messages: [{
             role: "user",
             content: `Analiza este documento laboral y dame un resumen con:
-1. Que tipo de documento es
+1. Qué tipo de documento es
 2. Puntos clave para el TRABAJADOR (que significa para el)
 3. Puntos clave para el ABOGADO (que debe revisar)
 4. Si hay algo urgente o problematico
@@ -655,24 +655,24 @@ ${docText.slice(0, 4000)}`
     // Personalizar segun el asistente
     if (currentAssistant === 'lia') {
       if (role === 'lawyer' || role === 'guestlawyer') {
-        return `Hola **${name}**! Soy Lia, tu asistente legal. Veo que eres abogado. Estoy aqui para ayudarte con analisis de documentos y casos. En que te ayudo?`
+        return `¡Hola **${name}**! Soy Lia, tu asistente legal. Veo que eres abogado. Estoy aquí para ayudarte con análisis de documentos y casos. ¿En qué te ayudo?`
       }
       if (isVerified) {
-        return `Hola **${name}**! Que gusto verte de nuevo. Soy Lia, tu asistente legal. Los primeros **60 dias** son clave. En que te ayudo hoy?`
+        return `¡Hola **${name}**! Qué gusto verte de nuevo. Soy Lia, tu asistente legal. Los primeros **60 días** son clave. ¿En qué te ayudo hoy?`
       }
-      return `Hola **${name}**! Soy **Lia**, tu asistente legal. Los primeros **60 dias** son clave. En que te ayudo?`
+      return `¡Hola **${name}**! Soy **Lia**, tu asistente legal. Los primeros **60 días** son clave. ¿En qué te ayudo?`
     }
     
     if (currentAssistant === 'mandu') {
-      return `*bosteza* Hola **${name}**... ya te vi entrar. Tienes **60 dias** para actuar. Que necesitas? *se estira*`
+      return `*bosteza* Hola **${name}**... ya te vi entrar. Tienes **60 días** para actuar. ¿Qué necesitas? *se estira*`
     }
     
     if (currentAssistant === 'bora') {
-      return `*te mira* Ah, eres tu **${name}**. Vieja y sabia soy. **60 dias** tienes. Que quieres saber?`
+      return `*te mira* Ah, eres tú **${name}**. Vieja y sabia soy. **60 días** tienes. ¿Qué quieres saber?`
     }
     
     if (currentAssistant === 'licperez') {
-      return `*parpadea lentamente* Hola... **${name}**... soy el **Lic. Perez**... **60 dias** tienes... en que te ayudo... sin prisa?`
+      return `*parpadea lentamente* Hola... **${name}**... soy el **Lic. Pérez**... **60 días** tienes... ¿en qué te ayudo... sin prisa?`
     }
     
     return base
@@ -803,7 +803,7 @@ ${docText.slice(0, 4000)}`
             <div className="bg-gradient-to-r from-emerald-50 to-blue-50 border border-emerald-200 rounded-xl p-3">
               <div className="flex items-center gap-2 mb-2">
                 <Sparkles className="w-4 h-4 text-emerald-600" />
-                <span className="font-medium text-emerald-800 text-sm">60 dias para actuar</span>
+                <span className="font-medium text-emerald-800 text-sm">60 días para actuar</span>
               </div>
               <p className="text-xs text-slate-600 mb-2">Ya tienes la info. Actua ahora.</p>
               <Button 

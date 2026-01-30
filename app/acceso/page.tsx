@@ -377,7 +377,7 @@ export default function AccesoPage() {
                       <div className="flex items-center justify-between">
                         <Label htmlFor="password">Contrasena</Label>
                         <Link href="/recuperar" className="text-xs text-primary hover:underline">
-                          Olvidaste tu contrasena?
+                          ¿Olvidaste tu contraseña?
                         </Link>
                       </div>
                       <div className="relative">
@@ -385,7 +385,7 @@ export default function AccesoPage() {
                         <Input
                           id="password"
                           type={showPassword ? 'text' : 'password'}
-                          placeholder="Tu contrasena"
+                          placeholder="Tu contraseña"
                           value={password || ''}
                           onChange={(e) => setPassword(e.target.value)}
                           className="pl-10 pr-10"
@@ -538,7 +538,7 @@ export default function AccesoPage() {
 
                   <div className="mt-4 text-center">
                     <p className="text-sm text-muted-foreground">
-                      No tienes cuenta?{' '}
+                      ¿No tienes cuenta?{' '}
                       <button 
                         onClick={() => setActiveTab('registro')}
                         className="text-primary font-medium hover:underline"
@@ -555,13 +555,13 @@ export default function AccesoPage() {
                 <CardHeader className="pb-4">
                   <CardTitle className="text-xl">Empieza en 10 segundos</CardTitle>
                   <CardDescription>
-                    Solo necesitas tu nombre. Sin correo, sin contrasena.
+                    Solo necesitas tu nombre. Sin correo, sin contraseña.
                   </CardDescription>
                 </CardHeader>
                 <CardContent>
                   <form onSubmit={handleRegistro} className="space-y-4">
                     <div className="space-y-2">
-                      <Label htmlFor="regNombre">Como te llamas?</Label>
+                      <Label htmlFor="regNombre">¿Cómo te llamas?</Label>
                       <div className="relative">
                         <User className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
                         <Input
@@ -578,7 +578,7 @@ export default function AccesoPage() {
                     </div>
 
                     <div className="space-y-2">
-                      <Label htmlFor="codigoReferido">Codigo de quien te refirio (opcional)</Label>
+                      <Label htmlFor="codigoReferido">Código de quien te refirió (opcional)</Label>
                       <Input
                         id="codigoReferido"
                         type="text"
@@ -631,7 +631,7 @@ export default function AccesoPage() {
 
                     <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 text-center">
                       <p className="text-blue-800 text-sm">
-                        Crea tu contrasena y verifica tu cuenta mas tarde desde tu perfil
+                        Crea tu contraseña y verifica tu cuenta más tarde desde tu perfil
                       </p>
                     </div>
                   </form>

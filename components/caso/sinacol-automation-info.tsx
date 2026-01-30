@@ -78,7 +78,7 @@ export function SinacolAutomationInfo({
           </Badge>
         </div>
         <CardDescription className="text-blue-600 dark:text-blue-400">
-          Automatizacion completa del proceso de conciliacion laboral
+          Automatización completa del proceso de conciliación laboral
         </CardDescription>
       </CardHeader>
       
@@ -87,12 +87,12 @@ export function SinacolAutomationInfo({
         <div className="p-4 bg-white dark:bg-black rounded-lg border border-blue-100 dark:border-blue-900">
           <h4 className="font-semibold text-sm mb-2 flex items-center gap-2">
             <Zap className="h-4 w-4 text-yellow-500" />
-            Como funciona la automatizacion
+            Cómo funciona la automatización
           </h4>
           <p className="text-sm text-muted-foreground leading-relaxed">
-            Cuando autorizas explicitamente, nuestro <strong>agente inteligente</strong> se encarga 
-            de todo el proceso: genera automaticamente un <strong>folio unico</strong> basado en tus 
-            credenciales y datos proporcionados, crea tu <strong>usuario con contrasena</strong> en 
+            Cuando autorizas explícitamente, nuestro <strong>agente inteligente</strong> se encarga 
+            de todo el proceso: genera automáticamente un <strong>folio único</strong> basado en tus 
+            credenciales y datos proporcionados, crea tu <strong>usuario con contraseña</strong> en 
             el portal SINACOL, y gestiona tu caso para <strong>reducir significativamente</strong> el 
             tiempo y eliminar los errores del llenado manual.
           </p>

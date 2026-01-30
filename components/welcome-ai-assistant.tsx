@@ -97,10 +97,10 @@ Por donde te gustaria empezar? Tienes alguna duda sobre tu situacion laboral act
   
   // Sugerencias basadas en el perfil
   if (!profile.is_verified && profile.verification_status !== 'verified') {
-    mensaje += `\n\nTe recomiendo completar tu verificacion de perfil para acceder a todas las funcionalidades.`
+  mensaje += `\n\nTe recomiendo completar tu verificación de perfil para acceder a todas las funcionalidades.`
   }
   
-  mensaje += `\n\nEn que puedo ayudarte hoy?`
+  mensaje += `\n\n¿En qué puedo ayudarte hoy?`
   
   return mensaje
 }
@@ -111,22 +111,22 @@ function generateSuggestions(profile: UserProfile, documents: BovedaDocument[], 
   
   // Sugerencias basicas
   if (!profile.is_verified) {
-    suggestions.push('Como puedo verificar mi cuenta?')
+    suggestions.push('¿Cómo puedo verificar mi cuenta?')
   }
   
   if (casos.length === 0) {
-    suggestions.push('Calcular mi liquidacion')
-    suggestions.push('Que derechos tengo si me despidieron?')
+    suggestions.push('Calcular mi liquidación')
+    suggestions.push('¿Qué derechos tengo si me despidieron?')
   } else {
     suggestions.push('Ver estado de mi caso')
-    suggestions.push('Que sigue en mi proceso?')
+    suggestions.push('¿Qué sigue en mi proceso?')
   }
   
   if (documents.length > 0) {
     suggestions.push('Revisar mis documentos')
     suggestions.push('Analizar un documento')
   } else {
-    suggestions.push('Que documentos necesito?')
+    suggestions.push('¿Qué documentos necesito?')
   }
   
   suggestions.push('Tengo dudas sobre mi finiquito')

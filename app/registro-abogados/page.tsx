@@ -537,7 +537,7 @@ export default function RegistroAbogadosPage() {
             </div>
             <CardTitle className="text-2xl">Cuenta creada exitosamente</CardTitle>
             <CardDescription className="text-base">
-              Tu solicitud ha sido enviada para verificacion
+              Tu solicitud ha sido enviada para verificación
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-6">
@@ -545,35 +545,35 @@ export default function RegistroAbogadosPage() {
             <div className="p-4 bg-amber-50 rounded-lg border border-amber-200">
               <div className="flex items-center gap-2 justify-center mb-2">
                 <FileCheck className="w-5 h-5 text-amber-600" />
-                <span className="font-medium text-amber-900">En proceso de verificacion</span>
+                <span className="font-medium text-amber-900">En proceso de verificación</span>
               </div>
               <p className="text-sm text-amber-800">
-                Un administrador verificara tu cedula profesional. 
+                Un administrador verificará tu cédula profesional. 
                 Mientras tanto, puedes acceder a la plataforma con funciones limitadas.
               </p>
             </div>
 
-            {/* Que sigue */}
+            {/* Qué sigue */}
             <div className="text-left space-y-3">
-              <p className="font-medium text-sm">Proximos pasos:</p>
+              <p className="font-medium text-sm">Próximos pasos:</p>
               <div className="space-y-2">
                 <div className="flex items-start gap-3 text-sm">
                   <div className="w-6 h-6 rounded-full bg-blue-100 flex items-center justify-center shrink-0">
                     <span className="text-xs font-medium text-blue-600">1</span>
                   </div>
-                  <p className="text-muted-foreground">Verificaremos tu cedula en el Registro Nacional de Profesionistas</p>
+                  <p className="text-muted-foreground">Verificaremos tu cédula en el Registro Nacional de Profesionistas</p>
                 </div>
                 <div className="flex items-start gap-3 text-sm">
                   <div className="w-6 h-6 rounded-full bg-blue-100 flex items-center justify-center shrink-0">
                     <span className="text-xs font-medium text-blue-600">2</span>
                   </div>
-                  <p className="text-muted-foreground">Recibiras un correo cuando tu cuenta sea verificada</p>
+                  <p className="text-muted-foreground">Recibirás un correo cuando tu cuenta sea verificada</p>
                 </div>
                 <div className="flex items-start gap-3 text-sm">
                   <div className="w-6 h-6 rounded-full bg-blue-100 flex items-center justify-center shrink-0">
                     <span className="text-xs font-medium text-blue-600">3</span>
                   </div>
-                  <p className="text-muted-foreground">Podras recibir casos y generar tu cedula digital</p>
+                  <p className="text-muted-foreground">Podrás recibir casos y generar tu cédula digital</p>
                 </div>
               </div>
             </div>
