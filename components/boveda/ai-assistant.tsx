@@ -244,26 +244,12 @@ Veamos... despacio... pero seguro...
   }
 }
 
-// Respuesta generica cuando no se conoce la respuesta (despues de 2 intentos)
+// Respuesta generica cuando no se conoce la respuesta
 const FALLBACK_RESPONSES: Record<string, string> = {
-  lia: `Mmm, esa pregunta es muy especifica. Para darte la mejor respuesta, necesito que uses la app donde tengo acceso a toda la informacion legal.
-
-**Creamos tu cuenta en 30 segundos?** Asi puedo ayudarte mejor.`,
-  mandu: `*se rasca la oreja* Eso esta muy complicado para contestar aqui...
-
-*bosteza* En la app tengo mas herramientas... y una cama mas comoda.
-
-**Entramos? Te prometo despertar para ayudarte...**`,
-  bora: `*suspira* Mira mijo, eso no te lo puedo contestar bien aqui afuera.
-
-*mueve la cola* En la app tengo todo lo que necesitas. Soy vieja pero no tonta.
-
-**Vas a entrar o seguimos perdiendo el tiempo?**`,
-  licperez: `*parpadea lentamente* Mmm... esa pregunta... requiere mas... contexto...
-
-*se acomoda* En la app tengo... todas las herramientas... eventualmente...
-
-**Vamos juntos? Despacio... pero llegaremos...**`
+  lia: `Mmm, esa pregunta es muy especifica. Dime mas contexto y lo reviso contigo.`,
+  mandu: `*se rasca la oreja* Necesito mas detalles para responder bien. Cuentame un poco mas...`,
+  bora: `*suspira* Eso necesita mas contexto. Explicame bien y seguimos.`,
+  licperez: `*parpadea lentamente* Necesito mas... contexto... para darte una buena respuesta.`
 }
 
 // Preguntas persuasivas para mantener la conversacion
@@ -355,7 +341,8 @@ function findFAQResponse(question: string, assistant: AssistantType): string | n
 }
 
 // Identificar mensajes que deben mostrar el boton de app
-function shouldShowAppButton(messageId: string, messages: Message[]): boolean {
+function shouldShowAppButton(messageId: string, messages: Message[], hasSession: boolean): boolean {
+  if (hasSession) return false
   const msg = messages.find(m => m.id === messageId)
   if (!msg || msg.role !== "assistant") return false
   // Mostrar boton en respuestas FAQ (no en errores ni CTA)
@@ -379,6 +366,9 @@ export function AIAssistant({
   const [isLoading, setIsLoading] = useState(false)
   const [faqCount, setFaqCount] = useState(0)
   const [showCTA, setShowCTA] = useState(false)
+  const [chatExpired, setChatExpired] = useState(false)
+  const [chatStartTime, setChatStartTime] = useState<number | null>(null)
+  const [timeRemaining, setTimeRemaining] = useState(0)
   const [showPicker, setShowPicker] = useState(false)
   const [keyboardHeight, setKeyboardHeight] = useState(0)
   
@@ -400,6 +390,10 @@ export function AIAssistant({
   const inputRef = useRef<HTMLInputElement>(null)
   const containerRef = useRef<HTMLDivElement>(null)
   const assistant = ASSISTANTS[currentAssistant]
+  const hasSession = Boolean(userProfile?.id)
+  const sessionKey = `ai-chat-session-${userProfile?.id ?? 'guest'}`
+  const MAX_CHAT_DURATION_MS = 5 * 60 * 1000
+  const expirationMessage = `Tengo que atender mas casos. Puedes seguir usando la app y al volver a iniciar sesion se restauran tus 5 minutos de chat.`
   
   // Detectar teclado virtual en movil
   useEffect(() => {
@@ -471,10 +465,52 @@ export function AIAssistant({
     }
   }, [isOpen])
 
+  // Control de duracion de conversacion (5 minutos por sesion)
+  useEffect(() => {
+    if (!isOpen) return
+    if (typeof window === 'undefined') return
+    const stored = sessionStorage.getItem(sessionKey)
+    const parsed = stored ? Number.parseInt(stored, 10) : NaN
+    const start = Number.isNaN(parsed) ? Date.now() : parsed
+    sessionStorage.setItem(sessionKey, start.toString())
+    setChatStartTime(start)
+    setChatExpired(Date.now() - start >= MAX_CHAT_DURATION_MS)
+  }, [isOpen, sessionKey])
+
+  useEffect(() => {
+    if (!isOpen || !chatStartTime) return
+    const interval = window.setInterval(() => {
+      const elapsed = Date.now() - chatStartTime
+      const remaining = Math.max(0, MAX_CHAT_DURATION_MS - elapsed)
+      setTimeRemaining(remaining)
+      if (remaining === 0) {
+        setChatExpired(true)
+      }
+    }, 1000)
+    return () => window.clearInterval(interval)
+  }, [isOpen, chatStartTime])
+
+  useEffect(() => {
+    if (!chatExpired) return
+    setMessages(prev => {
+      const already = prev.some(msg => msg.id.startsWith('expired-'))
+      if (already) return prev
+      return [
+        ...prev,
+        {
+          id: `expired-${Date.now()}`,
+          role: "assistant",
+          content: expirationMessage
+        }
+      ]
+    })
+  }, [chatExpired, expirationMessage])
+
   useEffect(() => {
     setMessages([])
     setFaqCount(0)
     setShowCTA(false)
+    setChatExpired(false)
     // Actualizar asistente en metricas
     setMetrics(prev => ({ ...prev, assistant: currentAssistant }))
   }, [currentAssistant])
@@ -558,7 +594,7 @@ ${docText.slice(0, 4000)}`
   }, [faqCount, showCTA, assistant.ctaMessage])
 
   const sendMessage = async (text: string) => {
-    if (!text.trim() || isLoading) return
+    if (!text.trim() || isLoading || chatExpired) return
     const startTime = Date.now()
 
     const userMessage: Message = { id: `user-${Date.now()}`, role: "user", content: text }
@@ -567,9 +603,6 @@ ${docText.slice(0, 4000)}`
     
     // Actualizar metricas
     setMetrics(prev => ({ ...prev, totalMessages: prev.totalMessages + 1, assistant: currentAssistant }))
-    
-    // Contar preguntas no-FAQ del usuario
-    const nonFaqQuestions = messages.filter(m => m.role === "user").length + 1
     
     // Primero buscar en FAQ
     const faqResponse = findFAQResponse(text, currentAssistant)
@@ -584,17 +617,6 @@ ${docText.slice(0, 4000)}`
       return
     }
     
-    // Si ya hizo 2+ preguntas no-FAQ, usar respuesta generica que dirige a la app
-    if (nonFaqQuestions >= 2) {
-      setIsLoading(true)
-      await new Promise(r => setTimeout(r, 300))
-      const fallback = FALLBACK_RESPONSES[currentAssistant]
-      setMessages(prev => [...prev, { id: `assistant-${Date.now()}`, role: "assistant", content: fallback }])
-      setMetrics(prev => ({ ...prev, fallbackResponses: prev.fallbackResponses + 1 }))
-      setIsLoading(false)
-      return
-    }
-    
     // Llamar a Grok AI para preguntas especificas
     setIsLoading(true)
     try {
@@ -605,6 +627,7 @@ ${docText.slice(0, 4000)}`
           messages: [...messages, userMessage].map(m => ({ role: m.role, content: m.content })),
           documentContext: documentText,
           documentName: documentName,
+          userProfile: userProfile,
         }),
       })
 
@@ -637,6 +660,13 @@ ${docText.slice(0, 4000)}`
       .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
       .replace(/\*(.*?)\*/g, '<em class="text-slate-500">$1</em>')
       .replace(/\n/g, '<br/>')
+  }
+
+  const formatRemaining = (ms: number) => {
+    const totalSeconds = Math.max(0, Math.ceil(ms / 1000))
+    const minutes = Math.floor(totalSeconds / 60)
+    const seconds = totalSeconds % 60
+    return `${minutes}:${seconds.toString().padStart(2, '0')}`
   }
 
   // Generar mensaje de bienvenida personalizado segun el perfil del usuario
@@ -729,9 +759,14 @@ ${docText.slice(0, 4000)}`
             )}
           </div>
           
-          <button onClick={onClose} className="p-1.5 rounded-full hover:bg-slate-200">
-            <X className="w-5 h-5 text-slate-500" />
-          </button>
+          <div className="flex items-center gap-2">
+            <span className="text-[10px] text-slate-500">
+              {chatExpired ? 'Sesion finalizada' : `Tiempo: ${formatRemaining(timeRemaining)}`}
+            </span>
+            <button onClick={onClose} className="p-1.5 rounded-full hover:bg-slate-200">
+              <X className="w-5 h-5 text-slate-500" />
+            </button>
+          </div>
         </div>
 
         {/* Messages */}
@@ -767,7 +802,7 @@ ${docText.slice(0, 4000)}`
                   }} />
                 </div>
                 {/* Boton Abrir App para respuestas del asistente */}
-                {shouldShowAppButton(msg.id, messages) && (
+                {shouldShowAppButton(msg.id, messages, hasSession) && (
                   <Button 
                     size="sm" 
                     onClick={goToGuestRegister}
@@ -799,7 +834,7 @@ ${docText.slice(0, 4000)}`
           )}
 
           {/* CTA despues de 2 preguntas */}
-          {showCTA && (
+          {showCTA && !hasSession && (
             <div className="bg-gradient-to-r from-emerald-50 to-blue-50 border border-emerald-200 rounded-xl p-3">
               <div className="flex items-center gap-2 mb-2">
                 <Sparkles className="w-4 h-4 text-emerald-600" />
@@ -847,12 +882,12 @@ ${docText.slice(0, 4000)}`
               type="text"
               value={inputValue}
               onChange={(e) => setInputValue(e.target.value)}
-              placeholder="Escribe tu pregunta..."
+              placeholder={chatExpired ? "Sesion finalizada" : "Escribe tu pregunta..."}
               className="flex-1 px-3 py-2 rounded-full border bg-white focus:border-emerald-400 outline-none text-sm"
-              disabled={isLoading}
+              disabled={isLoading || chatExpired}
               enterKeyHint="send"
             />
-            <Button type="submit" size="icon" disabled={isLoading || !inputValue.trim()} className="rounded-full bg-emerald-500 hover:bg-emerald-600 w-9 h-9 shrink-0">
+            <Button type="submit" size="icon" disabled={isLoading || !inputValue.trim() || chatExpired} className="rounded-full bg-emerald-500 hover:bg-emerald-600 w-9 h-9 shrink-0">
               <Send className="w-4 h-4" />
             </Button>
           </div>
