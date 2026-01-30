@@ -1,42 +1,21 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
-import { PORTALES_CCL, generarEmailCCL, generarPasswordCCL, generarFolioCCL } from '@/lib/ccl/account-service'
+import { PORTALES_CCL } from '@/lib/ccl/account-service'
+import { iniciarAgenteCCL } from '@/lib/ccl/agent/ccl-agent'
 
 /**
- * API para registrar referencia al portal SINACOL real
- * 
- * IMPORTANTE: Esta API NO crea cuentas en SINACOL automáticamente.
- * Solo guarda una referencia en nuestra base de datos para que el abogado
- * pueda guiar al trabajador al portal oficial correspondiente.
- * 
- * El trabajador debe completar su solicitud manualmente en SINACOL usando su CURP.
+ * API para iniciar solicitud SINACOL real con flujo híbrido (automático + manual).
+ *
+ * - Automático: el agente intenta generar folio oficial y PDF en el portal.
+ * - Manual: el trabajador completa la solicitud con su CURP en el portal oficial.
+ * - Híbrido: inicia automático, pero mantiene instrucciones manuales si se decide no usar créditos.
  */
-
-// Generar ID de referencia interno (NO es folio oficial de SINACOL)
-function generarReferenciaInterna(estado: string): string {
-  const prefijos: Record<string, string> = {
-    'Aguascalientes': 'AGU', 'Baja California': 'BAJ', 'Baja California Sur': 'BCS',
-    'Campeche': 'CAM', 'Chiapas': 'CHS', 'Chihuahua': 'CHH', 'Ciudad de Mexico': 'CIU',
-    'Coahuila': 'COA', 'Colima': 'COL', 'Durango': 'DUR', 'Estado de Mexico': 'EST',
-    'Guanajuato': 'GUA', 'Guerrero': 'GUE', 'Hidalgo': 'HID', 'Jalisco': 'JAL',
-    'Michoacan': 'MIC', 'Morelos': 'MOR', 'Nayarit': 'NAY', 'Nuevo Leon': 'NUE',
-    'Oaxaca': 'OAX', 'Puebla': 'PUE', 'Queretaro': 'QUE', 'Quintana Roo': 'QUI',
-    'San Luis Potosi': 'SAN', 'Sinaloa': 'SIN', 'Sonora': 'SON', 'Tabasco': 'TAB',
-    'Tamaulipas': 'TAM', 'Tlaxcala': 'TLA', 'Veracruz': 'VER', 'Yucatan': 'YUC',
-    'Zacatecas': 'ZAC', 'Federal': 'FED'
-  }
-  
-  const prefijo = prefijos[estado] || estado.slice(0, 3).toUpperCase()
-  const fecha = new Date().toISOString().slice(0, 10).replace(/-/g, '')
-  const numero = Math.floor(Math.random() * 9999).toString().padStart(4, '0')
-  
-  return `REF-${prefijo}-${fecha}-${numero}`
-}
 
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json()
     const { estado, datosTrabajador, opciones } = body
+    const modoSolicitud = (opciones?.modo as 'manual' | 'automatico' | 'hibrido' | undefined) || 'manual'
     
     const supabase = await createClient()
     
@@ -45,10 +24,14 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ exito: false, error: `Portal SINACOL no configurado para ${estado}` })
     }
     
-    // Generar referencia interna (NO es folio oficial)
-    const referenciaInterna = generarReferenciaInterna(estado)
+    if ((modoSolicitud === 'automatico' || modoSolicitud === 'hibrido') && !opciones?.casoId) {
+      return NextResponse.json({ 
+        exito: false, 
+        error: 'Para el modo automático se requiere casoId.' 
+      })
+    }
     
-    // Guardar referencia al portal SINACOL real
+    // Guardar solicitud en nuestra base con estatus pendiente
     const { data: account, error } = await supabase
       .from('ccl_user_accounts')
       .insert({
@@ -66,18 +49,18 @@ export async function POST(request: NextRequest) {
         url_buzon: portal.urlBuzon,
         curp_usado: datosTrabajador.curp,
         rfc_usado: datosTrabajador.rfc,
-        // Estado: pendiente hasta que el trabajador complete en SINACOL
+        // Estado: pendiente hasta obtener folio oficial (automático o manual)
         cuenta_creada: false,
         cuenta_verificada: false,
         buzon_activo: false,
-        status: 'pendiente_sinacol', // Indica que debe completarse en portal real
-        folio_solicitud: referenciaInterna, // Referencia interna, NO folio oficial
+        status: modoSolicitud === 'manual' ? 'pendiente_sinacol' : 'pendiente',
+        folio_solicitud: null, // Folio oficial pendiente
         fecha_solicitud: new Date().toISOString(),
         intentos_creacion: 1,
         es_prueba: opciones?.esPrueba || false,
         sesion_diagnostico_id: opciones?.sesionDiagnosticoId || null,
         datos_trabajador: datosTrabajador,
-        notas: `Referencia interna. El trabajador debe completar su solicitud en ${portal.urlSinacol} usando su CURP.`
+        notas: `Modo ${modoSolicitud}. Portal: ${portal.urlSinacol}.`
       })
       .select()
       .single()
@@ -108,11 +91,40 @@ export async function POST(request: NextRequest) {
           '4. Envía la solicitud',
           '5. Guarda tu folio de confirmación'
         ]
+
+    let jobId: string | undefined
+    if (modoSolicitud === 'automatico' || modoSolicitud === 'hibrido') {
+      const agente = await iniciarAgenteCCL(opciones?.casoId, {
+        modalidadPreferida: opciones?.modalidadPreferida
+      })
+
+      if (agente.success && agente.jobId) {
+        jobId = agente.jobId
+        await supabase
+          .from('ccl_user_accounts')
+          .update({
+            status: 'pendiente',
+            intentos_creacion: (account.intentos_creacion || 0) + 1,
+            notas: `Modo ${modoSolicitud}. Job agente: ${jobId}. Portal: ${portal.urlSinacol}.`
+          })
+          .eq('id', account.id)
+      } else {
+        await supabase
+          .from('ccl_user_accounts')
+          .update({
+            status: 'pendiente_sinacol',
+            error_ultimo: agente.error || 'No se pudo iniciar el agente automático.',
+            notas: `Modo ${modoSolicitud}. Falló agente, continuar manual. Portal: ${portal.urlSinacol}.`
+          })
+          .eq('id', account.id)
+      }
+    }
     
     return NextResponse.json({
       exito: true,
       accountId: account.id,
-      referencia_interna: referenciaInterna,
+      jobId,
+      modo: modoSolicitud,
       // URLs del portal SINACOL real
       url_sinacol: portal.urlSinacol,
       url_info: portal.url,
@@ -130,7 +142,7 @@ export async function POST(request: NextRequest) {
       notas: portal.notas,
       mensaje: flujoEsGuardarCrearCuenta
         ? `IMPORTANTE: En el portal de ${estado}, debes elegir "GUARDAR" al final del formulario para abrir la creación de cuenta. Este paso registra tu solicitud.`
-        : `Enlace generado al portal SINACOL de ${estado}. El trabajador debe completar su solicitud en el portal oficial usando su CURP.`
+        : `Enlace al portal SINACOL de ${estado}. Puedes completar manualmente con tu CURP si no usarás el agente automático.`
     })
     
   } catch (error) {

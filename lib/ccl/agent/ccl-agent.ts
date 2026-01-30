@@ -22,6 +22,7 @@ import {
   sugerirCCL 
 } from './jurisdiction-ai'
 import { ejecutarFormularioCompleto } from './form-filler'
+import { extraerResultadoCompleto } from './pdf-extractor'
 import { PORTALES_CCL_COMPLETOS } from '../portales-urls'
 
 /**
@@ -269,7 +270,7 @@ async function ejecutarAgenteEnBackground(jobId: string, caso: CasoData): Promis
       progress: 95
     })
     
-    const resultado = await extraerResultadoSolicitud(browserSession, caso)
+    const resultado = await extraerResultadoSolicitud(browserSession, jobId, caso)
     
     // PASO 7: Guardar resultado y actualizar caso
     await actualizarJob(supabase, jobId, {
@@ -292,6 +293,16 @@ async function ejecutarAgenteEnBackground(jobId: string, caso: CasoData): Promis
         updated_at: new Date().toISOString()
       })
       .eq('id', caso.casoId)
+
+    await supabase
+      .from('ccl_user_accounts')
+      .update({
+        folio_solicitud: resultado.folioSolicitud || null,
+        pdf_solicitud_url: resultado.pdfUrl || null,
+        status: resultado.success ? 'activa' : 'error',
+        updated_at: new Date().toISOString()
+      })
+      .eq('caso_id', caso.casoId)
 
     await agregarLog(supabase, jobId, 'success', 'Solicitud completada exitosamente', resultado)
 
@@ -362,40 +373,26 @@ function obtenerPortalCCL(estado: string): { nombre: string; url: string } | nul
  */
 async function extraerResultadoSolicitud(
   session: ReturnType<typeof createBrowserSession> extends Promise<infer T> ? T : never,
+  jobId: string,
   caso: CasoData
 ): Promise<SolicitudResultado> {
-  // Por ahora retornamos datos simulados
-  // TODO: Implementar extracción real del DOM
-  const folioGenerado = `CCL-${caso.empleadorEstado?.substring(0, 3).toUpperCase() || 'MEX'}-${Date.now().toString(36).toUpperCase()}`
-  
-  const fechaCita = new Date()
-  fechaCita.setDate(fechaCita.getDate() + 7)
-  
-  const fechaLimite = new Date()
-  fechaLimite.setDate(fechaLimite.getDate() + 3)
-  
+  const resultado = await extraerResultadoCompleto(session, jobId, caso.casoId)
+
+  if (!resultado.success || !resultado.folioSolicitud) {
+    return {
+      success: false,
+      modalidad: caso.modalidadConciliacion || 'remota',
+      instrucciones: [
+        'No se pudo identificar el folio oficial en el portal.',
+        'Revisa el último paso en la captura y confirma si el portal mostró el acuse.',
+        'Si el portal no entregó PDF, intenta descargarlo manualmente y vuelve a ejecutar.'
+      ]
+    }
+  }
+
   return {
-    success: true,
-    folioSolicitud: folioGenerado,
-    fechaCita: fechaCita.toISOString().split('T')[0],
-    horaCita: '10:00',
-    modalidad: caso.modalidadConciliacion || 'remota',
-    ligaUnica: caso.modalidadConciliacion === 'remota' 
-      ? `https://conciliacion.gob.mx/audiencia/${folioGenerado}`
-      : undefined,
-    fechaLimiteConfirmacion: fechaLimite.toISOString().split('T')[0],
-    instrucciones: caso.modalidadConciliacion === 'remota'
-      ? [
-          'Llama al CCL para agendar cita de confirmación por videollamada',
-          'Ten a la mano tu INE y CURP',
-          `Folio de referencia: ${folioGenerado}`,
-          `Confirmar antes de: ${fechaLimite.toLocaleDateString('es-MX')}`
-        ]
-      : [
-          'Acude al CCL con tu identificación oficial',
-          `Folio de referencia: ${folioGenerado}`,
-          `Confirmar antes de: ${fechaLimite.toLocaleDateString('es-MX')}`
-        ]
+    ...resultado,
+    modalidad: resultado.modalidad || caso.modalidadConciliacion || 'remota'
   }
 }
 

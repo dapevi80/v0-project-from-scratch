@@ -573,8 +573,8 @@ export interface DatosTrabajador {
 export interface ResultadoCreacionCuenta {
   exito: boolean
   accountId?: string
-  // SINACOL no usa email/password - solo CURP
-  referencia_interna?: string // Referencia interna de Mecorrieron.mx
+  jobId?: string
+  modo?: 'manual' | 'automatico' | 'hibrido'
   url_sinacol?: string // URL directa al formulario SINACOL
   url_info?: string // URL del sitio CCL informativo
   url_buzon?: string
@@ -609,7 +609,7 @@ export interface CCLUserAccount {
   buzon_activo: boolean
   // Nuevo status para SINACOL
   status: 'pendiente' | 'pendiente_sinacol' | 'pendiente_captcha' | 'activa' | 'error' | 'cancelada'
-  folio_solicitud: string | null // Referencia interna (no folio oficial)
+  folio_solicitud: string | null // Folio oficial (cuando existe)
   fecha_solicitud: string | null
   pdf_solicitud_url: string | null
   ultimo_check_buzon: string | null
@@ -652,6 +652,5 @@ export interface CCLBuzonNotificacion {
 // 6. Se programa audiencia de conciliación (máx 45 días)
 // 7. Resultado: convenio, constancia de no conciliación, o archivo
 
-// NOTA: Mecorrieron.mx NO puede crear cuentas automáticamente
-// Solo puede guiar al usuario al portal SINACOL correspondiente
-// y ayudarle a preparar la información necesaria para el trámite
+// NOTA: Mecorrieron.mx puede iniciar el envío automático con agente cuando hay créditos,
+// y mantiene la ruta manual para que el usuario complete el portal con su CURP.
