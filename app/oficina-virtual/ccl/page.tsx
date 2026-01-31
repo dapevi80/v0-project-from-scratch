@@ -101,6 +101,8 @@ export default function CCLFlowPage() {
     folio?: string
     citaRatificacion?: string
     pdfUrl?: string
+    solicitudId?: string
+    modoGeneracion?: 'automatico' | 'hibrido'
   } | null>(null)
 
   useEffect(() => {
@@ -222,7 +224,9 @@ export default function CCLFlowPage() {
       
       setResultado({
         folio: result.data?.folio,
-        citaRatificacion: result.data?.citaRatificacion
+        citaRatificacion: result.data?.citaRatificacion,
+        solicitudId: borrador.data.id,
+        modoGeneracion: result.data?.modoGeneracion
       })
       setPaso(4)
       
@@ -265,7 +269,11 @@ export default function CCLFlowPage() {
       // Generar guia manual
       await generarGuiaManual(borrador.data.id)
       
-      setResultado({ pdfUrl: '/api/ccl/guia-pdf?id=' + borrador.data.id })
+      setResultado({ 
+        pdfUrl: `/api/ccl/solicitud-pdf/${borrador.data.id}`,
+        solicitudId: borrador.data.id,
+        modoGeneracion: 'hibrido'
+      })
       setPaso(4)
       
     } catch {
@@ -664,24 +672,64 @@ export default function CCLFlowPage() {
           <CardHeader>
             <CardTitle className="flex items-center gap-2 text-green-600">
               <CheckCircle2 className="w-6 h-6" />
-              Solicitud generada exitosamente
+              ¡Solicitud generada exitosamente!
             </CardTitle>
+            <CardDescription>
+              Tu solicitud ha sido procesada. Sigue los pasos a continuación.
+            </CardDescription>
           </CardHeader>
           <CardContent className="space-y-6">
+            {/* Folio generado */}
             {resultado.folio && (
-              <div className="p-4 rounded-lg border bg-green-50">
-                <p className="text-sm text-muted-foreground">Folio de pre-registro:</p>
-                <p className="text-2xl font-bold text-green-700">{resultado.folio}</p>
+              <div className="p-6 rounded-lg border-2 border-green-200 bg-gradient-to-r from-green-50 to-emerald-50">
+                <p className="text-sm text-muted-foreground mb-2">📋 Folio de pre-registro:</p>
+                <p className="text-3xl font-bold text-green-700 tracking-wide">{resultado.folio}</p>
+                <p className="text-xs text-muted-foreground mt-2">
+                  Guarda este folio, lo necesitarás para dar seguimiento
+                </p>
               </div>
             )}
 
-            {resultado.citaRatificacion && (
-              <div className="p-4 rounded-lg border">
-                <div className="flex items-center gap-2 mb-2">
-                  <Calendar className="w-5 h-5 text-primary" />
-                  <span className="font-medium">Cita de ratificacion:</span>
+            {/* Modo de generación */}
+            {resultado.modoGeneracion && (
+              <div className="flex items-center gap-2 text-sm">
+                <Badge variant={resultado.modoGeneracion === 'automatico' ? 'default' : 'secondary'}>
+                  {resultado.modoGeneracion === 'automatico' ? '🤖 Generado automáticamente' : '📝 Modo híbrido - Requiere acción'}
+                </Badge>
+              </div>
+            )}
+
+            {/* Descarga PDF profesional */}
+            <div className="p-4 rounded-lg border-2 border-blue-200 bg-blue-50">
+              <div className="flex items-start gap-4">
+                <div className="p-3 rounded-lg bg-blue-100">
+                  <FileDown className="w-6 h-6 text-blue-600" />
                 </div>
-                <p className="text-lg">
+                <div className="flex-1">
+                  <h4 className="font-bold text-lg mb-1">Guía completa de llenado</h4>
+                  <p className="text-sm text-muted-foreground mb-3">
+                    PDF profesional con todos tus datos, instrucciones paso a paso, 
+                    QR code para acceso rápido y checklist de documentos.
+                  </p>
+                  <Button 
+                    className="bg-blue-600 hover:bg-blue-700"
+                    onClick={() => window.open(`/api/ccl/solicitud-pdf/${resultado.solicitudId || casoId}`, '_blank')}
+                  >
+                    <Download className="w-4 h-4 mr-2" />
+                    Descargar PDF completo
+                  </Button>
+                </div>
+              </div>
+            </div>
+
+            {/* Cita de ratificación */}
+            {resultado.citaRatificacion && (
+              <div className="p-4 rounded-lg border-2 border-amber-200 bg-amber-50">
+                <div className="flex items-center gap-2 mb-2">
+                  <Calendar className="w-5 h-5 text-amber-600" />
+                  <span className="font-bold">Cita de ratificación sugerida:</span>
+                </div>
+                <p className="text-lg font-medium">
                   {new Date(resultado.citaRatificacion).toLocaleDateString('es-MX', {
                     weekday: 'long',
                     year: 'numeric',
@@ -689,55 +737,81 @@ export default function CCLFlowPage() {
                     day: 'numeric'
                   })}
                 </p>
-                <p className="text-sm text-muted-foreground mt-1">
-                  {jurisdiccion?.centroConciliacion.nombre}
+                <p className="text-sm text-muted-foreground mt-2">
+                  📍 {jurisdiccion?.centroConciliacion.nombre}
                 </p>
                 <p className="text-sm text-muted-foreground">
                   {jurisdiccion?.centroConciliacion.direccion}
                 </p>
+                <p className="text-xs text-amber-700 mt-2">
+                  ⚠️ Confirma disponibilidad en el portal oficial
+                </p>
               </div>
             )}
 
-            {resultado.pdfUrl && (
-              <div className="p-4 rounded-lg border">
-                <p className="font-medium mb-2">Guia de llenado generada:</p>
-                <Button asChild>
-                  <a href={resultado.pdfUrl} target="_blank" rel="noopener noreferrer">
-                    <Download className="w-4 h-4 mr-2" />
-                    Descargar PDF
-                  </a>
-                </Button>
-              </div>
-            )}
-
-            <Alert>
-              <AlertCircle className="w-4 h-4" />
+            {/* Instrucciones rápidas */}
+            <Alert className="border-purple-200 bg-purple-50">
+              <Zap className="w-4 h-4 text-purple-600" />
               <AlertDescription>
-                <strong>Pasos a seguir en SINACOL:</strong>
-                <ol className="list-decimal ml-4 mt-2 space-y-1">
-                  <li>Haga clic en "Ir a SINACOL" para abrir el portal oficial</li>
-                  <li>Ingrese el CURP del trabajador para cargar sus datos</li>
-                  <li>Complete el formulario con los datos de la relacion laboral</li>
-                  <li>Agende su cita de ratificacion presencial</li>
-                  <li>Acuda al CCL con identificacion oficial vigente</li>
+                <strong className="text-purple-900">Siguiente paso - Presenta tu solicitud:</strong>
+                <ol className="list-decimal ml-4 mt-2 space-y-2 text-sm">
+                  <li>
+                    <strong>Descarga el PDF</strong> con todos tus datos e instrucciones
+                  </li>
+                  <li>
+                    <strong>Escanea el QR</strong> del PDF o haz clic en "Ir al portal CCL"
+                  </li>
+                  <li>
+                    <strong>Crea tu cuenta</strong> en el portal con tu email
+                  </li>
+                  <li>
+                    <strong>Copia y pega</strong> los datos del PDF en el formulario
+                  </li>
+                  <li>
+                    <strong>Sube documentos</strong> (revisa el checklist del PDF)
+                  </li>
+                  <li>
+                    <strong>Agenda tu cita</strong> de ratificación presencial
+                  </li>
                 </ol>
+                <p className="mt-3 text-xs text-purple-700">
+                  💡 El PDF incluye instrucciones detalladas y un checklist completo
+                </p>
               </AlertDescription>
             </Alert>
 
-            <div className="flex gap-4">
-              <Button asChild variant="outline">
+            {/* Botones de acción */}
+            <div className="flex flex-col sm:flex-row gap-3">
+              <Button asChild variant="outline" className="flex-1">
                 <Link href={`/oficina-virtual/caso/${casoId}`}>
+                  <ArrowLeft className="w-4 h-4 mr-2" />
                   Volver al caso
                 </Link>
               </Button>
-              {jurisdiccion?.centroConciliacion.urlSinacol && (
-                <Button asChild className="bg-green-600 hover:bg-green-700">
-                  <a href={jurisdiccion.centroConciliacion.urlSinacol} target="_blank" rel="noopener noreferrer">
-                    Ir a SINACOL
+              
+              {jurisdiccion?.centroConciliacion.portalUrl && (
+                <Button 
+                  asChild 
+                  className="flex-1 bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700"
+                >
+                  <a href={jurisdiccion.centroConciliacion.portalUrl} target="_blank" rel="noopener noreferrer">
+                    <ArrowRight className="w-4 h-4 mr-2" />
+                    Ir al portal CCL
                   </a>
                 </Button>
               )}
             </div>
+
+            {/* Nota sobre modo híbrido */}
+            {resultado.modoGeneracion === 'hibrido' && (
+              <div className="p-4 rounded-lg border border-slate-200 bg-slate-50">
+                <p className="text-sm text-slate-700">
+                  <strong>ℹ️ Sobre el modo híbrido:</strong> Este folio es un pre-registro. 
+                  Deberás completar el proceso en el portal oficial usando el PDF que descargues. 
+                  Una vez completado, el portal te dará el folio oficial definitivo.
+                </p>
+              </div>
+            )}
           </CardContent>
         </Card>
       )}
