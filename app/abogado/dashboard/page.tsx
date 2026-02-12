@@ -3,7 +3,6 @@
 import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
-import Image from 'next/image'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
@@ -15,8 +14,9 @@ import { AyudaUrgenteButton } from '@/components/ayuda-urgente-button'
 import { CryptoWallet } from '@/components/wallet/crypto-wallet'
 import { DashboardSkeleton } from '@/components/ui/dashboard-skeleton'
 import { LogoutButton } from '@/app/dashboard/logout-button'
-import { AlertCircle, Award } from 'lucide-react'
+import { AlertCircle } from 'lucide-react'
 import { WelcomeAIAssistant } from '@/components/welcome-ai-assistant'
+import { UserProfileCard } from '@/components/user/user-profile-card'
 
 export default function AbogadoDashboardPage() {
   const router = useRouter()
@@ -94,7 +94,11 @@ export default function AbogadoDashboardPage() {
     return <DashboardSkeleton />
   }
 
-  const isVerified = role === 'lawyer' || role === 'admin' || role === 'superadmin'
+  const isVerified =
+    lawyerProfile?.verification_status === 'verified' ||
+    profile?.verification_status === 'verified' ||
+    role === 'admin' ||
+    role === 'superadmin'
   const isGuestLawyer = role === 'guestlawyer'
   const displayName = lawyerProfile?.display_name || profile?.full_name || 'Abogado'
 
@@ -120,6 +124,13 @@ export default function AbogadoDashboardPage() {
     ] : [])
   ]
 
+  const proTools = [
+    { name: 'IA Estratégica', icon: '🤖', description: 'Análisis inteligente de casos', available: isVerified },
+    { name: 'Agenda Pro', icon: '📆', description: 'Gestión avanzada de audiencias', available: isVerified },
+    { name: 'Contratos Express', icon: '📄', description: 'Plantillas legales rápidas', available: isVerified },
+    { name: 'Monitor CCL', icon: '📡', description: 'Seguimiento en tiempo real', available: isVerified }
+  ]
+
   return (
     <div className="min-h-screen bg-muted/30">
       {/* Header */}
@@ -140,39 +151,33 @@ export default function AbogadoDashboardPage() {
       </header>
 
       <main className="container px-4 py-6 space-y-6 max-w-5xl">
-        {/* Perfil con Avatar de Abogado */}
-        <Card className="overflow-hidden">
-          <CardContent className="p-4 sm:p-6">
-            <div className="flex items-center gap-4">
-              {/* Avatar de abogado profesional */}
-              <div className={`relative w-16 h-16 sm:w-20 sm:h-20 rounded-full overflow-hidden ${
-                isVerified 
-                  ? 'ring-2 ring-blue-500 ring-offset-2' 
-                  : 'ring-2 ring-gray-300 ring-offset-2'
-              }`}>
-                <Image
-                  src={lawyerProfile?.photo_url || '/avatars/lawyer-default.jpg'}
-                  alt={displayName}
-                  fill
-                  className="object-cover"
-                  priority
-                />
-              </div>
-              <div className="flex-1 min-w-0">
-                <h1 className="text-lg sm:text-xl font-bold truncate">{displayName}</h1>
-                <div className="flex flex-wrap items-center gap-2 mt-1">
-                  <Badge variant={isVerified ? 'default' : 'secondary'} className="text-xs">
-                    {isVerified ? 'Abogado Verificado' : 'En Verificacion'}
-                  </Badge>
-                  {lawyerProfile?.cedula_profesional && (
-                    <span className="text-xs text-muted-foreground">
-                      Cedula: {lawyerProfile.cedula_profesional}
-                    </span>
-                  )}
-                </div>
-              </div>
-              {isVerified && <Award className="w-8 h-8 text-yellow-500" />}
+        {/* Perfil unificado */}
+        <UserProfileCard
+          userId={user?.id}
+          email={user?.email}
+          codigoUsuario={profile?.codigo_usuario}
+          referralCode={profile?.referral_code}
+          fullName={lawyerProfile?.display_name || profile?.full_name}
+          role={role}
+          isVerified={isVerified}
+          verificationStatus={lawyerProfile?.verification_status || profile?.verification_status || 'none'}
+          isProfilePublic={profile?.is_profile_public ?? true}
+          avatarUrl={lawyerProfile?.photo_url || profile?.avatar_url}
+        />
+
+        <Card className="border-blue-200 bg-blue-50">
+          <CardContent className="p-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+            <div>
+              <p className="text-sm font-semibold text-blue-900">Panel profesional</p>
+              <p className="text-xs text-blue-700">
+                {displayName} · {isVerified ? 'Abogado verificado' : 'Cuenta en revisión'}
+              </p>
             </div>
+            {lawyerProfile?.cedula_profesional && (
+              <Badge variant="secondary" className="text-xs bg-white text-blue-700 border-blue-200">
+                Cédula: {lawyerProfile.cedula_profesional}
+              </Badge>
+            )}
           </CardContent>
         </Card>
 
@@ -209,7 +214,7 @@ export default function AbogadoDashboardPage() {
             <CardContent className="p-4 text-center">
               <span className="text-2xl">⚖️</span>
               <p className="text-2xl font-bold mt-1 text-blue-700">{stats.casos}</p>
-              <p className="text-xs text-blue-600">Casos Activos</p>
+              <p className="text-xs text-blue-600">Casos activos</p>
             </CardContent>
           </Card>
           <Card className="bg-gradient-to-br from-green-50 to-emerald-50 border-green-200">
@@ -223,14 +228,14 @@ export default function AbogadoDashboardPage() {
             <CardContent className="p-4 text-center">
               <span className="text-2xl">🧮</span>
               <p className="text-2xl font-bold mt-1 text-purple-700">{stats.calculos}</p>
-              <p className="text-xs text-purple-600">Calculos</p>
+              <p className="text-xs text-purple-600">Cálculos</p>
             </CardContent>
           </Card>
           <Card className="bg-gradient-to-br from-amber-50 to-yellow-50 border-amber-200">
             <CardContent className="p-4 text-center">
               <span className="text-2xl">🪙</span>
               <p className="text-2xl font-bold mt-1 text-amber-700">{isVerified ? '250' : '0'}</p>
-              <p className="text-xs text-amber-600">Creditos</p>
+              <p className="text-xs text-amber-600">Créditos</p>
             </CardContent>
           </Card>
         </div>
@@ -238,7 +243,7 @@ export default function AbogadoDashboardPage() {
         {/* Herramientas Gratuitas */}
         <div>
           <div className="flex items-center gap-2 mb-3">
-            <h2 className="text-lg font-semibold">Herramientas Gratuitas</h2>
+            <h3 className="text-base font-semibold">Herramientas Gratuitas</h3>
             <Badge variant="secondary" className="text-xs">Sin costo</Badge>
           </div>
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
@@ -259,7 +264,7 @@ export default function AbogadoDashboardPage() {
         {/* Herramientas de Abogado */}
         <div>
           <div className="flex items-center gap-2 mb-3">
-            <h2 className="text-lg font-semibold">Herramientas para Abogados</h2>
+            <h3 className="text-base font-semibold">Herramientas Profesionales</h3>
             {isVerified ? (
               <Badge className="bg-blue-600 text-white text-xs">PRO</Badge>
             ) : (
@@ -290,6 +295,33 @@ export default function AbogadoDashboardPage() {
                   </CardContent>
                 </Card>
               </Link>
+            ))}
+          </div>
+        </div>
+
+        {/* Herramientas Pro */}
+        <div>
+          <div className="flex items-center gap-2 mb-3">
+            <h3 className="text-base font-semibold">Herramientas Pro</h3>
+            {isVerified ? (
+              <Badge className="bg-emerald-600 text-white text-xs">PRO+</Badge>
+            ) : (
+              <Badge variant="secondary" className="text-xs">Requiere verificación</Badge>
+            )}
+          </div>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            {proTools.map((tool) => (
+              <Card key={tool.name} className={`transition-all h-full ${
+                tool.available ? 'hover:shadow-md border-emerald-200 bg-gradient-to-br from-emerald-50 to-green-50' : 'opacity-50 bg-muted/30 border-dashed'
+              }`}>
+                <CardContent className="p-4 sm:p-5 flex flex-col items-center text-center gap-2">
+                  <span className={`text-3xl sm:text-4xl ${!tool.available ? 'grayscale' : ''}`}>{tool.icon}</span>
+                  <p className={`font-semibold text-sm sm:text-base ${tool.available ? 'text-foreground' : 'text-muted-foreground'}`}>
+                    {tool.name}
+                  </p>
+                  <p className="text-xs text-muted-foreground">{tool.description}</p>
+                </CardContent>
+              </Card>
             ))}
           </div>
         </div>

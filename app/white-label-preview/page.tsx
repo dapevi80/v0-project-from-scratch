@@ -773,7 +773,7 @@ export default function WhiteLabelPreview() {
       <div className="max-w-7xl mx-auto px-4 py-8 md:py-12">
         {/* Beneficios */}
         <div className="mb-12">
-          <h2 className="text-xl md:text-2xl font-bold text-center mb-6">Por que afiliarte a MeCorrieron</h2>
+          <h2 className="text-xl md:text-2xl font-bold text-center mb-6">¿Por qué afiliarte a MeCorrieron?</h2>
           <BenefitsSection />
         </div>
         

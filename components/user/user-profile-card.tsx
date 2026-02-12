@@ -29,6 +29,7 @@ interface UserProfileCardProps {
   fullName?: string | null
   isGuest?: boolean
   role?: string
+  referralCode?: string | null
   codigoUsuario?: string | null
   isVerified?: boolean
   verificationStatus?: string // 'none' | 'pending' | 'verified'
@@ -79,6 +80,7 @@ export function UserProfileCard({
   userId,
   fullName: propFullName,
   role = 'guest',
+  referralCode,
   codigoUsuario,
   isVerified = false,
   verificationStatus = 'none',
@@ -92,13 +94,13 @@ export function UserProfileCard({
   const [copied, setCopied] = useState(false)
 
   useEffect(() => {
-    if (codigoUsuario) {
-      setCodigo(codigoUsuario)
+    if (referralCode || codigoUsuario) {
+      setCodigo(referralCode || codigoUsuario || '--------')
     } else {
       const guestProfile = getOrCreateGuestProfile()
       setCodigo(guestProfile.referralCode)
     }
-  }, [codigoUsuario])
+  }, [codigoUsuario, referralCode])
 
   useEffect(() => {
     setIsPublic(isProfilePublic)
@@ -168,12 +170,14 @@ export function UserProfileCard({
   const getAvatarSrc = () => {
     // Si el perfil es privado, mostrar avatar anonimo con antifaz
     if (!isPublic) return '/avatars/anonymous-user.jpg'
+    const isLawyerRole = role === 'lawyer' || role === 'admin' || role === 'guestlawyer'
+    const isDefaultUserAvatar = avatarUrl?.includes('default-user-avatar')
     // Si tiene avatar personalizado, usarlo
-    if (avatarUrl) return avatarUrl
+    if (avatarUrl && !(isLawyerRole && isDefaultUserAvatar)) return avatarUrl
     // Avatar por defecto segun rol
     if (role === 'superadmin') return '/avatars/superadmin-avatar.jpg'
     // Avatar de abogado profesional para roles de abogado
-    if (role === 'lawyer' || role === 'admin' || role === 'guestlawyer') {
+    if (isLawyerRole) {
       return '/avatars/lawyer-default.jpg'
     }
     return '/avatars/default-user-avatar.jpg'
@@ -195,7 +199,13 @@ export function UserProfileCard({
     <Card className="overflow-hidden">
       <CardContent className="p-0">
         {/* Header con gradiente y avatar */}
-        <div className="bg-gradient-to-br from-slate-800 to-slate-900 p-4 relative">
+        <div className="bg-gradient-to-br from-slate-800 to-slate-900 p-4 relative overflow-hidden">
+          <div className="pointer-events-none absolute inset-0 opacity-10">
+            <span className="absolute top-3 right-6 text-2xl">✨</span>
+            <span className="absolute bottom-4 right-16 text-xl">🧠</span>
+            <span className="absolute bottom-6 left-10 text-2xl">⚖️</span>
+            <span className="absolute top-8 left-1/2 text-xl">📌</span>
+          </div>
           <div className="flex items-center gap-4">
             {/* Avatar con imagen - Muestra anonimo si es privado */}
             <div className={`relative w-16 h-16 rounded-full overflow-hidden ${getAvatarBorderClass()} ${!isPublic ? 'ring-slate-500 ring-offset-slate-900' : ''}`}>
@@ -222,47 +232,55 @@ export function UserProfileCard({
           </div>
 
           {/* CODIGO DE REFERIDO - Grande y visible para compartir */}
-          {isPublic && (
-            <div className="mt-4 p-3 rounded-xl bg-gradient-to-r from-emerald-600/20 to-green-600/20 border border-emerald-500/30">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-xs text-emerald-400 font-medium uppercase tracking-wide">Tu Codigo de Referido</p>
-                  <p className="text-2xl font-bold font-mono text-white tracking-wider mt-1">{codigo}</p>
-                </div>
-                <Button
-                  onClick={handleCopyCode}
-                  variant="outline"
-                  size="sm"
-                  className="bg-emerald-500/20 border-emerald-500/50 text-emerald-400 hover:bg-emerald-500/30 hover:text-white"
-                >
-                  {copied ? (
-                    <>
-                      <Check className="w-4 h-4 mr-1" />
-                      Copiado
-                    </>
-                  ) : (
-                    <>
-                      <Copy className="w-4 h-4 mr-1" />
-                      Copiar
-                    </>
-                  )}
-                </Button>
+          <div className="mt-4 p-3 rounded-xl bg-gradient-to-r from-emerald-600/20 to-green-600/20 border border-emerald-500/30 min-h-[86px]">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-xs text-emerald-400 font-medium uppercase tracking-wide">Tu Código de Referido</p>
+                <p className={`text-2xl font-bold font-mono tracking-wider mt-1 ${isPublic ? 'text-white' : 'text-slate-500'}`}>
+                  {isPublic ? codigo : '••••••••'}
+                </p>
               </div>
-              <p className="text-xs text-slate-400 mt-2">Comparte este codigo y gana recompensas</p>
+              <Button
+                onClick={handleCopyCode}
+                variant="outline"
+                size="sm"
+                disabled={!isPublic}
+                className="bg-emerald-500/20 border-emerald-500/50 text-emerald-400 hover:bg-emerald-500/30 hover:text-white disabled:opacity-40 disabled:hover:text-emerald-400"
+              >
+                {copied ? (
+                  <>
+                    <Check className="w-4 h-4 mr-1" />
+                    Copiado
+                  </>
+                ) : (
+                  <>
+                    <Copy className="w-4 h-4 mr-1" />
+                    Copiar
+                  </>
+                )}
+              </Button>
             </div>
-          )}
+            <p className="text-xs text-slate-400 mt-2">
+              {isPublic ? 'Comparte este código y gana recompensas.' : 'El código se oculta en modo incógnito.'}
+            </p>
+          </div>
 
           {/* Switch de modo publico/privado */}
-          <div className="mt-3 flex items-center justify-between p-2 rounded-lg bg-slate-700/50">
-            <div className="flex items-center gap-2">
+          <div className="mt-3 flex items-center justify-between p-2 rounded-lg bg-slate-700/50 min-h-[46px]">
+            <div className="flex items-start gap-2">
               {isPublic ? (
                 <Eye className="w-4 h-4 text-green-400" />
               ) : (
                 <EyeOff className="w-4 h-4 text-amber-400" />
               )}
-              <span className="text-xs text-slate-300">
-                {isPublic ? 'Perfil Publico' : 'Modo Incognito (navegando anonimo)'}
-              </span>
+              <div>
+                <p className="text-xs text-slate-300">
+                  {isPublic ? 'Perfil público' : 'Modo incógnito (navegación anónima)'}
+                </p>
+                <p className="text-[10px] text-slate-400">
+                  Define cómo aparecerás al comentar en el Buró de Empresas (próximamente).
+                </p>
+              </div>
             </div>
             <Switch
               checked={isPublic}

@@ -13,6 +13,17 @@ import { Badge } from '@/components/ui/badge'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Separator } from '@/components/ui/separator'
 import { useToast } from '@/hooks/use-toast'
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger
+} from '@/components/ui/alert-dialog'
 import { 
   ArrowLeft, 
   Save, 
@@ -72,6 +83,7 @@ interface ProfileData {
   phone: string
   role: string
   codigoUsuario: string
+  referralCode: string
   verificationStatus: string // 'none' | 'pending' | 'verified'
   isProfilePublic: boolean
   avatarUrl?: string
@@ -106,6 +118,15 @@ export default function PerfilPage() {
   const [isPublic, setIsPublic] = useState(true)
   const [copied, setCopied] = useState(false)
   const [savingPublic, setSavingPublic] = useState(false)
+  const [whatsappCode, setWhatsappCode] = useState('')
+  const [emailCode, setEmailCode] = useState('')
+  const [whatsappStatus, setWhatsappStatus] = useState<{ verified: boolean; phone?: string | null } | null>(null)
+  const [emailStatus, setEmailStatus] = useState<{ verified: boolean; email?: string | null } | null>(null)
+  const [sendingWhatsapp, setSendingWhatsapp] = useState(false)
+  const [verifyingWhatsapp, setVerifyingWhatsapp] = useState(false)
+  const [sendingEmail, setSendingEmail] = useState(false)
+  const [verifyingEmail, setVerifyingEmail] = useState(false)
+  const [deletingAccount, setDeletingAccount] = useState(false)
   
   // Campos editables
   const [editFullName, setEditFullName] = useState('')
@@ -156,6 +177,7 @@ export default function PerfilPage() {
         .in('categoria', ['ine_frente', 'ine_reverso', 'pasaporte'])
         .eq('estado', 'activo')
 
+      const referralCode = profileData?.referral_code || profileData?.codigo_usuario || ''
       const profile: ProfileData = {
         id: user.id,
         email: profileData?.email || user.email || '',
@@ -163,6 +185,7 @@ export default function PerfilPage() {
         phone: profileData?.phone || '',
         role: profileData?.role || 'guest',
         codigoUsuario: profileData?.codigo_usuario || '',
+        referralCode,
         verificationStatus: profileData?.verification_status || 'none',
         isProfilePublic: profileData?.is_profile_public ?? true,
         avatarUrl: profileData?.avatar_url,
@@ -192,12 +215,177 @@ export default function PerfilPage() {
       setEditCP(profile.codigoPostal || '')
       setEditMunicipio(profile.municipio || '')
       setEditEstado(profile.estado || '')
+      await loadVerificationStatus()
 
     } catch (error) {
       console.error('Error loading profile:', error)
       toast({ title: 'Error', description: 'No se pudo cargar el perfil', variant: 'destructive' })
     } finally {
       setLoading(false)
+    }
+  }
+
+  const loadVerificationStatus = async () => {
+    try {
+      const [whatsappRes, emailRes] = await Promise.all([
+        fetch('/api/whatsapp/status'),
+        fetch('/api/email/verification/status')
+      ])
+      if (whatsappRes.ok) {
+        const data = await whatsappRes.json()
+        setWhatsappStatus({ verified: data.verified, phone: data.phone })
+      }
+      if (emailRes.ok) {
+        const data = await emailRes.json()
+        setEmailStatus({ verified: data.verified, email: data.email })
+      }
+    } catch (error) {
+      console.error('Error loading verification status:', error)
+    }
+  }
+
+  const handleEnviarWhatsapp = async () => {
+    if (!editPhone) {
+      toast({ title: 'Número requerido', description: 'Ingresa tu número para enviar el código.', variant: 'destructive' })
+      return
+    }
+    setSendingWhatsapp(true)
+    try {
+      const response = await fetch('/api/whatsapp/request', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ phone: editPhone })
+      })
+      const data = await response.json()
+      if (!response.ok) {
+        throw new Error(data.error || 'No se pudo enviar el código')
+      }
+      toast({ title: 'Código enviado', description: 'Revisa tu WhatsApp para continuar.' })
+    } catch (error) {
+      toast({
+        title: 'Error',
+        description: error instanceof Error ? error.message : 'No se pudo enviar el código',
+        variant: 'destructive'
+      })
+    } finally {
+      setSendingWhatsapp(false)
+    }
+  }
+
+  const handleVerificarWhatsapp = async () => {
+    if (!whatsappCode) {
+      toast({ title: 'Código requerido', description: 'Ingresa el código recibido.', variant: 'destructive' })
+      return
+    }
+    setVerifyingWhatsapp(true)
+    try {
+      const response = await fetch('/api/whatsapp/verify', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ phone: editPhone, code: whatsappCode })
+      })
+      const data = await response.json()
+      if (!response.ok) {
+        throw new Error(data.error || 'No se pudo verificar')
+      }
+      toast({ title: 'WhatsApp verificado', description: 'Tu número quedó validado.' })
+      setWhatsappCode('')
+      await loadVerificationStatus()
+    } catch (error) {
+      toast({
+        title: 'Error',
+        description: error instanceof Error ? error.message : 'No se pudo verificar',
+        variant: 'destructive'
+      })
+    } finally {
+      setVerifyingWhatsapp(false)
+    }
+  }
+
+  const handleEnviarEmail = async () => {
+    if (!editEmail) {
+      toast({ title: 'Correo requerido', description: 'Ingresa tu correo para enviar el código.', variant: 'destructive' })
+      return
+    }
+    setSendingEmail(true)
+    try {
+      const response = await fetch('/api/email/verification/request', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: editEmail })
+      })
+      const data = await response.json()
+      if (!response.ok) {
+        throw new Error(data.error || 'No se pudo enviar el correo')
+      }
+      toast({ title: 'Correo enviado', description: 'Revisa tu bandeja para el código.' })
+    } catch (error) {
+      toast({
+        title: 'Error',
+        description: error instanceof Error ? error.message : 'No se pudo enviar el correo',
+        variant: 'destructive'
+      })
+    } finally {
+      setSendingEmail(false)
+    }
+  }
+
+  const handleVerificarEmail = async () => {
+    if (!emailCode) {
+      toast({ title: 'Código requerido', description: 'Ingresa el código recibido.', variant: 'destructive' })
+      return
+    }
+    setVerifyingEmail(true)
+    try {
+      const response = await fetch('/api/email/verification/confirm', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ code: emailCode })
+      })
+      const data = await response.json()
+      if (!response.ok) {
+        throw new Error(data.error || 'No se pudo verificar')
+      }
+      toast({
+        title: 'Correo verificado',
+        description: data.requiresSecondFactor ? 'Completa la verificación de WhatsApp para el segundo factor.' : 'Verificación completa.'
+      })
+      setEmailCode('')
+      await loadVerificationStatus()
+    } catch (error) {
+      toast({
+        title: 'Error',
+        description: error instanceof Error ? error.message : 'No se pudo verificar',
+        variant: 'destructive'
+      })
+    } finally {
+      setVerifyingEmail(false)
+    }
+  }
+
+  const handleDeleteAccount = async () => {
+    setDeletingAccount(true)
+    try {
+      const response = await fetch('/api/account/delete', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ confirm: true })
+      })
+      const data = await response.json()
+      if (!response.ok) {
+        throw new Error(data.error || 'No se pudo eliminar la cuenta')
+      }
+      toast({ title: 'Cuenta eliminada', description: 'Tus datos fueron borrados correctamente.' })
+      await createClient().auth.signOut()
+      router.push('/')
+    } catch (error) {
+      toast({
+        title: 'Error',
+        description: error instanceof Error ? error.message : 'No se pudo eliminar la cuenta',
+        variant: 'destructive'
+      })
+    } finally {
+      setDeletingAccount(false)
     }
   }
 
@@ -306,8 +494,8 @@ export default function PerfilPage() {
   }
 
   const handleCopyCode = async () => {
-    if (profile?.codigoUsuario) {
-      await navigator.clipboard.writeText(profile.codigoUsuario)
+    if (profile?.referralCode || profile?.codigoUsuario) {
+      await navigator.clipboard.writeText(profile.referralCode || profile.codigoUsuario)
       setCopied(true)
       setTimeout(() => setCopied(false), 2000)
     }
@@ -337,7 +525,9 @@ export default function PerfilPage() {
 
   // Determinar avatar segun rol
   const getAvatarSrc = () => {
-    if (profile?.avatarUrl) return profile.avatarUrl
+    const isLawyerRole = profile?.role === 'lawyer' || profile?.role === 'admin' || profile?.role === 'guestlawyer'
+    const isDefaultUserAvatar = profile?.avatarUrl?.includes('default-user-avatar')
+    if (profile?.avatarUrl && !(isLawyerRole && isDefaultUserAvatar)) return profile.avatarUrl
     if (profile?.role === 'superadmin') return '/avatars/superadmin-avatar.jpg'
     // Avatar de abogado para roles de abogado (lawyer, admin, guestlawyer)
     if (profile?.role === 'lawyer' || profile?.role === 'admin' || profile?.role === 'guestlawyer') {
@@ -354,7 +544,10 @@ export default function PerfilPage() {
       return { status: 'verified', color: 'green', icon: CheckCircle, label: 'Cuenta Verificada' }
     }
     if (profile.verificationStatus === 'pending') {
-      return { status: 'pending', color: 'amber', icon: AlertTriangle, label: 'Verificacion Pendiente' }
+      if (!profile.tieneINE) {
+        return { status: 'awaiting_documents', color: 'amber', icon: AlertTriangle, label: 'Documentación pendiente' }
+      }
+      return { status: 'pending', color: 'amber', icon: AlertTriangle, label: 'Verificación en revisión' }
     }
     
     // Verificar requisitos
@@ -369,7 +562,7 @@ export default function PerfilPage() {
       status: puedeVerificar ? 'ready' : 'incomplete', 
       color: puedeVerificar ? 'blue' : 'gray', 
       icon: puedeVerificar ? Shield : XCircle,
-      label: puedeVerificar ? 'Listo para Verificar' : 'Completa tu Perfil',
+      label: puedeVerificar ? 'Listo para verificar' : 'Completa tu perfil',
       requisitos: { tieneNombre, tienePhone, tieneCalculo, tieneINE }
     }
   }
@@ -445,20 +638,26 @@ export default function PerfilPage() {
                 
                 {verification.status === 'verified' && (
                   <p className="text-sm text-green-700 mt-1">
-                    Tu cuenta esta verificada. Tienes acceso completo a todas las funciones.
+                    Tu cuenta está verificada. Tienes acceso completo a todas las funciones.
                   </p>
                 )}
                 
                 {verification.status === 'pending' && (
                   <p className="text-sm text-amber-700 mt-1">
-                    Un abogado esta revisando tu documentacion. Te contactaremos pronto.
+                    Tu documentación fue enviada. Nuestro equipo está revisándola.
+                  </p>
+                )}
+
+                {verification.status === 'awaiting_documents' && (
+                  <p className="text-sm text-amber-700 mt-1">
+                    Aún no recibimos tu INE. Sube tu identificación para iniciar la verificación.
                   </p>
                 )}
                 
                 {verification.status === 'ready' && (
                   <>
                     <p className="text-sm text-blue-700 mt-1">
-                      Tienes todo listo. Solicita la verificacion para acceder a un abogado.
+                      Tienes todo listo. Solicita la verificación para acceder a un abogado.
                     </p>
                     <Button 
                       className="mt-3 bg-blue-600 hover:bg-blue-700"
@@ -470,7 +669,7 @@ export default function PerfilPage() {
                       ) : (
                         <Shield className="w-4 h-4 mr-2" />
                       )}
-                      Solicitar Verificacion
+                      Solicitar verificación
                     </Button>
                   </>
                 )}
@@ -502,6 +701,19 @@ export default function PerfilPage() {
                     </div>
                   </div>
                 )}
+
+                {verification.status !== 'verified' && (
+                  <div className="mt-4 rounded-lg border border-dashed border-amber-300 bg-amber-50/60 p-3">
+                    <p className="text-xs font-medium text-amber-800">
+                      Herramientas Pro desactivadas hasta verificar tu cuenta:
+                    </p>
+                    <div className="mt-2 grid gap-1 text-xs text-amber-700">
+                      <span>• Oficina virtual y asignación de casos</span>
+                      <span>• Casos activos y seguimiento avanzado</span>
+                      <span>• Acceso a paneles profesionales</span>
+                    </div>
+                  </div>
+                )}
               </div>
             </div>
           </CardContent>
@@ -513,7 +725,13 @@ export default function PerfilPage() {
             profile.role === 'superadmin' 
               ? 'bg-gradient-to-br from-black to-zinc-900' 
               : 'bg-gradient-to-br from-slate-800 to-slate-900'
-          }`}>
+          } relative overflow-hidden`}>
+            <div className="pointer-events-none absolute inset-0 opacity-10">
+              <span className="absolute top-3 right-5 text-2xl">✨</span>
+              <span className="absolute bottom-5 right-10 text-xl">💬</span>
+              <span className="absolute bottom-4 left-8 text-2xl">🏢</span>
+              <span className="absolute top-8 left-1/2 text-xl">🔎</span>
+            </div>
             <div className="flex items-center gap-4">
               {/* Avatar */}
               <div className={`relative w-16 h-16 rounded-full overflow-hidden ${
@@ -557,24 +775,28 @@ export default function PerfilPage() {
                      profile.role === 'superadmin' ? 'ROOT' : profile.role}
                   </Badge>
                   {/* Codigo de referido visible solo si es publico */}
-                  {isPublic && (
-                    <button
-                      onClick={handleCopyCode}
-                      className={`flex items-center gap-1 font-mono text-xs transition-colors ${
-                        profile.role === 'superadmin'
-                          ? 'text-green-500/70 hover:text-green-400'
-                          : 'text-slate-400 hover:text-white'
-                      }`}
-                      title="Copiar codigo de referido"
-                    >
-                      <span>{profile.codigoUsuario}</span>
-                      {copied ? (
-                        <Check className="w-3 h-3 text-green-400" />
-                      ) : (
-                        <Copy className="w-3 h-3" />
-                      )}
-                    </button>
-                  )}
+                  <div className="min-h-[22px]">
+                    {isPublic ? (
+                      <button
+                        onClick={handleCopyCode}
+                        className={`flex items-center gap-1 font-mono text-xs transition-colors ${
+                          profile.role === 'superadmin'
+                            ? 'text-green-500/70 hover:text-green-400'
+                            : 'text-slate-400 hover:text-white'
+                        }`}
+                        title="Copiar código de referido"
+                      >
+                        <span>{profile.referralCode || profile.codigoUsuario}</span>
+                        {copied ? (
+                          <Check className="w-3 h-3 text-green-400" />
+                        ) : (
+                          <Copy className="w-3 h-3" />
+                        )}
+                      </button>
+                    ) : (
+                      <span className="text-xs text-slate-500">Código oculto en modo incógnito</span>
+                    )}
+                  </div>
                 </div>
               </div>
             </div>
@@ -585,20 +807,25 @@ export default function PerfilPage() {
                 ? 'bg-green-500/10 border border-green-500/30'
                 : 'bg-slate-700/50'
             }`}>
-              <div className="flex items-center gap-2">
+              <div className="flex items-start gap-2">
                 {isPublic ? (
                   <Eye className={`w-4 h-4 ${profile.role === 'superadmin' ? 'text-green-400' : 'text-green-400'}`} />
                 ) : (
                   <EyeOff className="w-4 h-4 text-slate-400" />
                 )}
-                <span className={`text-sm ${
-                  profile.role === 'superadmin' ? 'text-green-400/80 font-mono' : 'text-slate-300'
-                }`}>
-                  {profile.role === 'superadmin' 
-                    ? `PROFILE.visibility = "${isPublic ? 'PUBLIC' : 'PRIVATE'}"`
-                    : `Perfil ${isPublic ? 'Publico' : 'Privado'}`
-                  }
-                </span>
+                <div>
+                  <span className={`text-sm ${
+                    profile.role === 'superadmin' ? 'text-green-400/80 font-mono' : 'text-slate-300'
+                  }`}>
+                    {profile.role === 'superadmin' 
+                      ? `PROFILE.visibility = "${isPublic ? 'PUBLIC' : 'PRIVATE'}"`
+                      : `Perfil ${isPublic ? 'Público' : 'Incógnito'}`
+                    }
+                  </span>
+                  <p className="text-[11px] text-slate-400">
+                    Define cómo aparecerás al comentar en el Buró de Empresas (próximamente).
+                  </p>
+                </div>
               </div>
               <Switch
                 checked={isPublic}
@@ -715,6 +942,105 @@ export default function PerfilPage() {
                 <DataRow icon={Mail} label="Email" value={profile.email || 'Sin registrar'} muted={!profile.email} />
               </>
             )}
+          </CardContent>
+        </Card>
+
+        {/* 5. VERIFICACIONES DE CONTACTO */}
+        <Card>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-base flex items-center gap-2">
+              <Shield className="w-4 h-4" />
+              Verificación de contacto
+            </CardTitle>
+            <CardDescription className="text-xs">
+              Usa tu WhatsApp y correo para asegurar tu cuenta y completar el doble factor.
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="rounded-lg border p-3 space-y-3">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm font-medium">WhatsApp</p>
+                  <p className="text-xs text-muted-foreground">
+                    {whatsappStatus?.verified ? `Verificado: ${whatsappStatus.phone}` : 'Aún no verificado'}
+                  </p>
+                </div>
+                <Badge variant={whatsappStatus?.verified ? 'default' : 'secondary'}>
+                  {whatsappStatus?.verified ? 'Verificado' : 'Pendiente'}
+                </Badge>
+              </div>
+              <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={handleEnviarWhatsapp}
+                  disabled={sendingWhatsapp}
+                >
+                  {sendingWhatsapp ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Phone className="w-4 h-4 mr-2" />}
+                  Enviar código WhatsApp
+                </Button>
+                <div className="flex flex-1 gap-2">
+                  <Input
+                    value={whatsappCode}
+                    onChange={(e) => setWhatsappCode(e.target.value)}
+                    placeholder="Código de 6 dígitos"
+                  />
+                  <Button
+                    size="sm"
+                    onClick={handleVerificarWhatsapp}
+                    disabled={verifyingWhatsapp}
+                  >
+                    {verifyingWhatsapp ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <CheckCircle className="w-4 h-4 mr-2" />}
+                    Verificar
+                  </Button>
+                </div>
+              </div>
+            </div>
+
+            <div className="rounded-lg border p-3 space-y-3">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm font-medium">Correo electrónico</p>
+                  <p className="text-xs text-muted-foreground">
+                    {emailStatus?.verified ? `Verificado: ${emailStatus.email}` : 'Aún no verificado'}
+                  </p>
+                </div>
+                <Badge variant={emailStatus?.verified ? 'default' : 'secondary'}>
+                  {emailStatus?.verified ? 'Verificado' : 'Pendiente'}
+                </Badge>
+              </div>
+              {emailStatus?.verified && !whatsappStatus?.verified && (
+                <p className="text-xs text-amber-600">
+                  Completa WhatsApp como segundo factor para finalizar la verificación.
+                </p>
+              )}
+              <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={handleEnviarEmail}
+                  disabled={sendingEmail}
+                >
+                  {sendingEmail ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Mail className="w-4 h-4 mr-2" />}
+                  Enviar código por correo
+                </Button>
+                <div className="flex flex-1 gap-2">
+                  <Input
+                    value={emailCode}
+                    onChange={(e) => setEmailCode(e.target.value)}
+                    placeholder="Código de 6 dígitos"
+                  />
+                  <Button
+                    size="sm"
+                    onClick={handleVerificarEmail}
+                    disabled={verifyingEmail}
+                  >
+                    {verifyingEmail ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <CheckCircle className="w-4 h-4 mr-2" />}
+                    Verificar
+                  </Button>
+                </div>
+              </div>
+            </div>
           </CardContent>
         </Card>
 
@@ -847,6 +1173,43 @@ export default function PerfilPage() {
             </CardContent>
           </Card>
         )}
+
+        {/* 8. ELIMINAR CUENTA */}
+        <Card className="border-red-200 bg-red-50/40">
+          <CardHeader className="pb-2">
+            <CardTitle className="text-base flex items-center gap-2 text-red-700">
+              <Trash2 className="w-4 h-4" />
+              Eliminar cuenta
+            </CardTitle>
+            <CardDescription className="text-xs text-red-600">
+              Esta acción elimina tu perfil, bóveda y archivos asociados de forma permanente.
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <AlertDialog>
+              <AlertDialogTrigger asChild>
+                <Button variant="destructive" className="w-full" disabled={deletingAccount}>
+                  {deletingAccount ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Trash2 className="w-4 h-4 mr-2" />}
+                  Borrar cuenta definitivamente
+                </Button>
+              </AlertDialogTrigger>
+              <AlertDialogContent>
+                <AlertDialogHeader>
+                  <AlertDialogTitle>¿Eliminar tu cuenta?</AlertDialogTitle>
+                  <AlertDialogDescription>
+                    Perderás el acceso a tus casos, documentos y datos guardados. Esta acción es irreversible.
+                  </AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter>
+                  <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                  <AlertDialogAction onClick={handleDeleteAccount} className="bg-red-600 hover:bg-red-700">
+                    Sí, eliminar
+                  </AlertDialogAction>
+                </AlertDialogFooter>
+              </AlertDialogContent>
+            </AlertDialog>
+          </CardContent>
+        </Card>
 
         {/* Info footer */}
         <p className="text-xs text-center text-muted-foreground px-4">

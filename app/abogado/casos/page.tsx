@@ -737,7 +737,7 @@ export default function AbogadoCasosPage() {
                   <h3 className="font-semibold text-slate-700 mb-2">No hay casos disponibles</h3>
                   <p className="text-sm text-slate-500 mb-4">
                     En este momento no hay casos disponibles en tu estado.
-                    <br />Vuelve a intentar mas tarde.
+                    <br />Vuelve a intentar más tarde.
                   </p>
                   <Button variant="outline" onClick={loadLeadDisponible} className="bg-transparent">
                     <RefreshCw className="w-4 h-4 mr-2" />
@@ -747,12 +747,12 @@ export default function AbogadoCasosPage() {
               </Card>
             )}
 
-            {/* Info de como funciona */}
+            {/* Info de cómo funciona */}
             <Card className="bg-slate-50">
               <CardContent className="p-4">
                 <h4 className="font-medium text-slate-700 mb-2 flex items-center gap-2">
                   <Sparkles className="w-4 h-4 text-amber-500" />
-                  Como funciona
+                  Cómo funciona
                 </h4>
                 <ul className="text-sm text-slate-600 space-y-2">
                   <li className="flex items-start gap-2">
@@ -761,11 +761,11 @@ export default function AbogadoCasosPage() {
                   </li>
                   <li className="flex items-start gap-2">
                     <span className="w-5 h-5 rounded-full bg-emerald-100 text-emerald-700 flex items-center justify-center text-xs font-bold flex-shrink-0">2</span>
-                    <span>Revisa la informacion del caso y decide si te interesa</span>
+                    <span>Revisa la información del caso y decide si te interesa</span>
                   </li>
                   <li className="flex items-start gap-2">
                     <span className="w-5 h-5 rounded-full bg-emerald-100 text-emerald-700 flex items-center justify-center text-xs font-bold flex-shrink-0">3</span>
-                    <span>Toma el caso (10 creditos) o pasa para ver otro</span>
+                    <span>Toma el caso (10 créditos) o pasa para ver otro</span>
                   </li>
                   <li className="flex items-start gap-2">
                     <span className="w-5 h-5 rounded-full bg-emerald-100 text-emerald-700 flex items-center justify-center text-xs font-bold flex-shrink-0">4</span>

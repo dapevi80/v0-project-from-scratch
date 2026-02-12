@@ -447,7 +447,7 @@ export default function GuestLawyerDashboardPage() {
                 Desbloquea todo el potencial de mecorrieron.mx
               </h3>
               <p className="text-sm text-muted-foreground mb-4">
-                Como abogado verificado tendras acceso a casos ilimitados, creditos CCL para generar solicitudes con IA, y el marketplace de trabajadores.
+                Como abogado verificado tendrás acceso a casos ilimitados, créditos CCL para generar solicitudes con IA, y el marketplace de trabajadores.
               </p>
               <div className="flex flex-col sm:flex-row gap-2 justify-center">
                 <Button asChild className="bg-amber-600 hover:bg-amber-700">

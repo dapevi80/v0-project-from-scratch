@@ -169,6 +169,22 @@ export interface AgentResultado {
   errorStep?: AgentStep
 }
 
+// Resultado de la solicitud CCL extraído del portal
+export interface SolicitudResultado {
+  success: boolean
+  folioSolicitud?: string
+  fechaCita?: string
+  horaCita?: string
+  modalidad?: ModalidadConciliacion
+  ligaUnica?: string
+  fechaLimiteConfirmacion?: string
+  sedeCcl?: string
+  direccionSede?: string
+  telefonoConfirmacion?: string
+  instrucciones?: string[]
+  pdfUrl?: string
+}
+
 // Configuración del browser
 export interface BrowserConfig {
   headless: boolean

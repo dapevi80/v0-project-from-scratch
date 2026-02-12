@@ -70,26 +70,26 @@ type WalletView = 'main' | 'receive' | 'send' | 'settings' | 'mnemonic' | 'impor
 // Tutorial steps for wallet creation
 const SECURITY_STEPS = [
   {
-    title: 'Que es una wallet?',
+    title: '¿Qué es una wallet?',
     description: 'Tu billetera digital personal donde solo TU tienes acceso mediante 12 palabras secretas.',
     icon: Wallet,
     tip: 'Piensa en ella como una caja fuerte digital'
   },
   {
     title: 'Las 12 palabras son tu llave',
-    description: 'Al crear tu wallet recibiras 12 palabras. Son tu UNICA forma de recuperarla. Si las pierdes, pierdes tus fondos PARA SIEMPRE.',
+    description: 'Al crear tu wallet recibirás 12 palabras. Son tu ÚNICA forma de recuperarla. Si las pierdes, pierdes tus fondos PARA SIEMPRE.',
     icon: KeyRound,
-    tip: 'Escribelas en papel, NUNCA en digital'
+    tip: 'Escríbelas en papel, NUNCA en digital'
   },
   {
     title: 'Nunca las compartas',
-    description: 'NADIE legitimo te pedira tu frase. Ni nosotros, ni soporte. Quien la pida es estafador.',
+    description: 'NADIE legítimo te pedirá tu frase. Ni nosotros, ni soporte. Quien la pida es estafador.',
     icon: AlertTriangle,
     tip: 'Ni fotos, ni capturas, ni mensajes'
   },
   {
     title: 'No las guardamos',
-    description: 'Tu frase se genera en tu dispositivo. No la almacenamos ni podemos recuperarla. Tu eres responsable.',
+    description: 'Tu frase se genera en tu dispositivo. No la almacenamos ni podemos recuperarla. Tú eres responsable.',
     icon: Shield,
     tip: 'Descentralizada = tu control total'
   }

@@ -1,21 +1,10 @@
 import React from "react"
 import type { Metadata } from 'next'
-import { Inter, Geist_Mono } from 'next/font/google'
 import { Analytics } from '@vercel/analytics/next'
 import { GlobalAIAssistant } from '@/components/global-ai-assistant'
 import { FloatingBugButton } from '@/components/bug-report/floating-bug-button'
 import { AuthProvider } from '@/lib/auth/auth-provider'
 import './globals.css'
-
-const inter = Inter({ 
-  subsets: ["latin"],
-  variable: '--font-inter',
-  display: 'swap',
-});
-const geistMono = Geist_Mono({ 
-  subsets: ["latin"],
-  variable: '--font-geist-mono',
-});
 
 export const metadata: Metadata = {
   title: 'mecorrieron.mx - Tu derecho laboral, protegido',
@@ -46,7 +35,7 @@ export default function RootLayout({
   children: React.ReactNode
 }>) {
   return (
-    <html lang="es-MX" className={`${inter.variable} ${geistMono.variable}`}>
+    <html lang="es-MX">
       <body className="font-sans antialiased">
         <AuthProvider>
           {children}

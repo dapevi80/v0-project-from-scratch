@@ -1625,10 +1625,10 @@ export default function CalculadoraPage() {
                     </div>
                   </div>
                   
-                  {/* Dia de descanso */}
+                  {/* Día de descanso */}
                   <div className="p-4 rounded-lg border bg-primary/5 border-primary/20">
-                    <p className="text-sm font-medium mb-2">Dia de descanso semanal</p>
-                    <p className="text-xs text-muted-foreground mb-3">Art. 69 LFT: Todo trabajador tiene derecho a un dia de descanso por cada 6 de trabajo</p>
+                    <p className="text-sm font-medium mb-2">Día de descanso semanal</p>
+                    <p className="text-xs text-muted-foreground mb-3">Art. 69 LFT: Todo trabajador tiene derecho a un día de descanso por cada 6 de trabajo</p>
                     <OptionChips
                       options={[
                         { value: 'fijo', label: 'Fijo' },
@@ -1654,7 +1654,7 @@ export default function CalculadoraPage() {
                     )}
                     {tipoDescanso === 'rotativo' && (
                       <p className="text-xs text-muted-foreground mt-2">
-                        El descanso rotativo puede implicar trabajo en dias festivos sin pago extra. Art. 71 LFT
+                        El descanso rotativo puede implicar trabajo en días festivos sin pago extra. Art. 71 LFT
                       </p>
                     )}
                     {tipoDescanso === 'ninguno' && (
@@ -1663,7 +1663,7 @@ export default function CalculadoraPage() {
                           Trabajar sin descanso viola el Art. 69 LFT
                         </p>
                         <p className="text-xs text-muted-foreground mt-1">
-                          El 7mo dia trabajado debe pagarse DOBLE (Art. 73 LFT). Este concepto se agregara a tu calculo.
+                          El 7mo día trabajado debe pagarse DOBLE (Art. 73 LFT). Este concepto se agregará a tu cálculo.
                         </p>
                       </div>
                     )}
@@ -1686,27 +1686,27 @@ export default function CalculadoraPage() {
                         )}
                       </div>
                       <div className="text-xs mt-2 p-2 bg-background/50 rounded">
-                        <p className="font-medium text-foreground">Segun LFT Art. 60-68:</p>
+                        <p className="font-medium text-foreground">Según LFT Art. 60-68:</p>
                         <ul className="list-disc list-inside text-muted-foreground mt-1 space-y-0.5">
                           <li>Jornada diurna: max 8 hrs (6am-8pm)</li>
                           <li>Jornada nocturna: max 7 hrs (8pm-6am)</li>
                           <li>Jornada mixta: max 7.5 hrs (si hay menos de 3.5 hrs nocturnas)</li>
-                          <li>Extras nocturnas valen 20% mas que diurnas</li>
+                          <li>Extras nocturnas valen 20% más que diurnas</li>
                           <li>Primeras 9 hrs extras/sem = doble | Adicionales = triple</li>
                         </ul>
                       </div>
                       <p className="text-xs text-muted-foreground mt-2">
-                        Estas horas extra se integran a tu salario diario para calcular la indemnizacion
+                        Estas horas extra se integran a tu salario diario para calcular la indemnización
                       </p>
                     </div>
                   )}
                   
                   {/* Tiempo con este horario */}
                   <div className="p-4 rounded-lg border bg-muted/30">
-                    <p className="text-sm font-medium mb-3">Cuanto tiempo has tenido este horario?</p>
+                    <p className="text-sm font-medium mb-3">¿Cuánto tiempo has tenido este horario?</p>
                     <OptionChips
                       options={[
-                        { value: 'ultimo_mes', label: 'Solo el ultimo mes' },
+                        { value: 'ultimo_mes', label: 'Solo el último mes' },
                         { value: 'siempre', label: 'Siempre he tenido este horario' },
                       ]}
                       value={tiempoConHorario}
@@ -1714,7 +1714,7 @@ export default function CalculadoraPage() {
                     />
                     {tiempoConHorario === 'ultimo_mes' && (
                       <p className="text-xs text-muted-foreground mt-2">
-                        Solo calcularemos las horas extra del ultimo mes (4 semanas)
+                        Solo calcularemos las horas extra del último mes (4 semanas)
                       </p>
                     )}
                     {tiempoConHorario === 'siempre' && fechaIngreso && (

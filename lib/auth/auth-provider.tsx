@@ -10,6 +10,7 @@ export interface UserProfile {
   full_name: string | null
   role: string
   codigo_usuario: string | null
+  referral_code: string | null
   verification_status: string | null
   celebration_shown: boolean
   downgrade_reason: string | null
@@ -74,7 +75,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     const supabase = createClient()
     const { data } = await supabase
       .from('profiles')
-      .select('id, email, full_name, role, codigo_usuario, verification_status, celebration_shown, downgrade_reason, previous_role, upgrade_at, upgrade_type, avatar_url, phone, is_profile_public, first_login_at, login_count, last_welcome_shown_at')
+      .select('id, email, full_name, role, codigo_usuario, referral_code, verification_status, celebration_shown, downgrade_reason, previous_role, upgrade_at, upgrade_type, avatar_url, phone, is_profile_public, first_login_at, login_count, last_welcome_shown_at')
       .eq('id', user.id)
       .single()
 
@@ -85,6 +86,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         full_name: data.full_name,
         role: data.role || 'guest',
         codigo_usuario: data.codigo_usuario,
+        referral_code: data.referral_code,
         verification_status: data.verification_status,
         celebration_shown: data.celebration_shown || false,
         downgrade_reason: data.downgrade_reason,
@@ -128,7 +130,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           
           const { data } = await supabase
             .from('profiles')
-            .select('id, email, full_name, role, codigo_usuario, verification_status, celebration_shown, downgrade_reason, previous_role, upgrade_at, upgrade_type, avatar_url, phone, is_profile_public, first_login_at, login_count, last_welcome_shown_at')
+            .select('id, email, full_name, role, codigo_usuario, referral_code, verification_status, celebration_shown, downgrade_reason, previous_role, upgrade_at, upgrade_type, avatar_url, phone, is_profile_public, first_login_at, login_count, last_welcome_shown_at')
             .eq('id', currentUser.id)
             .single()
 
@@ -139,6 +141,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
               full_name: data.full_name,
               role: data.role || 'guest',
               codigo_usuario: data.codigo_usuario,
+              referral_code: data.referral_code,
               verification_status: data.verification_status,
               celebration_shown: data.celebration_shown || false,
               downgrade_reason: data.downgrade_reason,

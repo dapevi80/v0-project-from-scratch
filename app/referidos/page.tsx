@@ -256,10 +256,10 @@ export default function ReferidosPage() {
           </Card>
         </div>
 
-        {/* Como funciona */}
+        {/* Cómo funciona */}
         <Card>
           <CardHeader>
-            <CardTitle className="text-lg">Como funcionan las comisiones</CardTitle>
+            <CardTitle className="text-lg">Cómo funcionan las comisiones</CardTitle>
           </CardHeader>
           <CardContent>
             <div className="grid gap-4">
@@ -268,9 +268,9 @@ export default function ReferidosPage() {
                   1
                 </div>
                 <div>
-                  <p className="font-medium">Comparte tu codigo</p>
+                  <p className="font-medium">Comparte tu código</p>
                   <p className="text-sm text-muted-foreground">
-                    Envia tu link a trabajadores que necesiten ayuda legal
+                    Envía tu link a trabajadores que necesiten ayuda legal
                   </p>
                 </div>
               </div>
