@@ -126,7 +126,7 @@ export async function guardarCalculoEnBoveda(params: GuardarCalculoParams) {
     
     // Guardar registro en la base de datos con nombre de empresa como identificador
     // Incluimos ambos paths en metadata para poder acceder a ambos PDFs
-    const { error: dbError } = await supabase
+    const { data: documento, error: dbError } = await supabase
       .from('documentos_boveda')
       .insert({
         user_id: user.id,
@@ -143,10 +143,70 @@ export async function guardarCalculoEnBoveda(params: GuardarCalculoParams) {
         },
         estado: 'activo'
       })
+      .select()
+      .single()
     
     if (dbError) {
       console.error('Error guardando en DB:', dbError)
       // Si falla la DB, igual se subió el archivo, así que retornamos éxito parcial
+    }
+
+    const rolesConCaso = ['lawyer', 'guestlawyer', 'admin', 'superadmin', 'webagent']
+    if (!dbError && rolesConCaso.includes(rol)) {
+      const { data: calculo, error: calculoError } = await supabase
+        .from('calculos_liquidacion')
+        .insert({
+          user_id: user.id,
+          salario_diario: params.datosCalculo.salarioDiario,
+          salario_mensual: params.datosCalculo.salarioMensual || null,
+          fecha_ingreso: params.datosCalculo.fechaIngreso,
+          fecha_salida: params.datosCalculo.fechaSalida,
+          fecha_despido: params.datosCalculo.fechaDespido,
+          total_conciliacion: params.datosCalculo.totalConciliacion,
+          total_juicio: params.datosCalculo.totalJuicio,
+          antiguedad_anios: params.datosCalculo.antiguedadAnios,
+          antiguedad_meses: params.datosCalculo.antiguedadMeses || 0,
+          antiguedad_dias: params.datosCalculo.antiguedadDias || 0,
+          empresa_nombre: params.datosCalculo.nombreEmpresa,
+          puesto: params.datosCalculo.puestoTrabajo || null,
+          datos_completos: true,
+          listo_para_caso: true
+        })
+        .select('id')
+        .single()
+      
+      if (calculoError) {
+        console.error('Error creando calculo para caso:', calculoError)
+      } else {
+        const folio = `MC-${Date.now().toString(36).toUpperCase()}`
+        const metadata = {
+          origen: 'calculo_abogado',
+          calculo_documento_id: documento?.id,
+          calculo_archivo_path: uploadLiquidacion.path,
+          calculo_archivo_propuesta_path: uploadPropuesta.path,
+          calculo_nombre: params.datosCalculo.nombreEmpresa,
+          creado_por: user.id,
+          creado_por_rol: rol
+        }
+        const { error: casoError } = await supabase
+          .from('casos')
+          .insert({
+            folio,
+            worker_id: null,
+            lawyer_id: user.id,
+            calculo_id: calculo?.id || null,
+            status: 'pending_review',
+            categoria: 'nuevo',
+            empresa_nombre: params.datosCalculo.nombreEmpresa,
+            monto_estimado: params.datosCalculo.totalJuicio || params.datosCalculo.totalConciliacion,
+            prioridad: 'normal',
+            metadata
+          })
+        
+        if (casoError) {
+          console.error('Error creando caso desde calculo:', casoError)
+        }
+      }
     }
     
     return { 

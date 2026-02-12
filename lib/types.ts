@@ -1,5 +1,5 @@
 // Roles de usuario en mecorrieron.mx
-export type UserRole = 'guest' | 'worker' | 'guestlawyer' | 'lawyer' | 'admin' | 'superadmin' | 'agent'
+export type UserRole = 'guest' | 'worker' | 'guestlawyer' | 'lawyer' | 'admin' | 'superadmin' | 'agent' | 'webagent'
 
 // Perfil de usuario
 export interface Profile {

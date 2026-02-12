@@ -74,6 +74,7 @@ interface UserProfile {
   role?: string
   codigoUsuario?: string
   verificationStatus?: string
+  phone?: string
 }
 
 interface AIAssistantProps {
@@ -381,6 +382,7 @@ export function AIAssistant({
   const [showCTA, setShowCTA] = useState(false)
   const [showPicker, setShowPicker] = useState(false)
   const [keyboardHeight, setKeyboardHeight] = useState(0)
+  const lastInitialMessage = useRef<string | undefined>(undefined)
   
   // Metricas de la sesion
   const [metrics, setMetrics] = useState<ChatMetrics>({
@@ -463,6 +465,17 @@ export function AIAssistant({
       }, 500)
     }
   }, [isOpen, initialMessage, hasProcessedInitialMessage])
+
+  useEffect(() => {
+    if (!initialMessage) return
+    if (lastInitialMessage.current !== initialMessage) {
+      lastInitialMessage.current = initialMessage
+      setHasProcessedInitialMessage(false)
+      setMessages([])
+      setFaqCount(0)
+      setShowCTA(false)
+    }
+  }, [initialMessage])
 
   // Reset cuando se cierra
   useEffect(() => {

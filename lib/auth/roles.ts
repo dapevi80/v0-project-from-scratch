@@ -3,7 +3,7 @@
 import { createClient } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
 
-export type UserRole = 'guest' | 'worker' | 'lawyer' | 'admin' | 'superadmin' | 'agent'
+export type UserRole = 'guest' | 'worker' | 'lawyer' | 'admin' | 'superadmin' | 'agent' | 'webagent'
 
 export interface UserProfile {
   id: string
@@ -179,6 +179,17 @@ function getRolePermissionsSync(role: UserRole) {
       canViewMarketplace: false,
       canMakeOffers: false,
       canAccessAdmin: false,
+      canManageUsers: false,
+      canVerifyLawyers: false,
+      canProcessPayouts: false
+    },
+    webagent: {
+      canCalculate: true,
+      canUploadDocuments: true,
+      canCreateCase: false,
+      canViewMarketplace: false,
+      canMakeOffers: false,
+      canAccessAdmin: true,
       canManageUsers: false,
       canVerifyLawyers: false,
       canProcessPayouts: false

@@ -118,6 +118,10 @@ interface Resultado {
       direccion: string
     }
   }
+  manualSteps?: string[]
+  manualPortalUrl?: string
+  manualError?: string
+  manualNotice?: string
 }
 
 // URLs de portales SINACOL reales por estado (verificados enero 2026)
@@ -291,6 +295,10 @@ export default function CCLDiagnosticoPage() {
         pasoDetenido: null,
         pasos: crearPasosIniciales(),
         errorDetallado: null,
+        manualSteps: [],
+        manualPortalUrl: portal?.urlSinacol || obtenerUrlSinacol(estado),
+        manualError: '',
+        manualNotice: '',
         // Datos para acceso a SINACOL real con datos de prueba del SuperAdmin
         cuentaCCL: {
           email: trabajador.email, // Email aleatorio generado para esta prueba
@@ -520,7 +528,8 @@ export default function CCLDiagnosticoPage() {
         pasoDetenido: null,
         errorDetallado: null,
         folioGenerado: '',
-        pdfUrl: ''
+        pdfUrl: '',
+        manualNotice: ''
       } : r
     ))
 
@@ -635,15 +644,27 @@ export default function CCLDiagnosticoPage() {
         )
         
         if (resultadoCuenta.exito) {
-          folio = resultadoCuenta.folio || ''
+          folio = resultadoCuenta.referencia_interna || resultadoCuenta.folio || ''
+          if (modo === 'live') {
+            finalStatus = 'pendiente'
+          }
           cuentaCCLData = {
             email: resultadoCuenta.email_portal || '',
             password: resultadoCuenta.password_portal || '',
-            urlLogin: resultadoCuenta.url_login || '',
-            urlBuzon: resultadoCuenta.url_buzon || '',
+            urlLogin: resultadoCuenta.url_sinacol || resultadoCuenta.url_login || '',
+            urlBuzon: resultadoCuenta.url_buzon || resultadoCuenta.url_info || '',
             curp: datosTrabajadorPrueba.curp,
             nombreTrabajador: datosTrabajadorPrueba.nombre_completo
           }
+          setResultados(prev => prev.map((r, i) =>
+            i === idx ? {
+              ...r,
+              manualSteps: resultadoCuenta.instrucciones_paso_a_paso || r.manualSteps,
+              manualPortalUrl: resultadoCuenta.url_sinacol || resultadoCuenta.url_login || r.manualPortalUrl,
+              manualError: '',
+              manualNotice: resultadoCuenta.mensaje || 'Referencia SINACOL creada. Completa la solicitud en el portal oficial.'
+            } : r
+          ))
         } else if (resultadoCuenta.requiereCaptcha) {
           finalStatus = 'parcial'
           errorData = {
@@ -661,14 +682,30 @@ export default function CCLDiagnosticoPage() {
           cuentaCCLData = {
             email: resultadoCuenta.email_portal || '',
             password: resultadoCuenta.password_portal || '',
-            urlLogin: resultadoCuenta.url_login || '',
-            urlBuzon: resultadoCuenta.captchaUrl || '',
+            urlLogin: resultadoCuenta.url_sinacol || resultadoCuenta.url_login || '',
+            urlBuzon: resultadoCuenta.captchaUrl || resultadoCuenta.url_buzon || '',
             curp: datosTrabajadorPrueba.curp,
             nombreTrabajador: datosTrabajadorPrueba.nombre_completo
           }
+          setResultados(prev => prev.map((r, i) =>
+            i === idx ? {
+              ...r,
+              manualSteps: resultadoCuenta.instrucciones_paso_a_paso || r.manualSteps,
+              manualPortalUrl: resultadoCuenta.url_sinacol || resultadoCuenta.url_login || r.manualPortalUrl,
+              manualError: resultadoCuenta.error || 'CAPTCHA detectado',
+              manualNotice: resultadoCuenta.mensaje || r.manualNotice
+            } : r
+          ))
         } else {
+          finalStatus = 'parcial'
           folio = generarReferenciaInterna(estado)
           cuentaCCLData = resultadoActual?.cuentaCCL
+          setResultados(prev => prev.map((r, i) =>
+            i === idx ? {
+              ...r,
+              manualError: resultadoCuenta.error || 'No se pudo generar la referencia SINACOL'
+            } : r
+          ))
         }
       } catch {
         folio = generarReferenciaInterna(estado)
@@ -818,7 +855,7 @@ export default function CCLDiagnosticoPage() {
         }
         
         try {
-          // Crear cuenta real en el portal CCL (simulada pero guardada en DB)
+          // Crear referencia SINACOL y guardar en base de datos
           const resultadoCuenta = await crearCuentaCCLAPI(
             estadoActual,
             datosTrabajadorPrueba,
@@ -829,15 +866,27 @@ export default function CCLDiagnosticoPage() {
           )
           
           if (resultadoCuenta.exito) {
-            folio = resultadoCuenta.folio || ''
+            folio = resultadoCuenta.referencia_interna || resultadoCuenta.folio || ''
+            if (modo === 'live') {
+              finalStatus = 'pendiente'
+            }
             cuentaCCLData = {
               email: resultadoCuenta.email_portal || '',
               password: resultadoCuenta.password_portal || '',
-              urlLogin: resultadoCuenta.url_login || '',
-              urlBuzon: resultadoCuenta.url_buzon || '',
+              urlLogin: resultadoCuenta.url_sinacol || resultadoCuenta.url_login || '',
+              urlBuzon: resultadoCuenta.url_buzon || resultadoCuenta.url_info || '',
               curp: datosTrabajadorPrueba.curp,
               nombreTrabajador: datosTrabajadorPrueba.nombre_completo
             }
+            setResultados(prev => prev.map((r, idx) =>
+              idx === i ? {
+                ...r,
+                manualSteps: resultadoCuenta.instrucciones_paso_a_paso || r.manualSteps,
+                manualPortalUrl: resultadoCuenta.url_sinacol || resultadoCuenta.url_login || r.manualPortalUrl,
+                manualError: '',
+                manualNotice: resultadoCuenta.mensaje || 'Referencia SINACOL creada. Completa la solicitud en el portal oficial.'
+              } : r
+            ))
           } else if (resultadoCuenta.requiereCaptcha) {
             // CAPTCHA detectado - marcar como parcial
             finalStatus = 'parcial'
@@ -856,14 +905,30 @@ export default function CCLDiagnosticoPage() {
             cuentaCCLData = {
               email: resultadoCuenta.email_portal || '',
               password: resultadoCuenta.password_portal || '',
-              urlLogin: resultadoCuenta.url_login || '',
-              urlBuzon: resultadoCuenta.captchaUrl || '',
+              urlLogin: resultadoCuenta.url_sinacol || resultadoCuenta.url_login || '',
+              urlBuzon: resultadoCuenta.captchaUrl || resultadoCuenta.url_buzon || '',
               curp: datosTrabajadorPrueba.curp,
               nombreTrabajador: datosTrabajadorPrueba.nombre_completo
             }
+            setResultados(prev => prev.map((r, idx) =>
+              idx === i ? {
+                ...r,
+                manualSteps: resultadoCuenta.instrucciones_paso_a_paso || r.manualSteps,
+                manualPortalUrl: resultadoCuenta.url_sinacol || resultadoCuenta.url_login || r.manualPortalUrl,
+                manualError: resultadoCuenta.error || 'CAPTCHA detectado',
+                manualNotice: resultadoCuenta.mensaje || r.manualNotice
+              } : r
+            ))
           } else {
+            finalStatus = 'parcial'
             folio = generarReferenciaInterna(estadoActual)
             cuentaCCLData = resultadoActual?.cuentaCCL
+            setResultados(prev => prev.map((r, idx) =>
+              idx === i ? {
+                ...r,
+                manualError: resultadoCuenta.error || 'No se pudo generar la referencia SINACOL'
+              } : r
+            ))
           }
         } catch (err) {
           // Error al crear cuenta - usar folio local
@@ -917,6 +982,54 @@ export default function CCLDiagnosticoPage() {
     ))
   }
 
+  const cargarGuiaManual = async (estado: string) => {
+    const idx = resultados.findIndex(r => r.estado === estado)
+    if (idx === -1) return
+
+    const resultadoActual = resultados[idx]
+    const datosTrabajador: DatosTrabajador = {
+      nombre_completo: resultadoActual.cuentaCCL?.nombreTrabajador || 'Juan Perez Garcia',
+      curp: resultadoActual.cuentaCCL?.curp || 'PEGJ800101HDFRRS09',
+      rfc: resultadoActual.cuentaCCL?.curp?.slice(0, 10) + 'XXX' || 'PEGJ800101XXX',
+      fecha_nacimiento: '1980-01-01',
+      sexo: 'H',
+      email_personal: resultadoActual.cuentaCCL?.email || 'prueba@mecorrieron.mx',
+      telefono: resultadoActual.cuentaCCL?.telefono || '5551234567',
+      direccion: 'Av. Reforma 123',
+      ciudad: estado,
+      codigo_postal: '06600',
+      empresa_nombre: 'Empresa de Prueba SA de CV',
+      puesto: 'Empleado General',
+      salario_diario: 500,
+      fecha_ingreso: '2020-01-15',
+      fecha_despido: '2025-01-15'
+    }
+
+    try {
+      const resultadoCuenta = await crearCuentaCCLAPI(estado, datosTrabajador, {
+        esPrueba: true,
+        sesionDiagnosticoId: `manual-${Date.now()}`
+      })
+
+      setResultados(prev => prev.map((r, i) =>
+        i === idx ? {
+          ...r,
+          manualSteps: resultadoCuenta.instrucciones_paso_a_paso || [],
+          manualPortalUrl: resultadoCuenta.url_sinacol || resultadoCuenta.url_login || r.manualPortalUrl,
+          manualError: resultadoCuenta.exito ? '' : (resultadoCuenta.error || 'No se pudo generar la guia manual'),
+          manualNotice: resultadoCuenta.mensaje || r.manualNotice
+        } : r
+      ))
+    } catch (error) {
+      setResultados(prev => prev.map((r, i) =>
+        i === idx ? {
+          ...r,
+          manualError: error instanceof Error ? error.message : 'No se pudo generar la guia manual'
+        } : r
+      ))
+    }
+  }
+
   const reintentarEstado = async (estado: string) => {
     const idx = resultados.findIndex(r => r.estado === estado)
     if (idx === -1) return
@@ -954,7 +1067,7 @@ export default function CCLDiagnosticoPage() {
     let cuentaCCLData = resultadoActual.cuentaCCL
     
     if (exitoso && resultadoActual.cuentaCCL) {
-      // Crear cuenta real
+      // Crear referencia SINACOL
       const datosTrabajador: DatosTrabajador = {
         nombre_completo: resultadoActual.cuentaCCL.nombreTrabajador,
         curp: resultadoActual.cuentaCCL.curp,
@@ -976,15 +1089,24 @@ export default function CCLDiagnosticoPage() {
       try {
           const resultadoCuenta = await crearCuentaCCLAPI(estado, datosTrabajador, { esPrueba: true })
         if (resultadoCuenta.exito) {
-          folio = resultadoCuenta.folio || generarReferenciaInterna(estado)
+          folio = resultadoCuenta.referencia_interna || resultadoCuenta.folio || generarReferenciaInterna(estado)
           cuentaCCLData = {
             email: resultadoCuenta.email_portal || '',
             password: resultadoCuenta.password_portal || '',
-            urlLogin: resultadoCuenta.url_login || '',
-            urlBuzon: resultadoCuenta.url_buzon || '',
+            urlLogin: resultadoCuenta.url_sinacol || resultadoCuenta.url_login || '',
+            urlBuzon: resultadoCuenta.url_buzon || resultadoCuenta.url_info || '',
             curp: datosTrabajador.curp,
             nombreTrabajador: datosTrabajador.nombre_completo
           }
+          setResultados(prev => prev.map((r, i) =>
+            i === idx ? {
+              ...r,
+              manualSteps: resultadoCuenta.instrucciones_paso_a_paso || r.manualSteps,
+              manualPortalUrl: resultadoCuenta.url_sinacol || resultadoCuenta.url_login || r.manualPortalUrl,
+              manualError: '',
+              manualNotice: resultadoCuenta.mensaje || 'Referencia SINACOL creada. Completa la solicitud en el portal oficial.'
+            } : r
+          ))
         } else {
           folio = generarReferenciaInterna(estado)
         }
@@ -993,16 +1115,18 @@ export default function CCLDiagnosticoPage() {
       }
     }
     
+    const statusFinal: TestStatus = exitoso ? (modo === 'live' ? 'pendiente' : 'exito') : 'parcial'
+
     setResultados(prev => prev.map((r, i) => 
       i === idx ? { 
         ...r, 
-        status: exitoso ? 'exito' : 'parcial',
+        status: statusFinal,
         tiempo: tiempoTotal,
         errorType: exitoso ? 'ninguno' : r.errorType,
         errorMessage: exitoso ? '' : r.errorMessage,
         captchaPendiente: false,
         folioGenerado: folio,
-        pdfUrl: exitoso ? `/api/ccl-pdf/${folio}` : '',
+        pdfUrl: statusFinal === 'exito' ? `/api/ccl-pdf/${folio}` : '',
         cuentaCCL: cuentaCCLData
       } : r
     ))
@@ -1016,6 +1140,7 @@ export default function CCLDiagnosticoPage() {
   const getStatusIcon = (status: TestStatus) => {
     switch (status) {
       case 'exito': return <CheckCircle2 className="w-4 h-4 text-green-400" />
+      case 'pendiente': return <Clock className="w-4 h-4 text-yellow-400" />
       case 'parcial': return <AlertTriangle className="w-4 h-4 text-yellow-400" />
       case 'error': return <XCircle className="w-4 h-4 text-red-400" />
       case 'en_progreso': return <Loader2 className="w-4 h-4 text-blue-400 animate-spin" />
@@ -1026,6 +1151,7 @@ export default function CCLDiagnosticoPage() {
   const getStatusColor = (status: TestStatus) => {
     switch (status) {
       case 'exito': return 'bg-green-900/50 border-green-500'
+      case 'pendiente': return 'bg-yellow-900/40 border-yellow-600'
       case 'parcial': return 'bg-yellow-900/50 border-yellow-500'
       case 'error': return 'bg-red-900/50 border-red-500'
       case 'en_progreso': return 'bg-blue-900/50 border-blue-500 animate-pulse'
@@ -1183,6 +1309,11 @@ export default function CCLDiagnosticoPage() {
                   <option value="dry_run">DRY RUN</option>
                   <option value="live">LIVE TEST</option>
                 </select>
+                {modo === 'live' && (
+                  <span className="text-yellow-400 text-[10px] sm:text-[11px] font-mono">
+                    LIVE crea referencia SINACOL; la solicitud real se completa en el portal.
+                  </span>
+                )}
                 
                 <Button
                   onClick={iniciarDiagnostico}
@@ -1373,12 +1504,13 @@ export default function CCLDiagnosticoPage() {
                     </tr>
                   </thead>
                   <tbody>
-                    {resultados.filter(r => r.status !== 'pendiente' && r.status !== 'en_progreso').map((r) => (
+                    {resultados.filter(r => r.status !== 'en_progreso').map((r) => (
                       <tr key={r.estado} className="border-b border-green-950 hover:bg-green-950/30">
                         <td className="py-2 text-green-300">{r.estado}</td>
                         <td className="py-2 text-center">
                           <Badge className={
                             r.status === 'exito' ? 'bg-green-900 text-green-400' :
+                            r.status === 'pendiente' ? 'bg-yellow-900 text-yellow-300' :
                             r.status === 'parcial' ? 'bg-yellow-900 text-yellow-400' :
                             'bg-red-900 text-red-400'
                           }>
@@ -1483,6 +1615,7 @@ export default function CCLDiagnosticoPage() {
                 <span className="text-green-600 text-xs sm:text-sm">Status:</span>
                 <Badge className={`text-[10px] sm:text-xs ${
                   selectedEstado.status === 'exito' ? 'bg-green-900 text-green-400' :
+                  selectedEstado.status === 'pendiente' ? 'bg-yellow-900 text-yellow-300' :
                   selectedEstado.status === 'parcial' ? 'bg-yellow-900 text-yellow-400' :
                   'bg-red-900 text-red-400'
                 }`}>
@@ -1495,6 +1628,75 @@ export default function CCLDiagnosticoPage() {
                 <span className="text-green-600 text-[10px] sm:text-xs block mb-1">Portal URL:</span>
                 <code className="text-green-400 text-[9px] sm:text-xs break-all">{selectedEstado.url}</code>
               </div>
+
+              {/* Acciones rápidas */}
+              <div className="grid grid-cols-2 gap-2">
+                <Button
+                  size="sm"
+                  className="bg-green-700 hover:bg-green-600 text-white font-mono text-[10px] sm:text-xs"
+                  onClick={async () => {
+                    if (!selectedEstado?.estado) return
+                    setShowDetailDialog(false)
+                    await new Promise(r => setTimeout(r, 100))
+                    iniciarDiagnosticoIndividual(selectedEstado.estado)
+                  }}
+                >
+                  <Play className="w-3 h-3 mr-1" />
+                  GENERAR CON IA
+                </Button>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  className="border-blue-600 text-blue-400 hover:bg-blue-950 font-mono text-[10px] sm:text-xs bg-transparent"
+                  onClick={() => {
+                    if (!selectedEstado?.estado) return
+                    cargarGuiaManual(selectedEstado.estado)
+                  }}
+                >
+                  <FileText className="w-3 h-3 mr-1" />
+                  VER MANUAL
+                </Button>
+              </div>
+
+              {/* Manual de pasos */}
+              {selectedEstado.manualError && (
+                <div className="p-2 sm:p-3 bg-red-950/30 rounded border border-red-800">
+                  <span className="text-red-500 text-[10px] sm:text-xs block mb-1">Error manual:</span>
+                  <p className="text-red-400 text-xs">{selectedEstado.manualError}</p>
+                </div>
+              )}
+
+              {selectedEstado.manualNotice && (
+                <div className="p-2 sm:p-3 bg-blue-950/40 rounded border border-blue-800">
+                  <span className="text-blue-400 text-[10px] sm:text-xs block mb-1">Nota:</span>
+                  <p className="text-blue-200 text-xs">{selectedEstado.manualNotice}</p>
+                </div>
+              )}
+
+              {selectedEstado.manualSteps && selectedEstado.manualSteps.length > 0 && (
+                <div className="p-2 sm:p-3 bg-blue-950/40 rounded border border-blue-800">
+                  <div className="flex items-center justify-between mb-2">
+                    <span className="text-blue-400 text-[10px] sm:text-xs font-bold">MANUAL DE LLENADO</span>
+                    {selectedEstado.manualPortalUrl && (
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        className="h-6 px-2 text-blue-300 hover:bg-blue-900/50"
+                        onClick={() => {
+                          window.open(selectedEstado.manualPortalUrl, '_blank')
+                        }}
+                      >
+                        <ExternalLink className="w-3 h-3" />
+                      </Button>
+                    )}
+                  </div>
+                  <ol className="list-decimal ml-4 space-y-1 text-[10px] sm:text-xs text-blue-200">
+                    {selectedEstado.manualSteps.map((paso, index) => (
+                      <li key={`${selectedEstado.estado}-manual-${index}`}>{paso}</li>
+                    ))}
+                  </ol>
+                </div>
+              )}
 
               {/* Pasos del Robot */}
               <div className="p-2 sm:p-3 bg-green-950/50 rounded border border-green-800">
@@ -1677,15 +1879,24 @@ export default function CCLDiagnosticoPage() {
                 </>
               )}
 
-              {/* Success state - CUENTA CCL CREADA con credenciales */}
-              {selectedEstado.status === 'exito' && selectedEstado.cuentaCCL && (
+              {/* Estado pendiente o exitoso */}
+              {(selectedEstado.status === 'pendiente' || selectedEstado.status === 'exito') && selectedEstado.cuentaCCL && (
                 <div className="space-y-3">
                   <div className="p-3 bg-green-950/30 rounded border border-green-600 text-center">
                     <CheckCircle2 className="w-8 h-8 text-green-400 mx-auto mb-2" />
-                    <p className="text-green-400 text-sm font-bold">Cuenta CCL Creada Exitosamente</p>
+                    <p className="text-green-400 text-sm font-bold">
+                      {selectedEstado.status === 'pendiente'
+                        ? 'Referencia SINACOL creada'
+                        : 'Solicitud automatizada completada'}
+                    </p>
                     <p className="text-green-600 text-xs mt-1">Tiempo: {selectedEstado.tiempo}ms</p>
+                    {selectedEstado.status === 'pendiente' && (
+                      <p className="text-yellow-400 text-[10px] mt-1">
+                        La solicitud real debe completarse en el portal SINACOL.
+                      </p>
+                    )}
                   </div>
-                  
+
                   {/* Datos del trabajador de prueba */}
                   <div className="p-3 bg-blue-950/50 rounded border border-blue-800">
                     <div className="flex items-center gap-2 mb-2">
@@ -1695,79 +1906,107 @@ export default function CCLDiagnosticoPage() {
                     <p className="text-blue-300 text-sm font-mono">{selectedEstado.cuentaCCL.nombreTrabajador}</p>
                     <p className="text-blue-500 text-xs font-mono mt-1">CURP: {selectedEstado.cuentaCCL.curp}</p>
                   </div>
-                  
-                  {/* Folio generado */}
+
+                  {/* Referencia o folio */}
                   <div className="p-3 bg-green-950/50 rounded border border-green-800">
-                    <span className="text-green-600 text-xs block mb-1">Folio de Solicitud:</span>
+                    <span className="text-green-600 text-xs block mb-1">
+                      {selectedEstado.status === 'pendiente' ? 'Referencia interna:' : 'Folio de Solicitud:'}
+                    </span>
                     <code className="text-green-300 text-lg font-bold">{selectedEstado.folioGenerado}</code>
                     <p className="text-green-700 text-[10px] mt-1">Portal: {selectedEstado.url}</p>
+                    {selectedEstado.status === 'pendiente' && (
+                      <p className="text-green-700 text-[10px] mt-1">El folio oficial se genera al completar la solicitud en SINACOL.</p>
+                    )}
                   </div>
-                  
-                  {/* CREDENCIALES DE ACCESO AL PORTAL CCL */}
+
+                  {/* Datos para iniciar solicitud */}
                   <div className="p-4 bg-yellow-950/50 rounded border-2 border-yellow-600">
                     <div className="flex items-center justify-between mb-3">
                       <div className="flex items-center gap-2">
                         <Key className="w-5 h-5 text-yellow-400" />
-                        <span className="text-yellow-400 text-sm font-bold">CREDENCIALES DE ACCESO</span>
+                        <span className="text-yellow-400 text-sm font-bold">DATOS PARA INICIAR SOLICITUD</span>
                       </div>
-                      <Badge className="bg-yellow-600 text-black text-[9px]">PORTAL CCL</Badge>
+                      <Badge className="bg-yellow-600 text-black text-[9px]">PORTAL SINACOL</Badge>
                     </div>
-                    
-                    {/* Email */}
+
                     <div className="bg-black/50 rounded p-3 mb-2">
                       <div className="flex items-center justify-between">
                         <div className="flex items-center gap-2">
-                          <Mail className="w-4 h-4 text-yellow-500" />
-                          <span className="text-yellow-600 text-xs">Email:</span>
+                          <User className="w-4 h-4 text-yellow-500" />
+                          <span className="text-yellow-600 text-xs">CURP:</span>
                         </div>
                         <Button
                           size="sm"
                           variant="ghost"
                           className="h-6 px-2 text-yellow-400 hover:bg-yellow-900/50"
                           onClick={() => {
-                            navigator.clipboard.writeText(selectedEstado.cuentaCCL?.email || '')
+                            navigator.clipboard.writeText(selectedEstado.cuentaCCL?.curp || '')
                           }}
                         >
                           <Copy className="w-3 h-3" />
                         </Button>
                       </div>
                       <code className="text-yellow-300 text-sm font-bold block mt-1 select-all">
-                        {selectedEstado.cuentaCCL.email}
+                        {selectedEstado.cuentaCCL.curp}
                       </code>
                     </div>
-                    
-                    {/* Password */}
-                    <div className="bg-black/50 rounded p-3">
-                      <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-2">
-                          <Key className="w-4 h-4 text-yellow-500" />
-                          <span className="text-yellow-600 text-xs">Password:</span>
+
+                    {selectedEstado.cuentaCCL.email && (
+                      <div className="bg-black/50 rounded p-3 mb-2">
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-2">
+                            <Mail className="w-4 h-4 text-yellow-500" />
+                            <span className="text-yellow-600 text-xs">Email:</span>
+                          </div>
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            className="h-6 px-2 text-yellow-400 hover:bg-yellow-900/50"
+                            onClick={() => {
+                              navigator.clipboard.writeText(selectedEstado.cuentaCCL?.email || '')
+                            }}
+                          >
+                            <Copy className="w-3 h-3" />
+                          </Button>
                         </div>
-                        <Button
-                          size="sm"
-                          variant="ghost"
-                          className="h-6 px-2 text-yellow-400 hover:bg-yellow-900/50"
-                          onClick={() => {
-                            navigator.clipboard.writeText(selectedEstado.cuentaCCL?.password || '')
-                          }}
-                        >
-                          <Copy className="w-3 h-3" />
-                        </Button>
+                        <code className="text-yellow-300 text-sm font-bold block mt-1 select-all">
+                          {selectedEstado.cuentaCCL.email}
+                        </code>
                       </div>
-                      <code className="text-yellow-300 text-lg font-bold block mt-1 select-all">
-                        {selectedEstado.cuentaCCL.password}
-                      </code>
-                    </div>
-                    
+                    )}
+
+                    {selectedEstado.cuentaCCL.password && (
+                      <div className="bg-black/50 rounded p-3">
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-2">
+                            <Key className="w-4 h-4 text-yellow-500" />
+                            <span className="text-yellow-600 text-xs">Password:</span>
+                          </div>
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            className="h-6 px-2 text-yellow-400 hover:bg-yellow-900/50"
+                            onClick={() => {
+                              navigator.clipboard.writeText(selectedEstado.cuentaCCL?.password || '')
+                            }}
+                          >
+                            <Copy className="w-3 h-3" />
+                          </Button>
+                        </div>
+                        <code className="text-yellow-300 text-lg font-bold block mt-1 select-all">
+                          {selectedEstado.cuentaCCL.password}
+                        </code>
+                      </div>
+                    )}
+
                     {/* Aviso importante */}
                     <div className="mt-3 p-2 bg-yellow-900/30 rounded border border-yellow-700">
                       <p className="text-yellow-400 text-[10px] text-center">
-                        Use estas credenciales para acceder al portal oficial del CCL y descargar el PDF de solicitud.
-                        El sistema CCL enviara notificaciones al buzon electronico.
+                        SINACOL registra la solicitud cuando completas el formulario en su portal.
                       </p>
                     </div>
                   </div>
-                  
+
                   {/* Botones de accion */}
                   <div className="flex gap-2">
                     <Button
@@ -1780,19 +2019,21 @@ export default function CCLDiagnosticoPage() {
                       <LogIn className="w-3 h-3 mr-1" />
                       ENTRAR AL PORTAL CCL
                     </Button>
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      className="flex-1 border-blue-600 text-blue-400 hover:bg-blue-950 font-mono text-xs bg-transparent"
-                      onClick={() => {
-                        window.open(selectedEstado.cuentaCCL?.urlBuzon, '_blank')
-                      }}
-                    >
-                      <Mail className="w-3 h-3 mr-1" />
-                      VER BUZON
-                    </Button>
+                    {selectedEstado.cuentaCCL?.urlBuzon && (
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        className="flex-1 border-blue-600 text-blue-400 hover:bg-blue-950 font-mono text-xs bg-transparent"
+                        onClick={() => {
+                          window.open(selectedEstado.cuentaCCL?.urlBuzon, '_blank')
+                        }}
+                      >
+                        <Mail className="w-3 h-3 mr-1" />
+                        VER BUZON
+                      </Button>
+                    )}
                   </div>
-                  
+
                   {/* Info adicional */}
                   <div className="p-2 bg-green-950/30 rounded border border-green-900">
                     <p className="text-green-600 text-[10px]">

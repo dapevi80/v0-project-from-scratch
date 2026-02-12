@@ -16,7 +16,6 @@ import { CryptoWallet } from '@/components/wallet/crypto-wallet'
 import { DashboardSkeleton } from '@/components/ui/dashboard-skeleton'
 import { LogoutButton } from '@/app/dashboard/logout-button'
 import { AlertCircle, Award } from 'lucide-react'
-import { WelcomeAIAssistant } from '@/components/welcome-ai-assistant'
 
 export default function AbogadoDashboardPage() {
   const router = useRouter()
@@ -25,7 +24,6 @@ export default function AbogadoDashboardPage() {
   const [stats, setStats] = useState({ casos: 0, completados: 0, calculos: 0 })
   const [lawyerProfile, setLawyerProfile] = useState<{ display_name?: string; verification_status?: string; cedula_profesional?: string; photo_url?: string } | null>(null)
   const [verificationProgress, setVerificationProgress] = useState(0)
-  const [isFirstLogin, setIsFirstLogin] = useState(false)
 
   // Redirigir si no es abogado
   useEffect(() => {
@@ -79,10 +77,6 @@ export default function AbogadoDashboardPage() {
         supabase.from('profiles').update({ celebration_shown: true }).eq('id', user.id)
       }
       
-      // Detectar primer login
-      if (!profile?.first_login_at || profile?.login_count === 1) {
-        setIsFirstLogin(true)
-      }
     } catch (e) {
       console.log('[v0] Error loading lawyer data:', e)
     } finally {
@@ -347,23 +341,6 @@ export default function AbogadoDashboardPage() {
         />
       </main>
 
-      {/* Asistente de bienvenida con IA */}
-      {user && profile && (
-        <WelcomeAIAssistant
-          userId={user.id}
-          userProfile={{
-            id: profile.id,
-            full_name: profile.full_name,
-            role: profile.role,
-            is_verified: profile.verification_status === 'verified',
-            verification_status: profile.verification_status,
-            first_login_at: profile.first_login_at,
-            login_count: profile.login_count,
-            codigo_usuario: profile.codigo_usuario
-          }}
-          isFirstLogin={isFirstLogin}
-        />
-      )}
     </div>
   )
 }

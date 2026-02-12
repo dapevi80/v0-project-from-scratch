@@ -24,12 +24,14 @@ import {
   updateOfertaEmpresa,
   saveAudienciaVirtual,
   sugerirJurisdiccion,
-  getCaseHistory
+  getCaseHistory,
+  crearLinkAsignacionTrabajador
 } from '../../actions'
 import { CCLPortalTab } from '@/components/caso/ccl-portal-tab'
 
 const statusLabels: Record<string, string> = {
   draft: 'Borrador',
+  pending_review: 'Nuevo sin verificar',
   open: 'Abierto',
   assigned: 'Asignado',
   in_progress: 'En Proceso',
@@ -43,6 +45,7 @@ const statusLabels: Record<string, string> = {
 
 const statusColors: Record<string, string> = {
   draft: 'bg-gray-500',
+  pending_review: 'bg-yellow-600',
   open: 'bg-blue-500',
   assigned: 'bg-indigo-500',
   in_progress: 'bg-yellow-500',
@@ -66,6 +69,9 @@ export default function CasoDetallePage() {
   const [saving, setSaving] = useState(false)
   const [copied, setCopied] = useState(false)
   const [activeTab, setActiveTab] = useState('resumen')
+  const [assignLink, setAssignLink] = useState<string | null>(null)
+  const [assignLoading, setAssignLoading] = useState(false)
+  const [assignError, setAssignError] = useState<string | null>(null)
   
   // Form states
   const [curpForm, setCurpForm] = useState({ curp: '', tipo_identificacion: 'ine', numero_identificacion: '' })
@@ -76,6 +82,13 @@ export default function CasoDetallePage() {
   useEffect(() => {
     loadData()
   }, [casoId])
+
+  useEffect(() => {
+    if (caso?.metadata?.assignment_token && typeof window !== 'undefined') {
+      const baseUrl = window.location.origin
+      setAssignLink(`${baseUrl}/casos/asignar?token=${caso.metadata.assignment_token}`)
+    }
+  }, [caso])
   
   async function loadData() {
     setLoading(true)
@@ -145,6 +158,19 @@ export default function CasoDetallePage() {
     loadData()
     setSaving(false)
   }
+
+  async function handleGenerateAssignLink() {
+    setAssignLoading(true)
+    setAssignError(null)
+    const result = await crearLinkAsignacionTrabajador(casoId)
+    if (result.error) {
+      setAssignError(result.error)
+      setAssignLoading(false)
+      return
+    }
+    setAssignLink(result.link)
+    setAssignLoading(false)
+  }
   
   function copyToClipboard(text: string) {
     navigator.clipboard.writeText(text)
@@ -185,6 +211,9 @@ export default function CasoDetallePage() {
   const porcentajeOferta = caso.oferta_empresa && caso.monto_estimado 
     ? Math.round((caso.oferta_empresa / caso.monto_estimado) * 100)
     : null
+  const procesoActual = statusLabels[caso.status] || 'Pendiente'
+  const tipoCasoLabel = caso.lawyer_id ? 'Caso asignado' : 'Caso por asignar'
+  const documentos = Array.isArray(caso.case_documents) ? caso.case_documents : []
 
   return (
     <div className="min-h-screen bg-background">
@@ -255,6 +284,56 @@ export default function CasoDetallePage() {
           {/* Tab: Resumen */}
           <TabsContent value="resumen" className="space-y-4">
             <div className="grid md:grid-cols-2 gap-4">
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2 text-base">
+                    <Briefcase className="h-4 w-4" />
+                    Resumen del caso
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-2 text-sm">
+                  <div className="flex justify-between">
+                    <span className="text-muted-foreground">Folio:</span>
+                    <span className="font-mono">{caso.folio}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-muted-foreground">Tipo:</span>
+                    <span className="font-medium">{tipoCasoLabel}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-muted-foreground">Proceso actual:</span>
+                    <span className="font-medium">{procesoActual}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-muted-foreground">Categoría:</span>
+                    <span className="font-medium">{caso.categoria || '-'}</span>
+                  </div>
+                </CardContent>
+              </Card>
+
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2 text-base">
+                    <Shield className="h-4 w-4" />
+                    Abogado asignado
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-2 text-sm">
+                  <div className="flex justify-between">
+                    <span className="text-muted-foreground">Nombre:</span>
+                    <span className="font-medium">{caso.lawyer?.full_name || 'Sin asignar'}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-muted-foreground">Email:</span>
+                    <span className="font-medium">{caso.lawyer?.email || '-'}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-muted-foreground">Teléfono:</span>
+                    <span className="font-medium">{caso.lawyer?.phone || '-'}</span>
+                  </div>
+                </CardContent>
+              </Card>
+
               {/* Datos de la Empresa */}
               <Card>
                 <CardHeader>
@@ -340,10 +419,86 @@ export default function CasoDetallePage() {
                 )}
               </CardContent>
             </Card>
+
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2 text-base">
+                  <FileText className="h-4 w-4" />
+                  Documentos del caso
+                </CardTitle>
+                <CardDescription>Documentos subidos por el cliente o el abogado</CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-3">
+                {documentos.length === 0 ? (
+                  <p className="text-sm text-muted-foreground">
+                    Aún no hay documentos subidos para este caso.
+                  </p>
+                ) : (
+                  <div className="space-y-2">
+                    {documentos.map((doc: any) => (
+                      <div key={doc.id} className="flex items-center justify-between gap-3 rounded-lg border p-3 text-sm">
+                        <div className="min-w-0">
+                          <p className="font-medium truncate">
+                            {doc.nombre || doc.nombre_archivo || doc.title || 'Documento'}
+                          </p>
+                          <p className="text-xs text-muted-foreground">
+                            {doc.created_at ? new Date(doc.created_at).toLocaleDateString('es-MX') : 'Sin fecha'}
+                          </p>
+                        </div>
+                        <Badge variant="outline">{doc.tipo || doc.categoria || 'Documento'}</Badge>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </CardContent>
+            </Card>
           </TabsContent>
           
           {/* Tab: Trabajador */}
           <TabsContent value="trabajador" className="space-y-4">
+            {!caso.worker_id && (
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2 text-base">
+                    <User className="h-4 w-4" />
+                    Asignar a trabajador
+                  </CardTitle>
+                  <CardDescription>
+                    Comparte este enlace con tu cliente para que cree su cuenta o inicie sesión.
+                  </CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-3">
+                  {assignError && (
+                    <div className="text-sm text-red-600">{assignError}</div>
+                  )}
+                  <Button onClick={handleGenerateAssignLink} disabled={assignLoading}>
+                    {assignLoading ? 'Generando enlace...' : 'Generar enlace de asignación'}
+                  </Button>
+                  {assignLink && (
+                    <div className="space-y-2">
+                      <Label>Enlace para cliente</Label>
+                      <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
+                        <Input value={assignLink} readOnly className="font-mono text-xs" />
+                        <div className="flex gap-2">
+                          <Button variant="outline" size="icon" onClick={() => copyToClipboard(assignLink)}>
+                            {copied ? <Check className="h-4 w-4 text-green-600" /> : <Copy className="h-4 w-4" />}
+                          </Button>
+                          <Button variant="outline" asChild>
+                            <a href={assignLink} target="_blank" rel="noopener noreferrer">
+                              <ExternalLink className="h-4 w-4 mr-2" />
+                              Abrir enlace
+                            </a>
+                          </Button>
+                        </div>
+                      </div>
+                      <p className="text-xs text-muted-foreground">
+                        Al iniciar sesión desde este enlace, el cálculo se asignará automáticamente a su cuenta.
+                      </p>
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+            )}
             <Card>
               <CardHeader>
                 <CardTitle className="flex items-center gap-2 text-base">

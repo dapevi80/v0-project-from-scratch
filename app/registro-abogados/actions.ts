@@ -1,6 +1,6 @@
 'use server'
 
-import { createClient } from '@/lib/supabase/server'
+import { createAdminClient, createClient } from '@/lib/supabase/server'
 import { revalidatePath } from 'next/cache'
 
 interface GuestAbogadoFormData {
@@ -20,6 +20,10 @@ interface GuestAbogadoFormData {
 // Registrar cuenta guestabogado (cuenta real con acceso limitado)
 export async function registrarGuestAbogado(datos: GuestAbogadoFormData) {
   const supabase = await createClient()
+  if (!supabase) {
+    return { error: 'Configuracion de autenticacion incompleta.' }
+  }
+  const adminClient = createAdminClient()
   
   // Verificar si ya existe usuario con este email
   const { data: existingUsers } = await supabase
@@ -64,35 +68,47 @@ export async function registrarGuestAbogado(datos: GuestAbogadoFormData) {
     return { error: authError?.message || 'Error al crear la cuenta' }
   }
   
-  // Crear perfil con rol guestlawyer - solo campos basicos
-  const { error: profileError } = await supabase
-    .from('profiles')
-    .insert({
+  const upsertGuestLawyerProfile = async () => {
+    const profileData = {
       id: authData.user.id,
       email: datos.email.toLowerCase(),
       full_name: `${datos.nombre} ${datos.apellidos}`,
       phone: datos.telefono,
       role: 'guestlawyer',
       verification_status: 'pending'
-    })
-  
-  if (profileError) {
-    console.error('Error creando perfil:', profileError?.message)
+    }
+
+    const client = adminClient ?? supabase
+
+    const { error: profileError } = await client
+      .from('profiles')
+      .upsert(profileData, { onConflict: 'id' })
+
+    if (profileError) {
+      return { error: profileError.message }
+    }
+
+    const { error: lawyerError } = await client
+      .from('lawyer_profiles')
+      .upsert({
+        user_id: authData.user.id,
+        display_name: `${datos.nombre} ${datos.apellidos}`,
+        verification_status: 'pending',
+        is_available: false,
+        codigo_postal: datos.codigoPostal
+      }, { onConflict: 'user_id' })
+
+    if (lawyerError) {
+      return { error: lawyerError.message }
+    }
+
+    return { error: null }
   }
-  
-  // Crear perfil de abogado (pendiente de verificacion) - solo campos basicos
-  const { error: lawyerError } = await supabase
-    .from('lawyer_profiles')
-    .insert({
-      id: authData.user.id,
-      display_name: `${datos.nombre} ${datos.apellidos}`,
-      verification_status: 'pending',
-      is_available: false,
-      codigo_postal: datos.codigoPostal
-    })
-  
-  if (lawyerError) {
-    console.error('Error creando perfil de abogado:', lawyerError?.message)
+
+  const profileResult = await upsertGuestLawyerProfile()
+  if (profileResult.error) {
+    console.error('Error creando perfil:', profileResult.error)
+    return { error: profileResult.error }
   }
   
   // Crear solicitud para seguimiento admin
