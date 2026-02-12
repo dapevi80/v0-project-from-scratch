@@ -7,9 +7,7 @@ import { Button } from '@/components/ui/button'
 import { 
   Upload, 
   ImageIcon, 
-  Video, 
   FileText, 
-  Music2,
   CreditCard,
   X,
   Loader2,
@@ -21,10 +19,8 @@ import {
   Home,
   FileCheck,
   MapPin,
-  Phone,
   DollarSign,
   FileSignature,
-  Building2,
   Scale,
   Gavel,
   FileX,
@@ -45,12 +41,8 @@ const CATEGORIAS_SUGERIDAS = [
   { value: 'recibo_nomina', label: 'Recibo de nomina', shortLabel: 'Nomina', icon: Receipt, color: 'bg-green-100 text-green-600' },
   { value: 'recibo_dinero', label: 'Recibo de pago', shortLabel: 'Recibo', icon: DollarSign, color: 'bg-emerald-100 text-emerald-600' },
   
-  // Evidencias multimedia
-  { value: 'evidencia_foto', label: 'Fotos de evidencia', shortLabel: 'Fotos', icon: ImageIcon, color: 'bg-purple-100 text-purple-600' },
-  { value: 'evidencia_video', label: 'Video de evidencia', shortLabel: 'Video', icon: Video, color: 'bg-pink-100 text-pink-600' },
-  { value: 'video_despido', label: 'Video del despido', shortLabel: 'Despido', icon: Video, color: 'bg-red-100 text-red-600' },
-  { value: 'evidencia_audio', label: 'Grabacion de audio', shortLabel: 'Audio', icon: Music2, color: 'bg-orange-100 text-orange-600' },
-  { value: 'grabacion_llamada', label: 'Grabacion de llamada', shortLabel: 'Llamada', icon: Phone, color: 'bg-cyan-100 text-cyan-600' },
+  // Documentos escaneados
+  { value: 'documento_escaneado', label: 'Documento escaneado', shortLabel: 'Escaneo', icon: ImageIcon, color: 'bg-purple-100 text-purple-600' },
   
   // Identificaciones
   { value: 'ine_frente', label: 'INE / Credencial', shortLabel: 'INE', icon: CreditCard, color: 'bg-slate-100 text-slate-600' },
@@ -63,7 +55,6 @@ const CATEGORIAS_SUGERIDAS = [
   { value: 'expediente', label: 'Expediente del caso', shortLabel: 'Expediente', icon: FileText, color: 'bg-gray-100 text-gray-600' },
   
   // Audiencia y conciliacion
-  { value: 'foto_lugar', label: 'Foto del lugar de trabajo', shortLabel: 'Lugar', icon: Building2, color: 'bg-stone-100 text-stone-600' },
   { value: 'acta_audiencia', label: 'Acta de audiencia', shortLabel: 'Audiencia', icon: Scale, color: 'bg-amber-100 text-amber-700' },
   { value: 'acta_conciliacion', label: 'Acta de conciliacion', shortLabel: 'Conciliacion', icon: FileCheck2, color: 'bg-green-100 text-green-700' },
   { value: 'constancia_no_conciliacion', label: 'Constancia de no conciliacion', shortLabel: 'No concilio', icon: FileX, color: 'bg-red-100 text-red-700' },
@@ -294,7 +285,7 @@ export function DocumentUploader({ onUploaded, onClose, defaultCategoria }: Docu
       <input
         ref={cameraInputRef}
         type="file"
-        accept="image/*,video/*"
+        accept="image/*"
         capture="environment"
         onChange={(e) => handleFileSelect(e.target.files)}
         className="hidden"
@@ -303,7 +294,7 @@ export function DocumentUploader({ onUploaded, onClose, defaultCategoria }: Docu
         ref={fileInputRef}
         type="file"
         multiple
-        accept="*/*"
+        accept="application/pdf,image/*"
         onChange={(e) => handleFileSelect(e.target.files)}
         className="hidden"
       />
@@ -311,7 +302,9 @@ export function DocumentUploader({ onUploaded, onClose, defaultCategoria }: Docu
       {/* Carrusel de sugerencias */}
       <div className="border-b py-2 flex-shrink-0">
         {/* Titulo */}
-        <p className="text-[10px] text-muted-foreground text-center mb-2">Reune tus pruebas</p>
+        <p className="text-[10px] text-muted-foreground text-center mb-2">
+          Sube PDFs o escaneos. La bóveda solo guarda documentos.
+        </p>
         
         {/* Carrusel con flechas */}
         <div className="relative px-1">
@@ -394,7 +387,7 @@ export function DocumentUploader({ onUploaded, onClose, defaultCategoria }: Docu
               </button>
             </div>
             <p className="text-xs text-muted-foreground">
-              {dragActive ? 'Suelta aqui' : 'Foto | Archivo | Ubicacion'}
+              {dragActive ? 'Suelta aqui' : 'Foto | PDF | Ubicacion'}
             </p>
           </div>
         ) : (
@@ -406,10 +399,11 @@ export function DocumentUploader({ onUploaded, onClose, defaultCategoria }: Docu
                   <img src={fileObj.preview || "/placeholder.svg"} alt="" className="w-8 h-8 rounded object-cover" />
                 ) : (
                   <div className="w-8 h-8 rounded bg-muted flex items-center justify-center">
-                    {fileObj.file.type.startsWith('video/') ? <Video className="w-3.5 h-3.5 text-muted-foreground" /> :
-                     fileObj.file.type.startsWith('audio/') ? <Music2 className="w-3.5 h-3.5 text-muted-foreground" /> :
-                     fileObj.file.type === 'application/pdf' ? <FileText className="w-3.5 h-3.5 text-red-500" /> :
-                     <File className="w-3.5 h-3.5 text-muted-foreground" />}
+                    {fileObj.file.type === 'application/pdf' ? (
+                      <FileText className="w-3.5 h-3.5 text-red-500" />
+                    ) : (
+                      <File className="w-3.5 h-3.5 text-muted-foreground" />
+                    )}
                   </div>
                 )}
                 <div className="flex-1 min-w-0">

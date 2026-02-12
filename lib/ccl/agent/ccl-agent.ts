@@ -1,6 +1,7 @@
 'use server'
 
 import { createClient } from '@/lib/supabase/server'
+import { sendWhatsAppNotification } from '@/lib/notifications/whatsapp'
 import type { 
   AgentJob, 
   AgentStep, 
@@ -475,12 +476,22 @@ async function crearNotificacion(
 
   if (!job?.abogado_id) return
 
-  // Crear notificación (si existe tabla de notificaciones)
-  // Por ahora solo logueamos
-  console.log(`Notificación para abogado ${job.abogado_id}: Solicitud CCL completada`, {
-    caso: caso.casoId,
-    folio: resultado.folioSolicitud
-  })
+  const folio = resultado.folioSolicitud || 'pendiente'
+  const mensaje = `✅ Solicitud CCL completada para el caso ${caso.casoId}. Folio: ${folio}. Puedes revisar el PDF del acuse en la bóveda.`
+
+  try {
+    await sendWhatsAppNotification({
+      userId: job.abogado_id,
+      message: mensaje,
+      type: 'ccl_solicitud_completada',
+      metadata: {
+        caso_id: caso.casoId,
+        folio
+      }
+    })
+  } catch (error) {
+    console.error('Error enviando notificación WhatsApp al abogado:', error)
+  }
 }
 
 /**

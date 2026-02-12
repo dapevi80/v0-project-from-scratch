@@ -16,7 +16,6 @@ import { CryptoWallet } from '@/components/wallet/crypto-wallet'
 import { DashboardSkeleton } from '@/components/ui/dashboard-skeleton'
 import { LogoutButton } from '@/app/dashboard/logout-button'
 import { AlertCircle, Award } from 'lucide-react'
-import { WelcomeAIAssistant } from '@/components/welcome-ai-assistant'
 
 export default function AbogadoDashboardPage() {
   const router = useRouter()
@@ -36,13 +35,7 @@ export default function AbogadoDashboardPage() {
       return
     }
     
-    if (role !== 'lawyer' && role !== 'guestlawyer' && role !== 'admin' && role !== 'superadmin') {
-      router.replace('/dashboard')
-      return
-    }
-    
-    // Usuario valido, cargar datos
-    loadData()
+    router.replace('/dashboard')
   }, [authLoading, user, role, router])
 
   async function loadData() {
@@ -93,26 +86,30 @@ export default function AbogadoDashboardPage() {
   if (authLoading || pageLoading) {
     return <DashboardSkeleton />
   }
+  if (user) {
+    return null
+  }
 
   const isVerified = role === 'lawyer' || role === 'admin' || role === 'superadmin'
   const isGuestLawyer = role === 'guestlawyer'
   const displayName = lawyerProfile?.display_name || profile?.full_name || 'Abogado'
+  const defaultLawyerAvatar = profile?.sexo === 'M' ? '/avatars/lawyer-default-female.svg' : '/avatars/lawyer-default.jpg'
 
   // Herramientas con emojis
   const freeTools = [
     { name: 'Calculadora', href: '/calculadora', emoji: '🧮', description: 'Calcula liquidaciones', available: true },
     { name: 'Boveda', href: '/boveda', emoji: '🔐', description: 'Guarda documentos', available: true },
-    { name: 'Guia LFT', href: '/guia-lft', emoji: '📖', description: 'Ley Federal del Trabajo', available: true }
+    { name: 'Guia LFT', href: '/guia-lft', emoji: '📖', description: 'Ley Federal del Trabajo', available: true },
+    { name: 'Biblioteca Legal', href: '/biblioteca-legal', emoji: '📚', description: 'Guia simplificada', available: true }
   ]
 
   const isAdmin = role === 'admin' || role === 'superadmin'
   
   const lawyerTools = [
-    { name: 'Mis Casos', href: '/abogado/casos', emoji: '⚖️', description: 'Gestiona y toma casos', available: true, highlight: true },
-    { name: 'Mis Referidos', href: '/abogado/referidos', emoji: '🔗', description: 'Tu red de comisiones', available: true },
-    { name: 'AutoCCL', href: '/oficina-virtual/ccl', emoji: '📝', description: 'Genera solicitudes CCL', available: isVerified, badge: isGuestLawyer ? 'Verificate' : undefined },
-    { name: 'Marketplace', href: '/oficina-virtual/casos', emoji: '🛒', description: 'Casos disponibles', available: isVerified, badge: isGuestLawyer ? 'Verificate' : undefined },
     { name: 'Leads', href: '/oficina-virtual/leads', emoji: '👥', description: 'Clientes potenciales', available: isVerified, badge: isGuestLawyer ? 'Verificate' : undefined },
+    { name: 'Oficina Virtual', href: '/abogado/casos', emoji: '🏛️', description: 'Gestiona tus casos', available: isVerified, highlight: true, badge: isGuestLawyer ? 'Verificate' : undefined },
+    { name: 'Radar de Casos', href: '/oficina-virtual/leads', emoji: '📡', description: 'Casos disponibles', available: isVerified, badge: isGuestLawyer ? 'Verificate' : undefined },
+    { name: 'Cuponera', href: '/oficina-virtual/casos', emoji: '🎟️', description: 'Compra suscripciones', available: isVerified, badge: isGuestLawyer ? 'Verificate' : undefined },
     // Admin tools (visible solo para admin/superadmin)
     ...(isAdmin ? [
       { name: 'Todos los Leads', href: '/abogado/leads', emoji: '📋', description: 'Cotizaciones (Admin)', available: true, highlight: true },
@@ -151,7 +148,7 @@ export default function AbogadoDashboardPage() {
                   : 'ring-2 ring-gray-300 ring-offset-2'
               }`}>
                 <Image
-                  src={lawyerProfile?.photo_url || '/avatars/lawyer-default.jpg'}
+                  src={lawyerProfile?.photo_url || defaultLawyerAvatar}
                   alt={displayName}
                   fill
                   className="object-cover"
@@ -347,23 +344,6 @@ export default function AbogadoDashboardPage() {
         />
       </main>
 
-      {/* Asistente de bienvenida con IA */}
-      {user && profile && (
-        <WelcomeAIAssistant
-          userId={user.id}
-          userProfile={{
-            id: profile.id,
-            full_name: profile.full_name,
-            role: profile.role,
-            is_verified: profile.verification_status === 'verified',
-            verification_status: profile.verification_status,
-            first_login_at: profile.first_login_at,
-            login_count: profile.login_count,
-            codigo_usuario: profile.codigo_usuario
-          }}
-          isFirstLogin={isFirstLogin}
-        />
-      )}
     </div>
   )
 }

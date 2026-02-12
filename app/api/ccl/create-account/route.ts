@@ -47,6 +47,10 @@ export async function POST(request: NextRequest) {
     
     // Generar referencia interna (NO es folio oficial)
     const referenciaInterna = generarReferenciaInterna(estado)
+
+    const usaEmailPassword = portal.tipoAutenticacion !== 'curp_folio'
+    const emailPortal = usaEmailPassword ? generarEmailCCL(datosTrabajador.curp, estado) : null
+    const passwordPortal = usaEmailPassword ? generarPasswordCCL() : null
     
     // Guardar referencia al portal SINACOL real
     const { data: account, error } = await supabase
@@ -58,9 +62,9 @@ export async function POST(request: NextRequest) {
         estado,
         portal_url: portal.url,
         portal_nombre: portal.nombre,
-        // SINACOL no requiere email/password - solo CURP
-        email_portal: null, 
-        password_portal: null,
+        // Email y password del buzón (solo para Superadmin)
+        email_portal: emailPortal, 
+        password_portal: passwordPortal,
         // URLs reales del portal SINACOL
         url_login: portal.urlSinacol, // URL del formulario de solicitud real
         url_buzon: portal.urlBuzon,
@@ -131,6 +135,9 @@ export async function POST(request: NextRequest) {
       mensaje: flujoEsGuardarCrearCuenta
         ? `IMPORTANTE: En el portal de ${estado}, debes elegir "GUARDAR" al final del formulario para abrir la creación de cuenta. Este paso registra tu solicitud.`
         : `Enlace generado al portal SINACOL de ${estado}. El trabajador debe completar su solicitud en el portal oficial usando su CURP.`
+      ,
+      email_portal: opciones?.includeCredentials ? emailPortal : null,
+      password_portal: opciones?.includeCredentials ? passwordPortal : null
     })
     
   } catch (error) {

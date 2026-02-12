@@ -2,6 +2,7 @@
 
 import { createClient } from '@/lib/supabase/server'
 import { revalidatePath } from 'next/cache'
+import { syncRecompensasIA } from '@/lib/ai/credits-system'
 
 // Obtener logros del usuario
 export async function getUserAchievements() {
@@ -134,6 +135,8 @@ export async function claimAchievementReward(achievementId: string) {
     .eq('id', userAchievement.id)
   
   if (claimError) return { error: 'Error reclamando recompensa' }
+
+  await syncRecompensasIA(user.id)
   
   revalidatePath('/recompensas')
   return { error: null, amount: rewardAmount }

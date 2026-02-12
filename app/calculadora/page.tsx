@@ -36,6 +36,7 @@ import { downloadPropuestaEmpresaPDF, getPropuestaEmpresaPDFBlob, type DatosProp
 import { guardarCalculoEnBoveda, verificarLimiteCalculos, crearCasoDesdeCalculo } from './actions'
 import { Input } from '@/components/ui/input'
 import { Alert, AlertDescription } from '@/components/ui/alert'
+import { createClient } from '@/lib/supabase/client'
 
 // Tipos para guardado
 interface CalcRun {
@@ -160,6 +161,7 @@ export default function CalculadoraPage() {
   
   // Modo basico - sin resumen ni documentos descargables (para usuarios desde login)
   const [modoBasico, setModoBasico] = useState(false)
+  const [userRole, setUserRole] = useState('guest')
   
   // Datos del trabajador para documentos
   const [nombreTrabajador, setNombreTrabajador] = useState('')
@@ -194,6 +196,8 @@ export default function CalculadoraPage() {
       setSalarioDiario(Math.round(salarioMensual / 30))
     }
   }, [salarioMensual, tipoSalario])
+
+  const isProfessional = ['lawyer', 'admin', 'superadmin', 'webagent', 'guestlawyer'].includes(userRole)
   
   useEffect(() => {
     if (tipoSalario === 'diario') {
@@ -488,6 +492,27 @@ export default function CalculadoraPage() {
     if (params.get('modo') === 'basico') {
       setModoBasico(true)
     }
+  }, [])
+
+  useEffect(() => {
+    async function loadRole() {
+      try {
+        const supabase = createClient()
+        const { data: { user } } = await supabase.auth.getUser()
+        if (!user) return
+        const { data: profile } = await supabase
+          .from('profiles')
+          .select('role')
+          .eq('id', user.id)
+          .single()
+        if (profile?.role) {
+          setUserRole(profile.role)
+        }
+      } catch {
+        // Ignorar errores de perfil
+      }
+    }
+    loadRole()
   }, [])
   
   // Guardar cálculo
@@ -2281,7 +2306,9 @@ export default function CalculadoraPage() {
                       <FileText className="w-12 h-12 mx-auto text-primary/50 mb-3" />
                       <p className="font-medium mb-2">Siguiente paso</p>
                       <p className="text-sm text-muted-foreground mb-4">
-                        Genera tu cálculo o solicita asesoría de un abogado laboralista
+                        {isProfessional
+                          ? 'Guarda el cálculo en tu bóveda o crea el cliente para dar seguimiento inmediato.'
+                          : 'Genera tu cálculo o solicita asesoría de un abogado laboralista'}
                       </p>
                       
                       <div className="space-y-3">
@@ -2300,7 +2327,7 @@ export default function CalculadoraPage() {
                           ) : (
                             <>
                               <FileText className="w-4 h-4" />
-                              Generar Cálculo
+                              {isProfessional ? 'Guardar en Bóveda' : 'Generar Cálculo'}
                             </>
                           )}
                         </Button>
@@ -2316,29 +2343,33 @@ export default function CalculadoraPage() {
                           {creandoCaso ? (
                             <>
                               <Loader2 className="w-4 h-4 animate-spin" />
-                              Creando caso y guardando...
+                              {isProfessional ? 'Guardando y creando cliente...' : 'Creando caso y guardando...'}
                             </>
                           ) : casoCreado ? (
                             <>
                               <CheckCircle className="w-4 h-4" />
-                              Caso creado: {folioDelCaso}
+                              {isProfessional ? `Cliente creado: ${folioDelCaso}` : `Caso creado: ${folioDelCaso}`}
                             </>
                           ) : (
                             <>
                               <Scale className="w-4 h-4" />
-                              Crear Caso
+                              {isProfessional ? 'Guardar y crear cliente' : 'Crear Caso'}
                             </>
                           )}
                         </Button>
                         
                         {casoCreado && (
                           <div className="bg-green-50 border border-green-200 rounded-lg p-3 text-left">
-                            <p className="text-green-800 text-sm font-medium">Caso creado y cálculo guardado</p>
+                            <p className="text-green-800 text-sm font-medium">
+                              {isProfessional ? 'Cliente creado y cálculo guardado' : 'Caso creado y cálculo guardado'}
+                            </p>
                             <p className="text-green-700 text-xs mt-1">
                               Folio: <span className="font-mono font-bold">{folioDelCaso}</span>
                             </p>
                             <p className="text-green-600 text-xs mt-1">
-                              Tu cálculo se guardó en tu bóveda de evidencias. Un abogado revisará tu caso pronto.
+                              {isProfessional
+                                ? 'El cálculo se guardó en tu bóveda. Comparte el folio con tu cliente para que ingrese como invitado.'
+                                : 'Tu cálculo se guardó en tu bóveda de evidencias. Un abogado revisará tu caso pronto.'}
                             </p>
                           </div>
                         )}

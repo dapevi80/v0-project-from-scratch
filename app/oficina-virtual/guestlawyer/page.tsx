@@ -15,6 +15,7 @@ import { EfirmaConfig } from '@/components/abogado/efirma-config'
 import { LawyerCelebration } from '@/components/lawyer-celebration'
 import { DowngradeAlert } from '@/components/downgrade-alert'
 import { AccountLimitsBanner } from '@/components/account-limits-banner'
+import { FileText, FolderKanban, Radar, Users2 } from 'lucide-react'
 
 export default function GuestLawyerDashboardPage() {
   const router = useRouter()
@@ -124,56 +125,45 @@ export default function GuestLawyerDashboardPage() {
         </svg>
       ),
       color: 'bg-purple-50 text-purple-600'
+    },
+    { 
+      name: 'Biblioteca Legal', 
+      href: '/biblioteca-legal', 
+      description: 'Guia simplificada',
+      icon: (
+        <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+          <path strokeLinecap="round" strokeLinejoin="round" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
+        </svg>
+      ),
+      color: 'bg-amber-50 text-amber-600'
     }
   ]
 
-  // Herramientas para abogados (bloqueadas para guestlawyer)
+  // Herramientas para abogados
   const lawyerTools = [
     { 
-      name: 'AutoCCL', 
-      description: 'Solicitudes con IA',
-      icon: (
-        <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-          <path strokeLinecap="round" strokeLinejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-        </svg>
-      ),
-      badge: 'IA',
-      locked: true,
-      reason: 'Requiere verificacion'
+      name: 'Radar de clientes', 
+      description: 'Casos nuevos con filtro por estado',
+      icon: <Radar className="w-6 h-6" />,
+      href: '/oficina-virtual/radar-clientes'
     },
     { 
-      name: 'Marketplace', 
-      description: 'Tomar casos',
-      icon: (
-        <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-          <path strokeLinecap="round" strokeLinejoin="round" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
-        </svg>
-      ),
-      locked: true,
-      reason: 'Requiere verificacion'
+      name: 'Mis casos', 
+      description: 'Nuevos, radar y activos',
+      icon: <FolderKanban className="w-6 h-6" />,
+      href: '/oficina-virtual/mis-casos'
     },
     { 
-      name: 'Mis Casos', 
-      description: 'Gestion de casos',
-      icon: (
-        <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-          <path strokeLinecap="round" strokeLinejoin="round" d="M3 6l3 1m0 0l-3 9a5.002 5.002 0 006.001 0M6 7l3 9M6 7l6-2m6 2l3-1m-3 1l-3 9a5.002 5.002 0 006.001 0M18 7l3 9m-3-9l-6-2m0-2v2m0 16V5m0 16H9m3 0h3" />
-        </svg>
-      ),
-      locked: true,
-      reason: 'Requiere verificacion'
+      name: 'Generador IA de solicitudes', 
+      description: 'IA o flujo manual por caso',
+      icon: <FileText className="w-6 h-6" />,
+      href: '/oficina-virtual/solicitudes-ia'
     },
     { 
-      name: 'Cedula Digital', 
-      description: 'Tu identificacion',
-      icon: (
-        <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-          <path strokeLinecap="round" strokeLinejoin="round" d="M10 6H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V8a2 2 0 00-2-2h-5m-4 0V5a2 2 0 114 0v1m-4 0a2 2 0 104 0m-5 8a2 2 0 100-4 2 2 0 000 4zm0 0c1.306 0 2.417.835 2.83 2M9 14a3.001 3.001 0 00-2.83 2M15 11h3m-3 4h2" />
-        </svg>
-      ),
-      locked: false,
-      action: () => setShowCedula(true),
-      badge: 'Preview'
+      name: 'Mi equipo y red', 
+      description: 'Clientes, referidos y equipo',
+      icon: <Users2 className="w-6 h-6" />,
+      href: '/oficina-virtual/mi-equipo'
     }
   ]
 
@@ -370,50 +360,24 @@ export default function GuestLawyerDashboardPage() {
           <div>
             <div className="flex items-center gap-2 mb-4">
               <h3 className="text-lg font-semibold">Herramientas para Abogados</h3>
-              <Badge variant="outline" className="text-xs">
-                <svg className="w-3 h-3 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
-                </svg>
-                Verifica tu cuenta
-              </Badge>
             </div>
             <div className="grid grid-cols-2 gap-3">
               {lawyerTools.map((tool) => (
-                <Card 
-                  key={tool.name}
-                  className={`${tool.locked ? 'opacity-50 border-dashed' : 'hover:shadow-md cursor-pointer'} transition-all h-full`}
-                  onClick={tool.action}
-                >
-                  <CardContent className="p-4">
-                    <div className="flex items-start gap-3">
-                      <div className={`w-12 h-12 rounded-lg ${tool.locked ? 'bg-muted' : 'bg-gradient-to-br from-blue-500 to-indigo-600'} flex items-center justify-center ${tool.locked ? 'text-muted-foreground' : 'text-white'} flex-shrink-0`}>
-                        {tool.locked ? (
-                          <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                            <path strokeLinecap="round" strokeLinejoin="round" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
-                          </svg>
-                        ) : (
-                          tool.icon
-                        )}
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-2 flex-wrap">
-                          <h4 className={`font-medium text-sm ${tool.locked ? 'text-muted-foreground' : 'text-foreground'}`}>
-                            {tool.name}
-                          </h4>
-                          {tool.badge && (
-                            <Badge variant={tool.locked ? 'outline' : 'secondary'} className="text-xs">
-                              {tool.badge}
-                            </Badge>
-                          )}
+                <Link key={tool.name} href={tool.href}>
+                  <Card className="hover:shadow-md cursor-pointer transition-all h-full">
+                    <CardContent className="p-4">
+                      <div className="flex items-start gap-3">
+                        <div className="w-12 h-12 rounded-lg bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center text-white flex-shrink-0">
+                          {tool.icon}
                         </div>
-                        <p className="text-xs text-muted-foreground mt-0.5">{tool.description}</p>
-                        {tool.locked && tool.reason && (
-                          <p className="text-xs text-amber-600 mt-1">{tool.reason}</p>
-                        )}
+                        <div className="flex-1 min-w-0">
+                          <h4 className="font-medium text-sm text-foreground">{tool.name}</h4>
+                          <p className="text-xs text-muted-foreground mt-0.5">{tool.description}</p>
+                        </div>
                       </div>
-                    </div>
-                  </CardContent>
-                </Card>
+                    </CardContent>
+                  </Card>
+                </Link>
               ))}
             </div>
           </div>

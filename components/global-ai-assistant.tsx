@@ -1,6 +1,7 @@
 "use client"
 
 import React, { useState, useRef, useEffect, useCallback } from "react"
+import { usePathname } from "next/navigation"
 import { Sparkles } from "lucide-react"
 import { createClient } from "@/lib/supabase/client"
 import { AIAssistant } from "./boveda/ai-assistant"
@@ -31,6 +32,7 @@ export const openAIChatWithDocument = (documentText: string, documentName?: stri
 }
 
 export function GlobalAIAssistant() {
+  const pathname = usePathname()
   const [isOpen, setIsOpen] = useState(false)
   const [userProfile, setUserProfile] = useState<UserProfile | undefined>()
   const [documentToAnalyze, setDocumentToAnalyze] = useState<{ text: string; name?: string } | null>(null)
@@ -279,6 +281,7 @@ export function GlobalAIAssistant() {
   }
 
   if (!mounted || position.x === -1) return null
+  if (pathname?.startsWith('/abogado')) return null
 
   return (
     <>
@@ -309,11 +312,9 @@ export function GlobalAIAssistant() {
           aria-label="Abrir Lía - arrastra para mover"
         >
           {/* Avatar */}
-          <img 
-            src="/lia-avatar.jpg" 
-            alt="Lía - Asistente Legal IA" 
-            className="w-full h-full object-cover pointer-events-none"
-            draggable={false}
+          <span
+            aria-hidden="true"
+            className="absolute inset-0 bg-[url('/lia-avatar.jpg')] bg-cover bg-center pointer-events-none"
           />
           
           {/* Indicador de estrellas IA */}

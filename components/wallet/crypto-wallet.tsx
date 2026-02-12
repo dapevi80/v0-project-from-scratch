@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
+import { useSearchParams } from 'next/navigation'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
@@ -25,7 +26,11 @@ import {
   KeyRound,
   ChevronRight,
   ChevronLeft,
-  Info
+  Info,
+  Coins,
+  Ticket,
+  IdCard,
+  FileText
 } from 'lucide-react'
 import { QRCodeSVG } from 'qrcode.react'
 import { ProVCard, ProVCardMini } from './pro-vcard'
@@ -49,6 +54,7 @@ interface CryptoWalletProps {
     email?: string
     phone?: string
     role: string
+    codigo_usuario?: string
   }
   lawyerProfile?: {
     cedula_profesional?: string
@@ -70,14 +76,14 @@ type WalletView = 'main' | 'receive' | 'send' | 'settings' | 'mnemonic' | 'impor
 // Tutorial steps for wallet creation
 const SECURITY_STEPS = [
   {
-    title: 'Que es una wallet?',
-    description: 'Tu billetera digital personal donde solo TU tienes acceso mediante 12 palabras secretas.',
+    title: 'Que es tu cartera?',
+    description: 'Tu cartera digital personal donde solo TU tienes acceso mediante 12 palabras secretas.',
     icon: Wallet,
     tip: 'Piensa en ella como una caja fuerte digital'
   },
   {
     title: 'Las 12 palabras son tu llave',
-    description: 'Al crear tu wallet recibiras 12 palabras. Son tu UNICA forma de recuperarla. Si las pierdes, pierdes tus fondos PARA SIEMPRE.',
+    description: 'Al crear tu cartera recibiras 12 palabras. Son tu UNICA forma de recuperarla. Si las pierdes, pierdes tus fondos PARA SIEMPRE.',
     icon: KeyRound,
     tip: 'Escribelas en papel, NUNCA en digital'
   },
@@ -117,6 +123,86 @@ export function CryptoWallet({ userId, isVerified, onWalletCreated, userRole, pr
   const [importMnemonic, setImportMnemonic] = useState('')
   const [showImportOption, setShowImportOption] = useState(false)
   const [deleteConfirm, setDeleteConfirm] = useState(false)
+  const balanceNumber = Number.parseFloat(balance) || 0
+  const mxnRate = 17.5
+  const mxnBalance = balanceNumber * mxnRate
+  const searchParams = useSearchParams()
+
+  const nftAssets = [
+    {
+      title: 'Cupones',
+      description: 'Bonos intercambiables por monedas o suscripciones.',
+      requiresVerification: false
+    },
+    {
+      title: 'Monedas IA',
+      description: 'Creditos para usar herramientas inteligentes.',
+      requiresVerification: true
+    },
+    {
+      title: 'VCard profesional',
+      description: 'Tarjeta de presentacion verificable.',
+      requiresVerification: false
+    },
+    {
+      title: 'Identificacion oficial',
+      description: 'INE o pasaporte resguardado en tu cartera.',
+      requiresVerification: false
+    },
+    {
+      title: 'Llave digital SAT',
+      description: 'Certificados SAT para firma electronica oficial.',
+      requiresVerification: false
+    },
+    {
+      title: 'Firma digital',
+      description: 'Firma electronica con archivos del SAT.',
+      requiresVerification: true
+    },
+    {
+      title: 'Contraseñas seguras',
+      description: 'Vault cifrado para credenciales.',
+      requiresVerification: false
+    },
+    {
+      title: 'Documentos CCL',
+      description: 'PDFs y acuses generados por el sistema.',
+      requiresVerification: false
+    }
+  ]
+
+  const walletCards = [
+    {
+      title: 'Dinero',
+      subtitle: 'USDT + MXN',
+      icon: Wallet,
+      color: 'from-emerald-500/15 to-teal-500/5'
+    },
+    {
+      title: 'Monedas IA',
+      subtitle: 'Consumo inteligente',
+      icon: Coins,
+      color: 'from-blue-500/15 to-indigo-500/5'
+    },
+    {
+      title: 'Cupones',
+      subtitle: 'NFTs intercambiables',
+      icon: Ticket,
+      color: 'from-amber-500/15 to-orange-500/5'
+    },
+    {
+      title: 'Identificación',
+      subtitle: 'INE/Pasaporte',
+      icon: IdCard,
+      color: 'from-slate-500/15 to-slate-400/5'
+    },
+    {
+      title: 'Firma digital',
+      subtitle: 'e.firma SAT',
+      icon: FileText,
+      color: 'from-purple-500/15 to-fuchsia-500/5'
+    }
+  ]
 
   // Check for existing wallet in localStorage on mount
   useEffect(() => {
@@ -136,6 +222,12 @@ export function CryptoWallet({ userId, isVerified, onWalletCreated, userRole, pr
       if (hideBalancePref === 'true') setHideBalance(true)
     }
   }, [userId])
+
+  useEffect(() => {
+    if (searchParams?.get('vcard') === '1' && isVCardEligible) {
+      setCurrentView('vcard')
+    }
+  }, [searchParams, isVCardEligible])
 
   // Fetch balance when wallet is loaded
   useEffect(() => {
@@ -223,7 +315,7 @@ export function CryptoWallet({ userId, isVerified, onWalletCreated, userRole, pr
       setShowTutorial(false)
       setShowMnemonicBackup(true)
     } catch (err) {
-      setError('Error al crear la wallet. Intenta de nuevo.')
+      setError('Error al crear la cartera. Intenta de nuevo.')
       console.error('Wallet creation error:', err)
     } finally {
       setIsCreating(false)
@@ -255,7 +347,7 @@ export function CryptoWallet({ userId, isVerified, onWalletCreated, userRole, pr
         setError('Frase semilla invalida. Verifica las palabras.')
       }
     } catch {
-      setError('Error al importar wallet.')
+      setError('Error al importar cartera.')
     } finally {
       setIsCreating(false)
     }
@@ -320,8 +412,8 @@ export function CryptoWallet({ userId, isVerified, onWalletCreated, userRole, pr
               <Wallet className="w-5 h-5 sm:w-6 sm:h-6 text-muted-foreground" />
             </div>
             <div className="flex-1 min-w-0">
-              <CardTitle className="text-muted-foreground text-base sm:text-lg">Wallet USDT</CardTitle>
-              <CardDescription className="text-xs sm:text-sm">Verifica tu cuenta para activar</CardDescription>
+              <CardTitle className="text-muted-foreground text-base sm:text-lg">Cartera digital</CardTitle>
+              <CardDescription className="text-xs sm:text-sm">Verifica tu cuenta para activar cripto</CardDescription>
             </div>
           </div>
         </CardHeader>
@@ -331,14 +423,33 @@ export function CryptoWallet({ userId, isVerified, onWalletCreated, userRole, pr
               <Shield className="w-7 h-7 sm:w-8 sm:h-8 text-muted-foreground" />
             </div>
             <div>
-              <p className="font-medium text-muted-foreground text-sm sm:text-base">Wallet bloqueada</p>
+              <p className="font-medium text-muted-foreground text-sm sm:text-base">Cartera bloqueada</p>
               <p className="text-xs sm:text-sm text-muted-foreground mt-1 px-4">
-                Verifica tu cuenta para crear tu wallet y recibir USDT
+                Verifica tu cuenta para crear tu cartera y usar USDT + Monedas IA
               </p>
             </div>
             <Button variant="outline" size="sm" className="bg-transparent">
               Verificar cuenta
             </Button>
+          </div>
+          <div className="border-t pt-4 space-y-3">
+            <div>
+              <p className="text-xs sm:text-sm font-semibold text-foreground">Activos disponibles sin verificacion</p>
+              <p className="text-[10px] sm:text-xs text-muted-foreground">
+                Cupones, vCards, llaves y contraseñas se pueden recibir sin cuenta verificada.
+              </p>
+            </div>
+            <div className="grid gap-2">
+              {nftAssets.filter((asset) => !asset.requiresVerification).map((asset) => (
+                <div key={asset.title} className="flex items-start gap-2 rounded-lg border border-muted p-2">
+                  <div className="flex-1">
+                    <p className="text-xs sm:text-sm font-medium text-foreground">{asset.title}</p>
+                    <p className="text-[10px] sm:text-xs text-muted-foreground">{asset.description}</p>
+                  </div>
+                  <Badge variant="outline" className="text-[9px] sm:text-[10px]">NFT</Badge>
+                </div>
+              ))}
+            </div>
           </div>
         </CardContent>
       </Card>
@@ -408,7 +519,7 @@ export function CryptoWallet({ userId, isVerified, onWalletCreated, userRole, pr
                   Creando...
                 </>
               ) : tutorialStep === SECURITY_STEPS.length - 1 ? (
-                <>Crear wallet</>
+                <>Crear cartera</>
               ) : (
                 <>
                   Siguiente
@@ -433,7 +544,7 @@ export function CryptoWallet({ userId, isVerified, onWalletCreated, userRole, pr
             <CardTitle className="text-red-900 text-base sm:text-lg">Guarda tu frase semilla</CardTitle>
           </div>
           <CardDescription className="text-red-700 text-xs sm:text-sm">
-            Escribe estas 12 palabras EN ORDEN. Es tu UNICA forma de recuperar tu wallet.
+            Escribe estas 12 palabras EN ORDEN. Es tu UNICA forma de recuperar tu cartera.
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4 sm:space-y-6 px-4 sm:px-6">
@@ -488,7 +599,7 @@ export function CryptoWallet({ userId, isVerified, onWalletCreated, userRole, pr
               onClick={confirmMnemonicBackup}
               className="w-full bg-red-600 hover:bg-red-700 h-11 sm:h-12"
             >
-              Confirmar y activar wallet
+              Confirmar y activar cartera
             </Button>
           </div>
         </CardContent>
@@ -504,14 +615,14 @@ export function CryptoWallet({ userId, isVerified, onWalletCreated, userRole, pr
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
               <KeyRound className="w-5 h-5 text-blue-600" />
-              <CardTitle className="text-blue-900 text-base sm:text-lg">Importar wallet</CardTitle>
+              <CardTitle className="text-blue-900 text-base sm:text-lg">Importar cartera</CardTitle>
             </div>
             <Button variant="ghost" size="sm" onClick={() => { setCurrentView('main'); setShowImportOption(false); }} className="h-8 w-8 p-0">
               <X className="w-4 h-4" />
             </Button>
           </div>
           <CardDescription className="text-xs sm:text-sm">
-            Ingresa tu frase de 12 palabras para restaurar tu wallet
+            Ingresa tu frase de 12 palabras para restaurar tu cartera
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4 px-4 sm:px-6">
@@ -539,7 +650,7 @@ export function CryptoWallet({ userId, isVerified, onWalletCreated, userRole, pr
             ) : (
               <>
                 <KeyRound className="w-4 h-4 mr-2" />
-                Importar wallet
+                Importar cartera
               </>
             )}
           </Button>
@@ -559,8 +670,8 @@ export function CryptoWallet({ userId, isVerified, onWalletCreated, userRole, pr
                 <Wallet className="w-5 h-5 sm:w-6 sm:h-6 text-emerald-600" />
               </div>
               <div>
-                <CardTitle className="text-emerald-900 text-base sm:text-lg">Wallet USDT</CardTitle>
-                <CardDescription className="text-xs sm:text-sm">Red Polygon</CardDescription>
+                <CardTitle className="text-emerald-900 text-base sm:text-lg">Cartera USDT</CardTitle>
+                <CardDescription className="text-xs sm:text-sm">USDT + MXN estimado</CardDescription>
               </div>
             </div>
             <Badge variant="outline" className="border-emerald-300 text-emerald-700 text-xs hidden sm:inline-flex">
@@ -574,9 +685,9 @@ export function CryptoWallet({ userId, isVerified, onWalletCreated, userRole, pr
               <Shield className="w-8 h-8 sm:w-10 sm:h-10 text-emerald-600" />
             </div>
             <div className="space-y-2">
-              <p className="font-semibold text-emerald-900 text-sm sm:text-base">Activa tu wallet</p>
+              <p className="font-semibold text-emerald-900 text-sm sm:text-base">Activa tu cartera</p>
               <p className="text-xs sm:text-sm text-emerald-700 max-w-[280px] mx-auto">
-                Crea tu billetera descentralizada para recibir USDT por referidos y recompensas
+                Crea tu cartera descentralizada para recibir USDT, monedas IA y recompensas
               </p>
             </div>
             <div className="flex flex-col gap-2 sm:gap-3 max-w-[280px] mx-auto">
@@ -585,7 +696,7 @@ export function CryptoWallet({ userId, isVerified, onWalletCreated, userRole, pr
                 className="bg-emerald-600 hover:bg-emerald-700 h-11 sm:h-12 w-full"
               >
                 <Wallet className="w-4 h-4 mr-2" />
-                Crear nueva wallet
+                Crear nueva cartera
               </Button>
               <Button 
                 variant="outline"
@@ -593,7 +704,7 @@ export function CryptoWallet({ userId, isVerified, onWalletCreated, userRole, pr
                 className="bg-transparent border-emerald-300 text-emerald-700 h-10 sm:h-11 w-full"
               >
                 <KeyRound className="w-4 h-4 mr-2" />
-                Tengo una wallet
+                Tengo una cartera
               </Button>
             </div>
             <p className="text-[10px] sm:text-xs text-muted-foreground">
@@ -611,8 +722,8 @@ export function CryptoWallet({ userId, isVerified, onWalletCreated, userRole, pr
       <Card className="border-2 border-emerald-200 bg-gradient-to-br from-emerald-50 to-teal-50">
         <CardHeader className="pb-2 px-4 sm:px-6">
           <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <ArrowDownLeft className="w-5 h-5 text-emerald-600" />
+              <div className="flex items-center gap-2">
+                <ArrowDownLeft className="w-5 h-5 text-emerald-600" />
               <CardTitle className="text-emerald-900 text-base sm:text-lg">Recibir USDT</CardTitle>
             </div>
             <Button variant="ghost" size="sm" onClick={() => setCurrentView('main')} className="h-8 w-8 p-0">
@@ -750,6 +861,12 @@ export function CryptoWallet({ userId, isVerified, onWalletCreated, userRole, pr
                 ))}
               </div>
             </div>
+            <div className="rounded-lg border border-red-200 bg-red-50/80 p-3">
+              <p className="text-xs text-red-800">
+                <strong>Importante:</strong> No respaldamos tu frase semilla ni contraseñas. 
+                Si la pierdes, no podremos recuperar tus USDT u otras criptos.
+              </p>
+            </div>
           </div>
 
           {/* Cerrar sesion */}
@@ -759,7 +876,7 @@ export function CryptoWallet({ userId, isVerified, onWalletCreated, userRole, pr
             className="w-full bg-transparent h-10 sm:h-11"
           >
             <LogOut className="w-4 h-4 mr-2" />
-            Cerrar sesion de wallet
+            Cerrar sesion de cartera
           </Button>
 
           {/* Eliminar wallet */}
@@ -771,7 +888,7 @@ export function CryptoWallet({ userId, isVerified, onWalletCreated, userRole, pr
                 className="w-full text-red-600 hover:text-red-700 hover:bg-red-50 h-10 sm:h-11"
               >
                 <Trash2 className="w-4 h-4 mr-2" />
-                Eliminar wallet de este dispositivo
+                Eliminar cartera de este dispositivo
               </Button>
             ) : (
               <div className="space-y-2 bg-red-50 p-3 rounded-lg border border-red-200">
@@ -813,7 +930,7 @@ export function CryptoWallet({ userId, isVerified, onWalletCreated, userRole, pr
               <Wallet className="w-5 h-5 sm:w-6 sm:h-6 text-emerald-600" />
             </div>
             <div>
-              <CardTitle className="text-emerald-900 text-base sm:text-lg">Mi Wallet</CardTitle>
+              <CardTitle className="text-emerald-900 text-base sm:text-lg">Mi Cartera</CardTitle>
               <CardDescription className="flex items-center gap-1 text-xs sm:text-sm">
                 <CheckCircle2 className="w-3 h-3 text-green-600" />
                 Polygon
@@ -841,11 +958,34 @@ export function CryptoWallet({ userId, isVerified, onWalletCreated, userRole, pr
           </div>
         </div>
       </CardHeader>
-      <CardContent className="space-y-3 sm:space-y-4 px-4 sm:px-6">
+      <CardContent className="space-y-4 sm:space-y-5 px-4 sm:px-6">
+        {/* Tarjetas principales */}
+        <div className="grid gap-2 sm:grid-cols-2">
+          {walletCards.map((card) => {
+            const Icon = card.icon
+            return (
+              <div
+                key={card.title}
+                className={`rounded-2xl border border-emerald-100 bg-gradient-to-br ${card.color} p-4 shadow-sm`}
+              >
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-xs text-emerald-900/80">{card.title}</p>
+                    <p className="text-sm font-semibold text-emerald-900">{card.subtitle}</p>
+                  </div>
+                  <div className="h-10 w-10 rounded-xl bg-white/70 flex items-center justify-center">
+                    <Icon className="w-5 h-5 text-emerald-600" />
+                  </div>
+                </div>
+              </div>
+            )
+          })}
+        </div>
+
         {/* Balance */}
-        <div className="bg-white/70 rounded-xl p-4 sm:p-5 border border-emerald-100">
+        <div className="bg-gradient-to-br from-white/90 via-emerald-50 to-white rounded-2xl p-4 sm:p-5 border border-emerald-100 shadow-sm">
           <div className="flex items-center justify-between mb-1">
-            <p className="text-[10px] sm:text-xs text-muted-foreground">Saldo disponible</p>
+            <p className="text-[10px] sm:text-xs text-muted-foreground">Saldo disponible en MXN</p>
             <Button
               variant="ghost"
               size="sm"
@@ -857,12 +997,12 @@ export function CryptoWallet({ userId, isVerified, onWalletCreated, userRole, pr
           </div>
           <div className="flex items-baseline gap-2">
             <span className="text-3xl sm:text-4xl font-bold text-emerald-700">
-              {hideBalance ? '••••' : balance}
+              {hideBalance ? '••••' : mxnBalance.toFixed(2)}
             </span>
-            <span className="text-lg sm:text-xl font-semibold text-emerald-600">USDT</span>
+            <span className="text-lg sm:text-xl font-semibold text-emerald-600">MXN</span>
           </div>
           <p className="text-xs sm:text-sm text-muted-foreground mt-1">
-            {hideBalance ? '~ $••••• MXN' : `~ $${(parseFloat(balance) * 17.5).toFixed(2)} MXN`}
+            {hideBalance ? 'USDT ••••' : `USDT ${balance}`}
           </p>
         </div>
         
@@ -896,6 +1036,35 @@ export function CryptoWallet({ userId, isVerified, onWalletCreated, userRole, pr
             <ArrowUpRight className="w-4 h-4 mr-1.5 sm:mr-2" />
             Enviar
           </Button>
+        </div>
+
+        <div className="space-y-3 pt-3 border-t border-emerald-200">
+          <div>
+            <p className="text-xs sm:text-sm font-semibold text-emerald-900">NFTs en tu Cartera</p>
+            <p className="text-[10px] sm:text-xs text-muted-foreground">
+              Cada activo se emite como NFT desde Superadmin para su dispersion segura.
+            </p>
+          </div>
+          <div className="grid gap-2 sm:grid-cols-2">
+            {nftAssets.map((asset) => (
+              <div key={asset.title} className="rounded-2xl border border-emerald-100 bg-white/80 p-3 shadow-sm">
+                <div className="flex items-center justify-between">
+                  <p className="text-xs sm:text-sm font-medium text-emerald-900">{asset.title}</p>
+                  <Badge variant="outline" className="text-[9px] sm:text-[10px]">
+                    NFT
+                  </Badge>
+                </div>
+                <p className="text-[10px] sm:text-xs text-muted-foreground mt-1">{asset.description}</p>
+                <p className="text-[10px] sm:text-xs mt-2">
+                  {asset.requiresVerification ? (
+                    <span className="text-amber-700">Requiere verificacion</span>
+                  ) : (
+                    <span className="text-emerald-700">Disponible sin verificacion</span>
+                  )}
+                </p>
+              </div>
+            ))}
+          </div>
         </div>
 
         {/* VCard Profesional - Solo para abogados/admin/superadmin verificados */}

@@ -2,7 +2,7 @@
 
 import React from "react"
 import { useState, useRef, useCallback } from 'react'
-import { AIAssistant } from './ai-assistant'
+import { openAIChatWithDocument } from '@/components/global-ai-assistant'
 import { Button } from '@/components/ui/button'
 import { Slider } from '@/components/ui/slider'
 import { 
@@ -79,7 +79,6 @@ export function OCRScanner({ onClose, onComplete, initialImages }: OCRScannerPro
   const [documentName, setDocumentName] = useState('')
   const [ocrQuality, setOcrQuality] = useState(0)
   const [showRetryPrompt, setShowRetryPrompt] = useState(false)
-  const [showAIAssistant, setShowAIAssistant] = useState(false)
   const [scanQuality, setScanQuality] = useState(0)
   const [isCorrectingOrientation, setIsCorrectingOrientation] = useState(false)
   const [orientationCorrected, setOrientationCorrected] = useState(false)
@@ -869,7 +868,7 @@ export function OCRScanner({ onClose, onComplete, initialImages }: OCRScannerPro
 
       {/* ===== REVISIÓN DE PDF ===== */}
       {step === 'pdf-review' && (
-        <div className="flex flex-col h-full max-h-[70vh]">
+        <div className="flex flex-col h-[70vh]">
           {/* Header */}
           <div className="flex items-center justify-between p-3 border-b bg-gradient-to-r from-green-50 to-emerald-50">
             <button onClick={() => setStep('select')} className="p-1.5 hover:bg-white/50 rounded-lg">
@@ -885,7 +884,7 @@ export function OCRScanner({ onClose, onComplete, initialImages }: OCRScannerPro
           </div>
           
           {/* Contenido */}
-          <div className="flex-1 overflow-y-auto p-4 space-y-4">
+          <div className="flex-1 overflow-hidden p-3 space-y-3">
             {/* Nombre del documento editable */}
             <div>
               <label className="text-[10px] text-muted-foreground flex items-center gap-1 mb-1.5">
@@ -916,48 +915,53 @@ export function OCRScanner({ onClose, onComplete, initialImages }: OCRScannerPro
             </div>
             
             {/* Velocímetro de calidad */}
-            <div className="bg-white rounded-xl border p-4">
-              <p className="text-xs font-medium text-center mb-3">Calidad del documento</p>
+            <div className="bg-white rounded-xl border p-3">
+              <p className="text-xs font-medium text-center mb-2">Calidad del documento</p>
               <div className="flex justify-center">
-                <QualityGauge quality={ocrQuality} size="md" />
+                <QualityGauge quality={ocrQuality} size="sm" />
               </div>
             </div>
             
-                  {/* Botón de Resumen IA - solo si calidad >= 50% */}
-                  {ocrQuality >= 50 && (
+            {/* Botón de Resumen IA - solo si calidad >= 50% */}
+            {ocrQuality >= 50 && (
               <button
-                onClick={() => setShowAIAssistant(true)}
-                className="w-full p-4 bg-gradient-to-r from-blue-500 to-indigo-600 rounded-xl text-white flex items-center justify-center gap-3 hover:from-blue-600 hover:to-indigo-700 transition-all shadow-lg hover:shadow-xl"
+                onClick={() => {
+                  openAIChatWithDocument(
+                    step === 'pdf-review' ? editableText : extractedText,
+                    step === 'pdf-review' ? (documentName || pdfFile?.name || 'Documento PDF') : `Documento escaneado (${pages.length} páginas)`
+                  )
+                }}
+                className="w-full p-3 bg-gradient-to-r from-blue-500 to-indigo-600 rounded-xl text-white flex items-center justify-center gap-3 hover:from-blue-600 hover:to-indigo-700 transition-all shadow-lg hover:shadow-xl"
               >
                 <div className="relative">
-                  <Sparkles className="w-6 h-6" />
+                  <Sparkles className="w-5 h-5" />
                   <div className="absolute -top-1 -right-1 w-2 h-2 bg-yellow-300 rounded-full animate-ping" />
                 </div>
                 <div className="text-left">
                   <p className="font-semibold text-sm">Resumen</p>
                   <p className="text-[10px] text-blue-100">Asistente legal explica tu documento</p>
                 </div>
-                <ChevronRight className="w-5 h-5 ml-auto" />
+                <ChevronRight className="w-4 h-4 ml-auto" />
               </button>
             )}
             
             {/* Mensaje de reintentar si calidad baja */}
-                  {ocrQuality < 50 && (
-                    <div className="p-4 bg-amber-50 rounded-xl border border-amber-200">
-                      <div className="flex items-start gap-3">
-                        <div className="w-10 h-10 rounded-full bg-amber-100 flex items-center justify-center shrink-0">
-                          <AlertCircle className="w-5 h-5 text-amber-600" />
-                        </div>
-                        <div className="flex-1">
-                          <p className="text-sm font-medium text-amber-800">Reintentar resumen</p>
-                          <p className="text-xs text-amber-700 mt-1">
-                            Para generar un resumen IA necesitamos calidad de al menos 50%.
-                          </p>
+            {ocrQuality < 50 && (
+              <div className="p-3 bg-amber-50 rounded-xl border border-amber-200">
+                <div className="flex items-start gap-3">
+                  <div className="w-9 h-9 rounded-full bg-amber-100 flex items-center justify-center shrink-0">
+                    <AlertCircle className="w-4 h-4 text-amber-600" />
+                  </div>
+                  <div className="flex-1">
+                    <p className="text-xs font-medium text-amber-800">Reintentar resumen</p>
+                    <p className="text-[10px] text-amber-700 mt-1">
+                      Para generar un resumen IA necesitamos calidad de al menos 50%.
+                    </p>
                     <Button
                       size="sm"
                       variant="outline"
                       onClick={() => pdfInputRef.current?.click()}
-                      className="mt-3 bg-white border-amber-300 text-amber-700 hover:bg-amber-50"
+                      className="mt-2 bg-white border-amber-300 text-amber-700 hover:bg-amber-50"
                     >
                       <Upload className="w-4 h-4 mr-1" />
                       Subir mejor calidad
@@ -1426,7 +1430,7 @@ export function OCRScanner({ onClose, onComplete, initialImages }: OCRScannerPro
           </div>
           
           {/* Vista previa de páginas */}
-          <div className="flex-1 overflow-auto">
+          <div className="flex-1 overflow-hidden">
             <div className="p-3">
               {/* Grid de páginas escaneadas */}
               <div className="grid grid-cols-2 gap-2 mb-4">
@@ -1458,7 +1462,12 @@ export function OCRScanner({ onClose, onComplete, initialImages }: OCRScannerPro
                   {/* Botón de Resumen IA - solo si calidad >= 50% */}
                   {scanQuality >= 50 && (
                 <button
-                  onClick={() => setShowAIAssistant(true)}
+                  onClick={() => {
+                    openAIChatWithDocument(
+                      extractedText,
+                      `Documento escaneado (${pages.length} páginas)`
+                    )
+                  }}
                   className="w-full p-4 bg-gradient-to-r from-blue-500 to-indigo-600 rounded-xl text-white flex items-center justify-center gap-3 hover:from-blue-600 hover:to-indigo-700 transition-all shadow-lg hover:shadow-xl mb-4"
                 >
                   <div className="relative">
@@ -1525,13 +1534,6 @@ export function OCRScanner({ onClose, onComplete, initialImages }: OCRScannerPro
         </div>
       )}
       
-      {/* Asistente Legal IA - disponible en todos los pasos */}
-      <AIAssistant
-        isOpen={showAIAssistant}
-        onClose={() => setShowAIAssistant(false)}
-        documentText={step === 'pdf-review' ? editableText : extractedText}
-        documentName={step === 'pdf-review' ? (documentName || pdfFile?.name || 'Documento PDF') : `Documento escaneado (${pages.length} páginas)`}
-      />
     </div>
   )
 }

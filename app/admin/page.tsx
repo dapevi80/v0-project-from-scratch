@@ -148,7 +148,8 @@ export default function AdminDashboardPage() {
   const superAdminTools = [
     { name: 'Cobros', href: '/admin/cobros', emoji: '💳', description: 'Suscripciones' },
     { name: 'Facturacion SAT', href: '/admin/facturacion', emoji: '🧾', description: 'CFDI y facturas' },
-    { name: 'Wallet', href: '/admin/wallet', emoji: '🪙', description: 'Fichas y recargas' },
+    { name: 'Cartera', href: '/admin/wallet', emoji: '🪙', description: 'Monedas y recompensas' },
+    { name: 'IA Credits', href: '/admin/ia-credits', emoji: '🤖', description: 'Consumo y planes IA' },
     { name: 'Reportes', href: '/admin/reportes', emoji: '📊', description: 'Analytics' },
     { name: 'Config', href: '/admin/config', emoji: '⚙️', description: 'Sistema' },
     { name: 'C:/', href: '/admin/terminal', symbol: true, description: 'Terminal modo' },
@@ -314,7 +315,7 @@ export default function AdminDashboardPage() {
         {/* Links rapidos a dashboards de usuario */}
         {data.isSuperAdmin && (
           <div className="pt-2 space-y-2">
-            <Link href="/abogado/dashboard">
+          <Link href="/dashboard">
               <Card className="bg-green-950/30 border-green-800 hover:border-green-600 transition-all cursor-pointer">
                 <CardContent className="p-3 flex items-center justify-center gap-2">
                   <span className="text-green-400 font-mono text-xs">{'>'} Dashboard Abogado (Herramientas, Casos, Leads, AutoCCL)</span>

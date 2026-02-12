@@ -3,7 +3,7 @@
 import Link from "next/link"
 
 import React, { useState, useRef, useEffect, useCallback } from "react"
-import { useRouter } from "next/navigation"
+import { usePathname, useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import {
   X,
@@ -94,7 +94,7 @@ const QUICK_QUESTIONS = [
   { icon: HelpCircle, text: "Ayuda con la app", color: "bg-slate-50 text-slate-600 border-slate-200" },
 ]
 
-// FAQ por asistente - Con urgencia de 60 dias y pregunta persuasiva
+// FAQ por asistente - respuestas base
 const FAQ_RESPONSES: Record<string, Record<string, string>> = {
   lia: {
     "Calcular liquidacion": `**Para calcular tu liquidacion:**
@@ -103,35 +103,32 @@ Solo necesitas tu **salario** y **fechas de trabajo**.
 
 La app calcula: 3 meses + 20 dias/año + aguinaldo + vacaciones.
 
-**Importante:** Los primeros **60 dias** son clave para negociar.
-
-Ya tienes todo para empezar. **Quieres calcular tu liquidacion ahora mismo?**`,
+Si quieres, te guio con tu calculo paso a paso.`,
     "Iniciar conciliacion": `**Para iniciar conciliacion:**
 
 1. Junta documentos (INE, nomina)
 2. Pide cita en el Centro de Conciliacion
 3. Asiste y expon tu caso
 
-**Ojo:** Tienes solo **60 dias** para tener mas fuerza legal.
+Si quieres, revisamos los documentos que ya tienes.`,
+    "Centro conciliacion Cancun": `**Centro de Conciliacion en Cancun (Q. Roo):**
 
-**Te ayudo a organizar tus documentos en la app?**`,
+El directorio oficial cambia por municipio, asi que lo mas seguro es consultar el **CCL de Quintana Roo** y buscar la sede de Cancun.
+
+Si me confirmas tu municipio y situacion, te ayudo a ubicar la sede correcta y la lista exacta de documentos.`,
     "Despido sin causa": `**Si te despiden sin causa, te deben:**
 
 - 3 meses de salario
 - 20 dias por año trabajado
 - Prima de antiguedad
 
-**Tip:** En los primeros **60 dias** tienes mejor posicion.
-
-**Quieres ver cuanto te corresponde exactamente?**`,
+Si quieres, estimamos un rango aproximado.`,
     "Plazo para demandar": `**Plazos importantes:**
 
-- **60 dias:** Mejor momento para negociar
+- **60 dias:** Momento fuerte para negociar
 - **1 año:** Limite legal para demandar
 
-Entre mas rapido actues, mejor resultado.
-
-**Empezamos con tu calculo ahora?**`,
+Si quieres, te digo que informacion conviene reunir.`,
     "Ayuda con la app": `**Te explico como usar la app:**
 
 **Mi Boveda** - Guarda tus documentos de forma segura (recibos, contratos, INE)
@@ -145,24 +142,11 @@ Entre mas rapido actues, mejor resultado.
 **Que seccion te gustaria explorar primero?**`
   },
   mandu: {
-    "Calcular liquidacion": `*bosteza* Salario y fechas... la app hace todo.
-
-*abre un ojo* **60 dias** para que te tomen en serio.
-
-**Entramos a la app? Prometo no dormirme...**`,
-    "Iniciar conciliacion": `*abre un ojo* Papeles, cita, audiencia.
-
-*se lame la pata* **60 dias** para actuar con fuerza.
-
-**Guardamos tus documentos? Yo vigilo mientras duermo...**`,
-    "Despido sin causa": `*levanta las orejas* 3 meses + 20 dias/año + prima.
-
-*ronronea* **60 dias** o la empresa se pone dificil.
-
-**Calculamos tu lana? No me cuesta nada... solo siestas.**`,
-    "Plazo para demandar": `*bosteza* 60 dias para negociar. Un año limite.
-
-**Hacemos numeros? Sera rapido, como mi siesta #47...**`,
+    "Calcular liquidacion": `*bosteza* Salario y fechas... la app hace todo.`,
+    "Iniciar conciliacion": `*abre un ojo* Papeles, cita, audiencia. Te digo que llevar si quieres.`,
+    "Centro conciliacion Cancun": `*abre un ojo* Para Cancun, revisa el directorio oficial del CCL de Quintana Roo. Si me dices tu municipio, te ubico la sede.`,
+    "Despido sin causa": `*levanta las orejas* 3 meses + 20 dias/año + prima. Podemos estimar.`,
+    "Plazo para demandar": `*bosteza* 60 dias para negociar. Un año limite. Te ayudo a ordenar fechas.`,
     "Ayuda con la app": `*abre un ojo perezosamente*
 
 **Boveda** - Tus papeles seguros... como mi cama...
@@ -173,24 +157,11 @@ Entre mas rapido actues, mejor resultado.
 *se estira* **Cual exploramos? Prometo no dormirme... mucho...**`
   },
   bora: {
-    "Calcular liquidacion": `*suspira* Ay mijo... Salario y fechas. Ya.
-
-*te mira seria* **60 dias** o se hacen los sordos.
-
-**Vas a calcular o seguimos platicando? No tengo todo el dia... bueno, si tengo.**`,
-    "Iniciar conciliacion": `*ojos entrecerrados* Papeles. Cita. Audiencia.
-
-*gruñe* **60 dias**. Tu tiempo de oro.
-
-**Organizamos tus papeles o prefieres perder tu caso? Tu decides.**`,
-    "Despido sin causa": `*ronquido interrumpido* 3 meses, 20 dias/año, prima.
-
-*te ve fijamente* **60 dias** o pierdes ventaja.
-
-**Calculamos de una vez? Esta gata vieja no tiene paciencia.**`,
-    "Plazo para demandar": `*te observa* 60 dias para negociar. Un año limite.
-
-**Vas a actuar o seguiras preguntando? Porque yo tengo sueño.**`,
+    "Calcular liquidacion": `*suspira* Ay mijo... Salario y fechas. Ya. Si quieres, lo hacemos.`,
+    "Iniciar conciliacion": `*ojos entrecerrados* Papeles. Cita. Audiencia. Te digo que llevar.`,
+    "Centro conciliacion Cancun": `*te mira* Para Cancun, busca el directorio del CCL de Quintana Roo. Dime tu municipio y te digo a cual ir.`,
+    "Despido sin causa": `*ronquido interrumpido* 3 meses, 20 dias/año, prima. Podemos estimar.`,
+    "Plazo para demandar": `*te observa* 60 dias para negociar. Un año limite.`,
     "Ayuda con la app": `*te mira por encima de sus lentes*
 
 Ay mijo, es facil:
@@ -207,21 +178,16 @@ Ay mijo, es facil:
 
 Salario, fechas... la app lo hace... eventualmente...
 
-*parpadea despacio* **60 dias**... es importante... aunque todo es relativo...
-
 **Vamos a la app? Yo te guio... a mi ritmo...**`,
     "Iniciar conciliacion": `*se rasca la cabeza lentamente*
 
 Documentos... cita... audiencia... paso a paso...
 
-*bosteza suavemente* **60 dias**... el tiempo vuela... o camina despacio como yo...
-
 **Te ayudo a guardar tus papeles? Sin prisa... pero sin pausa...**`,
+    "Centro conciliacion Cancun": `*parpadea lento* Cancun... revisa el directorio del CCL de Quintana Roo. Si me dices tu municipio, lo ubicamos.`,
     "Despido sin causa": `*ajusta sus lentes despacio*
 
 3 meses... 20 dias por año... prima... matematicas simples...
-
-*parpadea* **60 dias** para negociar bien...
 
 **Calculamos juntos? Lento pero seguro gana la carrera...**`,
     "Plazo para demandar": `*reflexiona pausadamente*
@@ -244,26 +210,12 @@ Veamos... despacio... pero seguro...
   }
 }
 
-// Respuesta generica cuando no se conoce la respuesta (despues de 2 intentos)
+// Respuesta generica cuando no se conoce la respuesta
 const FALLBACK_RESPONSES: Record<string, string> = {
-  lia: `Mmm, esa pregunta es muy especifica. Para darte la mejor respuesta, necesito que uses la app donde tengo acceso a toda la informacion legal.
-
-**Creamos tu cuenta en 30 segundos?** Asi puedo ayudarte mejor.`,
-  mandu: `*se rasca la oreja* Eso esta muy complicado para contestar aqui...
-
-*bosteza* En la app tengo mas herramientas... y una cama mas comoda.
-
-**Entramos? Te prometo despertar para ayudarte...**`,
-  bora: `*suspira* Mira mijo, eso no te lo puedo contestar bien aqui afuera.
-
-*mueve la cola* En la app tengo todo lo que necesitas. Soy vieja pero no tonta.
-
-**Vas a entrar o seguimos perdiendo el tiempo?**`,
-  licperez: `*parpadea lentamente* Mmm... esa pregunta... requiere mas... contexto...
-
-*se acomoda* En la app tengo... todas las herramientas... eventualmente...
-
-**Vamos juntos? Despacio... pero llegaremos...**`
+  lia: `Mmm, esa pregunta es muy especifica. Dime mas contexto y lo reviso contigo.`,
+  mandu: `*se rasca la oreja* Necesito mas detalles para responder bien. Cuentame un poco mas...`,
+  bora: `*suspira* Eso necesita mas contexto. Explicame bien y seguimos.`,
+  licperez: `*parpadea lentamente* Necesito mas... contexto... para darte una buena respuesta.`
 }
 
 // Preguntas persuasivas para mantener la conversacion
@@ -345,6 +297,9 @@ function findFAQResponse(question: string, assistant: AssistantType): string | n
   const q = question.toLowerCase()
   const responses = FAQ_RESPONSES[assistant]
   
+  if ((q.includes("cancun") || q.includes("quintana roo")) && (q.includes("concili") || q.includes("centro"))) {
+    return responses["Centro conciliacion Cancun"]
+  }
   if (q.includes("calcul") || q.includes("liquidaci")) return responses["Calcular liquidacion"]
   if (q.includes("concilia") || q.includes("reclamo")) return responses["Iniciar conciliacion"]
   if (q.includes("despid") && q.includes("causa")) return responses["Despido sin causa"]
@@ -355,11 +310,72 @@ function findFAQResponse(question: string, assistant: AssistantType): string | n
 }
 
 // Identificar mensajes que deben mostrar el boton de app
-function shouldShowAppButton(messageId: string, messages: Message[]): boolean {
+function shouldShowAppButton(messageId: string, messages: Message[], hasSession: boolean, isInAppRoute: boolean): boolean {
+  if (hasSession || isInAppRoute) return false
   const msg = messages.find(m => m.id === messageId)
   if (!msg || msg.role !== "assistant") return false
   // Mostrar boton en respuestas FAQ (no en errores ni CTA)
   return !messageId.includes("error") && !messageId.includes("cta")
+}
+
+function shouldShowInAppActions(messageId: string, messages: Message[], hasSession: boolean): boolean {
+  if (!hasSession) return false
+  const msg = messages.find(m => m.id === messageId)
+  if (!msg || msg.role !== "assistant") return false
+  const lastAssistant = [...messages].reverse().find(m => m.role === "assistant")
+  if (!lastAssistant || lastAssistant.id !== messageId) return false
+  return !messageId.includes("error") && !messageId.includes("cta")
+}
+
+type IntentResult = {
+  intent: string | null
+  confidence: number
+}
+
+const INTENT_THRESHOLD = 0.7
+
+const fetchIntent = async (text: string): Promise<IntentResult | null> => {
+  try {
+    const response = await fetch('/api/wit/intent', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ text })
+    })
+
+    if (!response.ok) return null
+    return response.json()
+  } catch {
+    return null
+  }
+}
+
+const getIntentResponse = (intent: string | null, role?: string) => {
+  if (!intent) return null
+
+  const isLawyer = role === 'lawyer' || role === 'admin' || role === 'superadmin' || role === 'webagent' || role === 'guestlawyer'
+
+  switch (intent) {
+    case 'detalles_del_caso':
+      return isLawyer
+        ? `Por seguridad, los detalles del caso se muestran solo dentro de la app.\n\n[Ir a Mis casos](/oficina-virtual/mis-casos)`
+        : `Puedes ver el estado de tu caso en **Mis Casos**.\n\n[Ir a Mis casos](/casos)`
+    case 'informacion_de_calendario':
+      return `Aquí tienes tu calendario de audiencias y recordatorios.\n\n[Ir a Calendario](/agenda)`
+    case 'subir_archivo_boveda':
+      return `Puedes subir documentos desde **Bóveda** o enviarlos por WhatsApp cuando esté habilitado.\n\n[Ir a Bóveda](/boveda)`
+    case 'contactar_a_mi_abogado':
+      return isLawyer
+        ? `Revisa tus contactos y equipo en **Mi equipo y red**.\n\n[Ir a Mi equipo](/oficina-virtual/mi-equipo)`
+        : `Puedes contactar a tu abogado desde tu caso activo.\n\n[Ir a Mis casos](/casos)`
+    case 'asesoria_legal':
+      return isLawyer
+        ? `¿Quieres asesorar a un cliente? Inicia un caso nuevo desde la calculadora.\n\n[Ir a Calculadora](/calculadora)`
+        : `Puedo ayudarte a iniciar tu asesoría. Primero genera tu cálculo y deja tus datos.\n\n[Ir a Calculadora](/calculadora)`
+    case 'preguntas_sobre_la_app':
+      return `Te llevo a tu dashboard para ver tus herramientas principales.\n\n[Ir al Dashboard](/dashboard)`
+    default:
+      return null
+  }
 }
 
 export function AIAssistant({ 
@@ -372,6 +388,7 @@ export function AIAssistant({
   assistantType = 'lia'
 }: AIAssistantProps) {
   const router = useRouter()
+  const pathname = usePathname()
   const [currentAssistant, setCurrentAssistant] = useState<AssistantType>(assistantType)
   const [hasProcessedInitialMessage, setHasProcessedInitialMessage] = useState(false)
   const [messages, setMessages] = useState<Message[]>([])
@@ -379,6 +396,9 @@ export function AIAssistant({
   const [isLoading, setIsLoading] = useState(false)
   const [faqCount, setFaqCount] = useState(0)
   const [showCTA, setShowCTA] = useState(false)
+  const [chatExpired, setChatExpired] = useState(false)
+  const [chatStartTime, setChatStartTime] = useState<number | null>(null)
+  const [timeRemaining, setTimeRemaining] = useState(0)
   const [showPicker, setShowPicker] = useState(false)
   const [keyboardHeight, setKeyboardHeight] = useState(0)
   
@@ -400,6 +420,25 @@ export function AIAssistant({
   const inputRef = useRef<HTMLInputElement>(null)
   const containerRef = useRef<HTMLDivElement>(null)
   const assistant = ASSISTANTS[currentAssistant]
+  const hasSession = Boolean(userProfile?.id)
+  const isInAppRoute = Boolean(
+    pathname &&
+      (
+        pathname.startsWith('/dashboard') ||
+        pathname.startsWith('/abogado') ||
+        pathname.startsWith('/boveda') ||
+        pathname.startsWith('/calculadora') ||
+        pathname.startsWith('/casos') ||
+        pathname.startsWith('/agenda') ||
+        pathname.startsWith('/perfil') ||
+        pathname.startsWith('/oficina-virtual') ||
+        pathname.startsWith('/admin') ||
+        pathname.startsWith('/recompensas')
+      )
+  )
+  const sessionKey = `ai-chat-session-${userProfile?.id ?? 'guest'}`
+  const MAX_CHAT_DURATION_MS = 5 * 60 * 1000
+  const expirationMessage = `Tengo que atender mas casos. Puedes seguir usando la app y al volver a iniciar sesion se restauran tus 5 minutos de chat.`
   
   // Detectar teclado virtual en movil
   useEffect(() => {
@@ -471,10 +510,52 @@ export function AIAssistant({
     }
   }, [isOpen])
 
+  // Control de duracion de conversacion (5 minutos por sesion)
+  useEffect(() => {
+    if (!isOpen) return
+    if (typeof window === 'undefined') return
+    const stored = sessionStorage.getItem(sessionKey)
+    const parsed = stored ? Number.parseInt(stored, 10) : NaN
+    const start = Number.isNaN(parsed) ? Date.now() : parsed
+    sessionStorage.setItem(sessionKey, start.toString())
+    setChatStartTime(start)
+    setChatExpired(Date.now() - start >= MAX_CHAT_DURATION_MS)
+  }, [isOpen, sessionKey])
+
+  useEffect(() => {
+    if (!isOpen || !chatStartTime) return
+    const interval = window.setInterval(() => {
+      const elapsed = Date.now() - chatStartTime
+      const remaining = Math.max(0, MAX_CHAT_DURATION_MS - elapsed)
+      setTimeRemaining(remaining)
+      if (remaining === 0) {
+        setChatExpired(true)
+      }
+    }, 1000)
+    return () => window.clearInterval(interval)
+  }, [isOpen, chatStartTime])
+
+  useEffect(() => {
+    if (!chatExpired) return
+    setMessages(prev => {
+      const already = prev.some(msg => msg.id.startsWith('expired-'))
+      if (already) return prev
+      return [
+        ...prev,
+        {
+          id: `expired-${Date.now()}`,
+          role: "assistant",
+          content: expirationMessage
+        }
+      ]
+    })
+  }, [chatExpired, expirationMessage])
+
   useEffect(() => {
     setMessages([])
     setFaqCount(0)
     setShowCTA(false)
+    setChatExpired(false)
     // Actualizar asistente en metricas
     setMetrics(prev => ({ ...prev, assistant: currentAssistant }))
   }, [currentAssistant])
@@ -492,18 +573,40 @@ export function AIAssistant({
     setMessages([systemMessage])
     
     try {
+      const creditResponse = await fetch('/api/ai-credits/consume', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          costo: 1,
+          source: 'document',
+          assistant: currentAssistant
+        })
+      })
+
+      if (!creditResponse.ok) {
+        const creditData = await creditResponse.json()
+        setMessages(prev => [
+          ...prev,
+          {
+            id: `assistant-${Date.now()}`,
+            role: 'assistant',
+            content: creditData.error || 'No tienes monedas IA disponibles para analizar documentos.'
+          }
+        ])
+        return
+      }
+
       const response = await fetch(assistant.api, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           messages: [{
             role: "user",
-            content: `Analiza este documento laboral y dame un resumen con:
-1. Que tipo de documento es
-2. Puntos clave para el TRABAJADOR (que significa para el)
-3. Puntos clave para el ABOGADO (que debe revisar)
-4. Si hay algo urgente o problematico
-5. Recomendaciones
+        content: `Analiza el texto extraido del PDF para brindar un resumen claro, con certeza y firme, de lo que dice el documento.
+El resumen debe explicarse sin rodeos, analizando y recomendando siguientes pasos referentes a los casos activos del usuario.
+Debe estar totalmente dentro del marco legal mexicano y siempre recomendar leerlo con algun abogado.
+
+Responde en bullets y no excedas 8 puntos.
 
 Documento:
 ${docText.slice(0, 4000)}`
@@ -545,7 +648,7 @@ ${docText.slice(0, 4000)}`
   }, [metrics])
 
   useEffect(() => {
-    if (faqCount >= 2 && !showCTA) {
+    if (faqCount >= 2 && !showCTA && !userProfile?.id) {
       setShowCTA(true)
       setTimeout(() => {
         setMessages(prev => [...prev, {
@@ -555,10 +658,36 @@ ${docText.slice(0, 4000)}`
         }])
       }, 500)
     }
-  }, [faqCount, showCTA, assistant.ctaMessage])
+  }, [faqCount, showCTA, assistant.ctaMessage, userProfile?.id])
+
+  const getContextualResponse = (text: string) => {
+    const normalized = text.toLowerCase()
+    const role = userProfile?.role
+    const isLawyer = role === 'lawyer' || role === 'admin' || role === 'superadmin' || role === 'webagent'
+    const isWorker = role === 'worker' || role === 'guest'
+
+    if (isLawyer && (normalized.includes('nuevo caso') || normalized.includes('crear caso') || normalized.includes('cliente'))) {
+      const codigo = userProfile?.codigoUsuario ? `Tu codigo de referido: **${userProfile.codigoUsuario}**.` : ''
+      return `Para crear un caso nuevo como abogado:
+1. Abre la **Calculadora** y genera el calculo del cliente.
+2. Al finalizar, elige **"Guardar y crear cliente"**.
+3. Comparte el folio y el enlace de referido con tu cliente para que abra su cuenta y vea el calculo.
+
+[Ir a la Calculadora](/calculadora) ${codigo}`.trim()
+    }
+
+    if (isWorker && userProfile?.verificationStatus !== 'verified' && normalized.includes('verificar')) {
+      return `Puedo ayudarte a completar tu verificacion.
+Revisa que tengas tu **CURP**, telefono y un calculo guardado.
+
+[Ir a Mi Perfil](/perfil)`
+    }
+
+    return null
+  }
 
   const sendMessage = async (text: string) => {
-    if (!text.trim() || isLoading) return
+    if (!text.trim() || isLoading || chatExpired) return
     const startTime = Date.now()
 
     const userMessage: Message = { id: `user-${Date.now()}`, role: "user", content: text }
@@ -568,9 +697,13 @@ ${docText.slice(0, 4000)}`
     // Actualizar metricas
     setMetrics(prev => ({ ...prev, totalMessages: prev.totalMessages + 1, assistant: currentAssistant }))
     
-    // Contar preguntas no-FAQ del usuario
-    const nonFaqQuestions = messages.filter(m => m.role === "user").length + 1
-    
+    const contextualResponse = getContextualResponse(text)
+    if (contextualResponse) {
+      setMessages(prev => [...prev, { id: `assistant-${Date.now()}`, role: "assistant", content: contextualResponse }])
+      setMetrics(prev => ({ ...prev, aiResponses: prev.aiResponses + 1 }))
+      return
+    }
+
     // Primero buscar en FAQ
     const faqResponse = findFAQResponse(text, currentAssistant)
     
@@ -583,21 +716,43 @@ ${docText.slice(0, 4000)}`
       setIsLoading(false)
       return
     }
-    
-    // Si ya hizo 2+ preguntas no-FAQ, usar respuesta generica que dirige a la app
-    if (nonFaqQuestions >= 2) {
-      setIsLoading(true)
-      await new Promise(r => setTimeout(r, 300))
-      const fallback = FALLBACK_RESPONSES[currentAssistant]
-      setMessages(prev => [...prev, { id: `assistant-${Date.now()}`, role: "assistant", content: fallback }])
-      setMetrics(prev => ({ ...prev, fallbackResponses: prev.fallbackResponses + 1 }))
-      setIsLoading(false)
-      return
+
+    const intentResult = await fetchIntent(text)
+    if (intentResult?.intent && intentResult.confidence >= INTENT_THRESHOLD) {
+      const intentResponse = getIntentResponse(intentResult.intent, userProfile?.role)
+      if (intentResponse) {
+        setMessages(prev => [...prev, { id: `assistant-${Date.now()}`, role: "assistant", content: intentResponse }])
+        setMetrics(prev => ({ ...prev, aiResponses: prev.aiResponses + 1 }))
+        return
+      }
     }
     
     // Llamar a Grok AI para preguntas especificas
     setIsLoading(true)
     try {
+      const creditResponse = await fetch('/api/ai-credits/consume', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          costo: 1,
+          source: 'chat',
+          assistant: currentAssistant
+        })
+      })
+
+      if (!creditResponse.ok) {
+        const creditData = await creditResponse.json()
+        setMessages(prev => [
+          ...prev,
+          {
+            id: `assistant-${Date.now()}`,
+            role: 'assistant',
+            content: creditData.error || 'No tienes monedas IA disponibles. Revisa tu plan o cupones.'
+          }
+        ])
+        return
+      }
+
       const response = await fetch(assistant.api, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -605,6 +760,7 @@ ${docText.slice(0, 4000)}`
           messages: [...messages, userMessage].map(m => ({ role: m.role, content: m.content })),
           documentContext: documentText,
           documentName: documentName,
+          userProfile: userProfile,
         }),
       })
 
@@ -637,6 +793,13 @@ ${docText.slice(0, 4000)}`
       .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
       .replace(/\*(.*?)\*/g, '<em class="text-slate-500">$1</em>')
       .replace(/\n/g, '<br/>')
+  }
+
+  const formatRemaining = (ms: number) => {
+    const totalSeconds = Math.max(0, Math.ceil(ms / 1000))
+    const minutes = Math.floor(totalSeconds / 60)
+    const seconds = totalSeconds % 60
+    return `${minutes}:${seconds.toString().padStart(2, '0')}`
   }
 
   // Generar mensaje de bienvenida personalizado segun el perfil del usuario
@@ -681,17 +844,15 @@ ${docText.slice(0, 4000)}`
   if (!isOpen) return null
 
   return (
-    <div className="fixed inset-0 z-[70] flex items-end sm:items-center justify-center">
-      <div className="absolute inset-0 bg-black/40" onClick={onClose} />
-      
-      <div 
+    <div className="fixed bottom-4 right-4 z-[70] w-[92vw] max-w-sm">
+      <div
         ref={containerRef}
-        className="relative w-full max-w-sm bg-white rounded-t-2xl sm:rounded-2xl shadow-2xl flex flex-col overflow-hidden"
-        style={{ 
-          height: keyboardHeight > 0 
-            ? `calc(100vh - ${keyboardHeight}px - env(safe-area-inset-top, 0px))` 
-            : '75vh',
-          maxHeight: keyboardHeight > 0 ? 'none' : '75vh',
+        className="relative w-full bg-white rounded-2xl shadow-2xl flex flex-col overflow-hidden border"
+        style={{
+          height: keyboardHeight > 0
+            ? `calc(100vh - ${keyboardHeight}px - env(safe-area-inset-top, 0px))`
+            : '70vh',
+          maxHeight: keyboardHeight > 0 ? 'none' : '70vh',
           transition: 'height 0.15s ease-out'
         }}
       >
@@ -729,9 +890,14 @@ ${docText.slice(0, 4000)}`
             )}
           </div>
           
-          <button onClick={onClose} className="p-1.5 rounded-full hover:bg-slate-200">
-            <X className="w-5 h-5 text-slate-500" />
-          </button>
+          <div className="flex items-center gap-2">
+            <span className="text-[10px] text-slate-500">
+              {chatExpired ? 'Sesion finalizada' : `Tiempo: ${formatRemaining(timeRemaining)}`}
+            </span>
+            <button onClick={onClose} className="p-1.5 rounded-full hover:bg-slate-200">
+              <X className="w-5 h-5 text-slate-500" />
+            </button>
+          </div>
         </div>
 
         {/* Messages */}
@@ -767,7 +933,7 @@ ${docText.slice(0, 4000)}`
                   }} />
                 </div>
                 {/* Boton Abrir App para respuestas del asistente */}
-                {shouldShowAppButton(msg.id, messages) && (
+                {shouldShowAppButton(msg.id, messages, hasSession, isInAppRoute) && (
                   <Button 
                     size="sm" 
                     onClick={goToGuestRegister}
@@ -776,6 +942,22 @@ ${docText.slice(0, 4000)}`
                     <ArrowRight className="w-3.5 h-3.5" />
                     Abrir App
                   </Button>
+                )}
+                {shouldShowInAppActions(msg.id, messages, hasSession) && (
+                  <div className="grid grid-cols-2 gap-2">
+                    <Button asChild size="sm" variant="outline" className="text-xs">
+                      <Link href="/calculadora">Calculadora</Link>
+                    </Button>
+                    <Button asChild size="sm" variant="outline" className="text-xs">
+                      <Link href="/casos">Mis casos</Link>
+                    </Button>
+                    <Button asChild size="sm" variant="outline" className="text-xs">
+                      <Link href="/agenda">Alertas</Link>
+                    </Button>
+                    <Button asChild size="sm" variant="outline" className="text-xs">
+                      <Link href="/perfil">Mi perfil</Link>
+                    </Button>
+                  </div>
                 )}
               </div>
             </div>
@@ -799,7 +981,7 @@ ${docText.slice(0, 4000)}`
           )}
 
           {/* CTA despues de 2 preguntas */}
-          {showCTA && (
+          {showCTA && !hasSession && (
             <div className="bg-gradient-to-r from-emerald-50 to-blue-50 border border-emerald-200 rounded-xl p-3">
               <div className="flex items-center gap-2 mb-2">
                 <Sparkles className="w-4 h-4 text-emerald-600" />
@@ -847,12 +1029,12 @@ ${docText.slice(0, 4000)}`
               type="text"
               value={inputValue}
               onChange={(e) => setInputValue(e.target.value)}
-              placeholder="Escribe tu pregunta..."
+              placeholder={chatExpired ? "Sesion finalizada" : "Escribe tu pregunta..."}
               className="flex-1 px-3 py-2 rounded-full border bg-white focus:border-emerald-400 outline-none text-sm"
-              disabled={isLoading}
+              disabled={isLoading || chatExpired}
               enterKeyHint="send"
             />
-            <Button type="submit" size="icon" disabled={isLoading || !inputValue.trim()} className="rounded-full bg-emerald-500 hover:bg-emerald-600 w-9 h-9 shrink-0">
+            <Button type="submit" size="icon" disabled={isLoading || !inputValue.trim() || chatExpired} className="rounded-full bg-emerald-500 hover:bg-emerald-600 w-9 h-9 shrink-0">
               <Send className="w-4 h-4" />
             </Button>
           </div>

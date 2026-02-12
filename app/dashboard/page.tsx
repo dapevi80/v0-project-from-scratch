@@ -32,14 +32,7 @@ export default function DashboardPage() {
     
     const userRole = profile.role
     
-    // Abogados van al dashboard de abogado
-    if (userRole === 'guestlawyer' || userRole === 'lawyer') {
-      router.replace('/abogado/dashboard')
-      return
-    }
-    
-    // Admin y superadmin YA NO se redirigen automaticamente
-    // Se quedan en dashboard y acceden al panel desde la tarjeta
+    // Todos los roles permanecen en el dashboard actualizado
     
     // Verificar celebracion pendiente
     if (profile.verification_status === 'verified' && profile.role === 'worker' && !profile.celebration_shown) {
@@ -49,6 +42,11 @@ export default function DashboardPage() {
       supabase.from('profiles').update({ celebration_shown: true }).eq('id', profile.id)
     }
   }, [loading, profile, router])
+
+  useEffect(() => {
+    if (loading || !user) return
+    refreshProfile()
+  }, [loading, user, refreshProfile])
 
   // Cargar casos activos (solo una vez)
   useEffect(() => {
@@ -74,7 +72,8 @@ export default function DashboardPage() {
   const freeTools = [
     { name: 'Calculadora', href: '/calculadora', description: 'Calcula tu liquidación', icon: '🧮', available: true },
     { name: 'Buró de Empresas', href: '/buro', description: 'Conoce a tu empleador', icon: '🏢', available: false, badge: 'Próximamente' },
-    { name: 'Bóveda de Evidencias', href: '/boveda', description: 'Guarda tus pruebas', icon: '🔐', available: true }
+    { name: 'Bóveda de Evidencias', href: '/boveda', description: 'Guarda tus pruebas', icon: '🔐', available: true },
+    { name: 'Biblioteca Legal', href: '/biblioteca-legal', description: 'Guía simplificada', icon: '📚', available: true }
   ]
 
   // Herramientas exclusivas para trabajadores verificados
@@ -194,6 +193,8 @@ export default function DashboardPage() {
             verificationStatus={profile?.verification_status || 'none'}
             casosActivos={casosActivos}
             isProfilePublic={profile?.is_profile_public ?? true}
+            avatarUrl={profile?.avatar_url}
+            sexo={profile?.sexo ?? null}
           />
 
           {/* Herramientas Gratuitas */}

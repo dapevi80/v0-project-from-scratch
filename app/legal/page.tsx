@@ -174,7 +174,8 @@ export default function LegalPage() {
                       <li><strong>Calculadora de liquidación:</strong> Herramienta para estimar montos de liquidación conforme a la Ley Federal del Trabajo;</li>
                       <li><strong>Bóveda digital:</strong> Almacenamiento seguro de documentos;</li>
                       <li><strong>Conexión con abogados:</strong> Intermediación para la contratación de servicios legales;</li>
-                      <li><strong>Seguimiento de casos:</strong> Herramientas para monitorear el avance de procedimientos.</li>
+                      <li><strong>Seguimiento de casos:</strong> Herramientas para monitorear el avance de procedimientos;</li>
+                      <li><strong>Gestión de solicitud CCL:</strong> Prellenado y automatización del flujo de conciliación ante el Centro de Conciliación Laboral, incluyendo la generación de un buzón electrónico @mecorrieron.mx con contraseña resguardada por Superadmin. El USUARIO autoriza expresamente este flujo y entiende que la activación del buzón la realiza el CCL en oficialía de partes o por videollamada.</li>
                     </ol>
                     
                     <hr className="my-6" />
